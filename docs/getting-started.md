@@ -38,12 +38,14 @@ There is nothing to compile or build — the library is pure Python under `src/`
 python -m pytest tests/ -q
 ```
 
-You should see **109 passing tests**. They cover:
+You should see **154 passing tests**. They cover:
 
 * `tests/test_paper.py` — reproduces the CIKM 2010 worked examples (SA1/SA2/SA3
   equivalence, subschema testing, extraction, irrational-state removal).
 * `tests/test_formats.py` — the unordered `MapModel`, the JSON/YAML/TOML
   loaders, schema inference, validation diagnostics, and JSON-Schema export.
+* `tests/test_dsl.py` — the textual Schema DSL (parsing, serialization,
+  round-trip, errors) and the `conforms_to` conformance algorithm.
 
 ## Run the demos
 
@@ -57,6 +59,7 @@ python demos/03_cross_format.py            # one schema validates JSON / YAML / 
 python demos/04_schema_versioning.py       # backward-compatibility via subschema
 python demos/05_subschema_extraction.py    # trim a schema to the keys a client needs
 python demos/06_unions_and_nullable.py     # scalar unions + nullable objects/arrays
+python demos/07_schema_dsl.py              # textual schema DSL + conformance checking
 ```
 
 Or run the quick combined tour:

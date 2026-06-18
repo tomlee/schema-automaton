@@ -125,13 +125,15 @@ src/
   vdom.py             value domains (STRS/INTS/DECS/BOOL/NULL/enum/nullable)
   data_tree.py        Data Tree (Definition 1)
   schema_automaton.py Schema Automaton (Definition 2) + validation (Definition 3)
-  algorithms.py       Algorithms 1–5
+  algorithms.py       Algorithms 1–5 + conforms_to (Definition 3)
   formats.py          JSON/YAML/TOML loaders + schema inference
   export.py           Schema Automaton → JSON-Schema-like dict
+  schema_dsl.py       textual Schema DSL: parse_schema / schema_to_dsl
 tests/
   test_paper.py       reproduces the CIKM 2010 examples
   test_formats.py     map model, loaders, inference, validation, export
-demos/                five runnable, self-contained demos
+  test_dsl.py         DSL parse/serialize/round-trip + conformance algorithm
+demos/                seven runnable, self-contained demos
 docs/                 this documentation + the source paper (docs/paper/)
 main.py               quick combined tour
 ```

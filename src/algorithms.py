@@ -6,6 +6,9 @@ Implements:
     Algorithm 3  EquivalentSA      — test schema equivalence
     Algorithm 4  SubschemaSA       — test subschema relationship
     Algorithm 5  ExtractSubschema  — extract subschema for a symbol subset
+
+Plus a conformance algorithm (Definition 3): ``conforms_to`` decides whether a
+Data Tree is an instance of a Schema Automaton, returning the binding map.
 """
 
 from __future__ import annotations
@@ -14,7 +17,8 @@ from typing import Any, Dict, FrozenSet, List, Optional, Set, Tuple
 
 from .hlang import HLang
 from .vdom import VDom
-from .schema_automaton import SchemaAutomaton
+from .data_tree import DataTree
+from .schema_automaton import SchemaAutomaton, _is_null_node
 
 
 # ============================================================
@@ -458,3 +462,120 @@ def extract_subschema(
     # Step 15-16: MakeUsefulSA then MinimizeSA
     make_useful_sa(result)
     return minimize_sa(result)
+
+
+# ============================================================
+# Conformance — does a Data Tree conform to a Schema Automaton?
+# (Definition 3: construct the binding map Bind : N -> Q)
+# ============================================================
+
+class ConformanceResult:
+    """Outcome of :func:`conforms_to`.
+
+    Besides the boolean verdict (``ok``), it exposes the **binding map**
+    ``binding`` — the paper's ``Bind : N -> Q`` — mapping each conforming
+    d-node id to the SA state that accepts it, plus path-aware ``errors``.
+    """
+
+    def __init__(self) -> None:
+        self.binding: Dict[Any, Any] = {}
+        self.errors: List[Tuple[str, str]] = []
+
+    @property
+    def ok(self) -> bool:
+        return not self.errors
+
+    def __bool__(self) -> bool:
+        return self.ok
+
+    def __str__(self) -> str:
+        if self.ok:
+            return "conforms"
+        lines = ["does not conform:"]
+        lines += [f"  at {path}: {msg}" for path, msg in self.errors]
+        return "\n".join(lines)
+
+
+def _content_violation(content, cseq, item_symbol: str) -> str:
+    """Human-readable explanation of why a child sequence is not permitted."""
+    from .content_model import KIND_SEQUENCE, KIND_MAP
+    missing = content.mandatory_symbols() - set(cseq)
+    if content.kind == KIND_SEQUENCE:
+        if item_symbol in missing:
+            return "array must be non-empty (expected at least one item)"
+        return f"child sequence {cseq} not permitted by {content!r}"
+    # map / record
+    allowed = content.symbols()
+    unexpected = sorted({s for s in cseq
+                         if s not in allowed and s != item_symbol
+                         and not content.permits_untyped_child(s)})
+    detail = []
+    if missing:
+        detail.append(f"missing required {sorted(missing)}")
+    if unexpected:
+        detail.append(f"unexpected {unexpected}")
+    return "; ".join(detail) if detail else f"child sequence {cseq} not permitted"
+
+
+def conforms_to(sa: SchemaAutomaton, tree: DataTree,
+                item_symbol: str = "[]") -> ConformanceResult:
+    """Decide whether *tree* conforms to (is an instance of) *sa*.
+
+    This is the paper's Definition 3 made constructive: it attempts to build the
+    unique binding map ``Bind : N -> Q`` top-down from the root, checking at each
+    d-node that its value lies in the state's value domain, that its child-symbol
+    sequence is permitted by the state's content model, and that each child is
+    bound via the transition function. All violations are collected with a
+    JSON-path-like location; the binding records every node that did bind.
+
+    Returns a :class:`ConformanceResult` (truthy iff the tree conforms).
+    """
+    result = ConformanceResult()
+
+    def _path(parent: str, symbol: str) -> str:
+        if symbol == item_symbol:
+            return f"{parent}[]"
+        return f"{parent}.{symbol}" if parent else symbol
+
+    def _walk(node_id: Any, state: Any, path: str) -> None:
+        n = tree.node(node_id)
+        content = sa.get_content(state)
+
+        # nullable object/array: a JSON null binds to the (nullable) state
+        if sa.is_struct_nullable(state) and _is_null_node(n):
+            result.binding[node_id] = state
+            return
+
+        # structural kind agreement (when the tree carries kind info)
+        if n.kind is not None and content.kind and n.kind != content.kind:
+            result.errors.append(
+                (path, f"expected {content.kind.lower()} but found {n.kind.lower()}"))
+            return
+
+        # Condition 2: value in VDom(state)
+        if not sa._value_ok(state, n):
+            found = f" (found {n.vdom!r})" if getattr(n, "vdom", None) is not None else ""
+            result.errors.append(
+                (path, f"value {n.value!r}{found} not in {sa.get_vdom(state)!r}"))
+
+        # Condition 3a: child symbol sequence in Content(state)
+        cseq = tree.child_symbol_sequence(node_id)
+        if not content.accepts(cseq):
+            result.errors.append((path, _content_violation(content, cseq, item_symbol)))
+
+        # this node bound successfully (any violations recorded above)
+        result.binding[node_id] = state
+
+        # Condition 3b: bind each child via the transition function
+        for edge in tree.child_edges(node_id):
+            nxt = sa.transition(state, edge.symbol)
+            child_path = _path(path, edge.symbol)
+            if nxt is None:
+                if content.permits_untyped_child(edge.symbol):
+                    continue  # open-map additional property: unconstrained
+                # the disallowed symbol is already reported via the content check
+                continue
+            _walk(edge.child_id, nxt, child_path)
+
+    _walk(tree.root_id, sa.initial, "$")
+    return result

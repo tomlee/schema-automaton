@@ -27,19 +27,20 @@ def _maybe_null(base: str, nullable: bool) -> Any:
     return [base, "null"] if nullable else base
 
 
-def _vdom_type(vd: VDom) -> Any:
+def _scalar_schema(vd: VDom) -> Dict[str, Any]:
+    """A JSON-Schema fragment for a scalar value domain."""
     if vd.enum is not None:
-        enum = {"enum": sorted(vd.enum)}
+        values = sorted(vd.enum)
         if vd.nullable:
-            enum["enum"] = enum["enum"] + [None]
-        return enum
+            values = values + [None]
+        return {"enum": values}
 
     types = [_KIND_TO_JSON[k] for k in sorted(vd.kinds)]
     if vd.nullable:
         types.append("null")
     if not types:
-        return "null"
-    return types[0] if len(types) == 1 else types
+        return {"type": "null"}
+    return {"type": types[0] if len(types) == 1 else types}
 
 
 def to_json_schema(sa: SchemaAutomaton, item_symbol: str = ITEM) -> Dict[str, Any]:
@@ -80,6 +81,6 @@ def to_json_schema(sa: SchemaAutomaton, item_symbol: str = ITEM) -> Dict[str, An
             return schema
 
         # scalar (or empty sequence) leaf
-        return {"type": _vdom_type(vd)}
+        return _scalar_schema(vd)
 
     return _node(sa.initial, set())

@@ -11,6 +11,7 @@ independent of data format). Each operates on a `SchemaAutomaton`.
 | `equivalent_sa` | Alg. 3 | `(a, b) -> bool` |
 | `subschema_sa` | Alg. 4 | `(a, b) -> IncompatibilityReport` |
 | `extract_subschema` | Alg. 5 | `(sa, permitted_symbols) -> SchemaAutomaton` |
+| `conforms_to` | Def. 3 | `(sa, tree) -> ConformanceResult` |
 
 ---
 
@@ -107,6 +108,27 @@ exactly those instances of the original whose edge symbols all lie in `X'`.
 The output is guaranteed to be a subschema of the input.
 
 ---
+
+## Conformance — `conforms_to` (Definition 3)
+
+Decides whether a Data Tree is an *instance* of an SA, made constructive: it
+builds the paper's **binding map** `Bind : N → Q` top-down from the root. At each
+d-node `n` bound to state `q` it checks the value lies in `VDom(q)`, the
+child-symbol sequence lies in `Content(q)`, and binds each child via
+`δ(q, Sym(e))`.
+
+```python
+r = conforms_to(sa, tree)
+r.ok            # bool (also truthy/falsy directly)
+r.binding       # {node_id: state} — every conforming node and the state it bound to
+r.errors        # [(path, message), ...] with JSON-path-like locations
+```
+
+`conforms_to`, `SchemaAutomaton.accepts` (boolean), and
+`SchemaAutomaton.validate` (diagnostics, no binding) all agree on the verdict;
+`conforms_to` additionally returns the binding. A nullable object/array state
+binds a JSON `null` directly; an open-map's additional keys are bound as
+unconstrained.
 
 ## Complexity & performance
 

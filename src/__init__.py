@@ -13,6 +13,8 @@ from .algorithms import (
     equivalent_sa,
     subschema_sa,
     extract_subschema,
+    conforms_to,
+    ConformanceResult,
     IncompatibilityReport,
 )
 from .formats import (
@@ -24,6 +26,7 @@ from .formats import (
     infer_schema,
     SchemaInferencer,
 )
+from .schema_dsl import parse_schema, schema_to_dsl, SchemaSyntaxError
 
 __all__ = [
     # data model
@@ -37,7 +40,10 @@ __all__ = [
     # algorithms
     "make_useful_sa", "minimize_sa", "equivalent_sa",
     "subschema_sa", "extract_subschema", "IncompatibilityReport",
+    "conforms_to", "ConformanceResult",
     # format-agnostic layer
     "ITEM", "tree_from_python", "tree_from_json", "tree_from_yaml",
     "tree_from_toml", "infer_schema", "SchemaInferencer",
+    # textual schema DSL
+    "parse_schema", "schema_to_dsl", "SchemaSyntaxError",
 ]

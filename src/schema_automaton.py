@@ -226,18 +226,9 @@ class SchemaAutomaton:
 
             cseq = tree.child_symbol_sequence(node_id)
             if not content.accepts(cseq):
-                missing = content.mandatory_symbols() - set(cseq)
-                allowed = content.symbols()
-                unexpected = [s for s in cseq if s not in allowed and s != item_symbol] \
-                    if content.kind == "MAP" else []
-                detail = []
-                if missing:
-                    detail.append(f"missing required {sorted(missing)}")
-                if unexpected:
-                    detail.append(f"unexpected {sorted(set(unexpected))}")
-                msg = "; ".join(detail) if detail else \
-                    f"child sequence {cseq} not permitted by {content!r}"
-                result.errors.append(ValidationError(path, msg))
+                from .algorithms import _content_violation
+                result.errors.append(ValidationError(
+                    path, _content_violation(content, cseq, item_symbol)))
 
             for edge in tree.child_edges(node_id):
                 next_state = self.transition(state, edge.symbol)

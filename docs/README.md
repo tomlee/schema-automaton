@@ -18,7 +18,8 @@ It is a faithful implementation of, and an extension to:
 | [Getting Started](getting-started.md) | Install, run the test suite, run the demos |
 | [Data Model Specification](data-model.md) | Formal definitions: Data Tree, Schema Automaton, Content Model, Value Domain |
 | [User Guide](user-guide.md) | Task-oriented how-to with runnable examples |
-| [Algorithms](algorithms.md) | The five schema computations and their complexity |
+| [Schema DSL](schema-dsl.md) | The textual language for authoring/printing schemas |
+| [Algorithms](algorithms.md) | The schema computations (incl. conformance) and complexity |
 | [Design & Limitations](design-and-limitations.md) | Why it is format-agnostic; known limits and extensions |
 
 ## At a glance

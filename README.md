@@ -1,6 +1,6 @@
 # Schema Automaton
 
-[![tests](https://img.shields.io/badge/tests-109%20passing-brightgreen)](tests/)
+[![tests](https://img.shields.io/badge/tests-154%20passing-brightgreen)](tests/)
 [![python](https://img.shields.io/badge/python-3.11%2B-blue)](docs/getting-started.md)
 
 A Python implementation of the **Data Tree** and **Schema Automaton** models and
@@ -21,7 +21,8 @@ Full docs are in [`docs/`](docs/README.md):
 * **[Getting Started](docs/getting-started.md)** — install, run tests, run demos
 * **[Data Model Specification](docs/data-model.md)** — Data Tree, Schema Automaton, Content Model, Value Domain
 * **[User Guide](docs/user-guide.md)** — task-oriented recipes with examples
-* **[Algorithms](docs/algorithms.md)** — the five schema computations
+* **[Schema DSL](docs/schema-dsl.md)** — textual language for authoring/printing schemas
+* **[Algorithms](docs/algorithms.md)** — schema computations + conformance
 * **[Design & Limitations](docs/design-and-limitations.md)** — rationale and known limits
 * **[The source paper](docs/paper/Lee-Cheung-2010-XML-Schema-Computations-CIKM.pdf)** (CIKM 2010)
 
@@ -151,7 +152,7 @@ demo.
 
 ```bash
 python main.py            # quick tour: paper examples + format-agnostic inference
-python -m pytest tests/   # 109 tests (paper examples + format layer)
+python -m pytest tests/   # 154 tests (paper examples, format layer, DSL, conformance)
 
 # focused, self-contained demos:
 python demos/01_xml_paper_examples.py     # the CIKM 2010 XML examples
@@ -160,6 +161,7 @@ python demos/03_cross_format.py           # one schema validates JSON / YAML / T
 python demos/04_schema_versioning.py      # backward-compatibility via subschema
 python demos/05_subschema_extraction.py   # trim a schema to the keys a client needs
 python demos/06_unions_and_nullable.py    # scalar unions + nullable objects/arrays
+python demos/07_schema_dsl.py             # textual schema DSL + conformance checking
 ```
 
 YAML support needs `pyyaml`; TOML uses the stdlib `tomllib` (Python 3.11+) or
