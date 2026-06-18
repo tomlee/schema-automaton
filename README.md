@@ -186,6 +186,14 @@ demos/               five runnable, self-contained demos (see §5)
 main.py              quick combined tour
 ```
 
+## License
+
+Licensed under the [Apache License 2.0](LICENSE) — permissive, with an explicit
+patent grant. Copyright 2026 Thomas Y. Lee. See [NOTICE](NOTICE).
+
+The paper bundled under `docs/paper/` is © 2010 ACM and is included for reference
+only; it is not covered by the Apache License.
+
 ## 7. Known limitations
 
 * **Union / nullable-complex types.** A single SA state has one content model and

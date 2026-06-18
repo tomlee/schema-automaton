@@ -1,0 +1,13 @@
+schema-automaton
+Copyright 2026 Thomas Y. Lee
+
+This product includes software developed by Thomas Y. Lee.
+
+The implementation is based on the models and algorithms described in:
+  Thomas Y. Lee and David W. Cheung,
+  "XML Schema Computations: Schema Compatibility Testing and Subschema
+  Extraction", CIKM 2010.
+
+The paper PDF bundled at docs/paper/ is Copyright 2010 ACM and is included
+for reference only; it is not covered by the Apache License governing this
+software.
