@@ -261,11 +261,11 @@ class TestInferenceEdgeCases:
             infer_schema([tree_from_python({"v": 1}),
                           tree_from_python({"v": {"x": 1}})])
 
-    def test_nullable_object_raises(self):
-        # 'object | null' is a union type a single SA state cannot represent
+    def test_object_or_string_union_raises(self):
+        # a genuine non-null union ('object | string') cannot be one SA state
         with pytest.raises(ValueError):
             infer_schema([tree_from_python({"v": {"x": 1}}),
-                          tree_from_python({"v": None})])
+                          tree_from_python({"v": "scalar"})])
 
     def test_deeply_nested(self):
         t = tree_from_python({"a": {"b": {"c": {"d": [1, 2, 3]}}}})
@@ -304,6 +304,128 @@ class TestMapExtraction:
         extracted = extract_subschema(sa, {"keep"})
         assert extracted.accepts(tree_from_python({"keep": 5}))
         assert not extracted.accepts(tree_from_python({"keep": 5, "drop": 6}))
+
+
+class TestScalarUnions:
+    """Mixed scalar types at one position -> a union value domain (the fix for
+    the soundness bug where inference rejected its own training data)."""
+
+    def test_inference_is_sound_for_mixed_scalars(self):
+        # the schema must accept every sample it was inferred from
+        samples = [tree_from_python({"v": 1}), tree_from_python({"v": "hello"})]
+        sa = infer_schema(samples)
+        for s in samples:
+            assert sa.accepts(s)
+
+    def test_int_string_union_accepts_both(self):
+        sa = infer_schema([tree_from_python({"v": 1}), tree_from_python({"v": "x"})])
+        assert sa.accepts(tree_from_python({"v": 42}))
+        assert sa.accepts(tree_from_python({"v": "y"}))
+        assert not sa.accepts(tree_from_python({"v": True}))   # bool not in union
+
+    def test_int_float_union_is_number(self):
+        sa = infer_schema([tree_from_python({"v": 1}), tree_from_python({"v": 2.5}),
+                           tree_from_python({"v": 3})])
+        assert sa.accepts(tree_from_python({"v": 9}))
+        assert sa.accepts(tree_from_python({"v": 9.9}))
+        assert to_json_schema(sa)["properties"]["v"]["type"] == "number"
+
+    def test_three_way_scalar_union(self):
+        sa = infer_schema([tree_from_python({"v": 1}), tree_from_python({"v": "x"}),
+                           tree_from_python({"v": True})])
+        assert sa.accepts(tree_from_python({"v": 7}))
+        assert sa.accepts(tree_from_python({"v": "z"}))
+        assert sa.accepts(tree_from_python({"v": False}))
+        t = to_json_schema(sa)["properties"]["v"]["type"]
+        assert set(t) == {"integer", "string", "boolean"}
+
+    def test_union_export_is_type_array(self):
+        sa = infer_schema([tree_from_python({"v": 1}), tree_from_python({"v": "x"})])
+        assert to_json_schema(sa)["properties"]["v"]["type"] == ["integer", "string"]
+
+    def test_nullable_scalar_union(self):
+        sa = infer_schema([tree_from_python({"v": 1}), tree_from_python({"v": None})])
+        assert sa.accepts(tree_from_python({"v": 5}))
+        assert sa.accepts(tree_from_python({"v": None}))
+        assert not sa.accepts(tree_from_python({"v": "s"}))
+        assert to_json_schema(sa)["properties"]["v"]["type"] == ["integer", "null"]
+
+
+class TestNullableStructures:
+    """Nullable objects/arrays: 'object | null', 'array | null'."""
+
+    def test_nullable_object_accepts_object_and_null(self):
+        sa = infer_schema([tree_from_python({"v": {"x": 1}}),
+                           tree_from_python({"v": None})])
+        assert sa.accepts(tree_from_python({"v": {"x": 9}}))
+        assert sa.accepts(tree_from_python({"v": None}))
+
+    def test_nullable_object_still_type_checks_object(self):
+        sa = infer_schema([tree_from_python({"v": {"x": 1}}),
+                           tree_from_python({"v": None})])
+        # x must still be an integer when the object form is used
+        assert not sa.accepts(tree_from_python({"v": {"x": "str"}}))
+
+    def test_nullable_array(self):
+        sa = infer_schema([tree_from_python({"xs": [1, 2]}),
+                           tree_from_python({"xs": None})])
+        assert sa.accepts(tree_from_python({"xs": [3, 4]}))
+        assert sa.accepts(tree_from_python({"xs": None}))
+
+    def test_non_nullable_object_rejects_null(self):
+        sa = infer_schema([tree_from_python({"v": {"x": 1}})])
+        assert not sa.accepts(tree_from_python({"v": None}))
+
+    def test_nullability_survives_minimize(self):
+        sa = infer_schema([tree_from_python({"v": {"x": 1}}),
+                           tree_from_python({"v": None})])
+        m = minimize_sa(sa)
+        assert m.accepts(tree_from_python({"v": None}))
+        assert m.accepts(tree_from_python({"v": {"x": 2}}))
+        assert equivalent_sa(sa, m)
+
+    def test_nullability_in_equivalence(self):
+        nullable = infer_schema([tree_from_python({"v": {"x": 1}}),
+                                 tree_from_python({"v": None})])
+        plain = infer_schema([tree_from_python({"v": {"x": 1}})])
+        assert not equivalent_sa(nullable, plain)
+
+    def test_nullable_is_superschema_of_plain(self):
+        # a plain object schema ⊆ the nullable version (every object doc is valid)
+        nullable = infer_schema([tree_from_python({"v": {"x": 1}}),
+                                 tree_from_python({"v": None})])
+        plain = infer_schema([tree_from_python({"v": {"x": 1}})])
+        assert subschema_sa(plain, nullable).is_compatible
+        # but not the reverse: the nullable schema admits null, which plain rejects
+        assert not subschema_sa(nullable, plain).is_compatible
+
+    def test_nullable_object_export(self):
+        sa = infer_schema([tree_from_python({"v": {"x": 1}}),
+                           tree_from_python({"v": None})])
+        assert to_json_schema(sa)["properties"]["v"]["type"] == ["object", "null"]
+
+    def test_empty_string_is_not_null(self):
+        # "" is a string value, not null — a non-nullable object must reject null
+        # but a string field must accept the empty string
+        sa = infer_schema([tree_from_python({"s": "a"}), tree_from_python({"s": ""})])
+        assert sa.accepts(tree_from_python({"s": ""}))
+        assert sa.accepts(tree_from_python({"s": "hi"}))
+        assert not sa.accepts(tree_from_python({"s": None}))
+
+
+class TestOpenMaps:
+    def test_open_map_inference_allows_extra_keys(self):
+        sa = infer_schema([tree_from_python({"a": 1})], open_maps=True)
+        assert sa.accepts(tree_from_python({"a": 2}))
+        assert sa.accepts(tree_from_python({"a": 2, "b": 3}))   # extra key ok
+
+    def test_closed_is_default(self):
+        sa = infer_schema([tree_from_python({"a": 1})])
+        assert not sa.accepts(tree_from_python({"a": 2, "b": 3}))
+
+    def test_open_map_export(self):
+        sa = infer_schema([tree_from_python({"a": 1})], open_maps=True)
+        assert to_json_schema(sa)["additionalProperties"] is True
 
 
 class TestValidateDiagnostics:

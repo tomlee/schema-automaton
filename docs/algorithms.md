@@ -124,7 +124,15 @@ shared alphabet → emptiness; Hopcroft minimization for canonical keys).
 The paper reports large speed-ups by short-circuiting most comparisons with a
 cheap **literal-equality** test before the full automaton test, and a PTIME
 **weak test** for the simple regular expressions that dominate real-world
-schemas (≈97% of industry XSDs). Those filtering heuristics are described in §6
-of the paper and are a natural optimization to layer on top of the exact tests
-here. For unordered `MapModel` content, subset and equality are decided directly
-on the field sets in linear time.
+schemas (≈97% of industry XSDs).
+
+* The **literal-equality short-circuit is implemented**: `HLang.is_subset_of`
+  and `HLang.language_equals` return immediately when two content models have
+  identical regular-expression text (identical text ⇒ identical language), which
+  the paper notes covers most positive cases in practice (e.g. an unchanged
+  complex type across schema versions).
+* The PTIME **weak test** for simple expressions (§6 of the paper) is not yet
+  implemented and remains a natural future optimization.
+
+For unordered `MapModel` content, subset and equality are decided directly on the
+field sets in linear time.

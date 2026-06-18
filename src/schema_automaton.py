@@ -27,6 +27,18 @@ from .data_tree import DataTree
 _DEAD = None  # sentinel for ⊥ (dead state)
 
 
+def _is_null_node(node) -> bool:
+    """True if a data node represents an explicit JSON/YAML/TOML null.
+
+    A null scalar has kind SCALAR and a value domain hint with no scalar kinds
+    (``VDom.null()``). This distinguishes it from an empty string (`""` with the
+    STRS kind), which is a genuine string value, not null.
+    """
+    from .content_model import KIND_SCALAR
+    vd = getattr(node, "vdom", None)
+    return (node.kind == KIND_SCALAR and vd is not None and not vd.kinds)
+
+
 class ValidationResult:
     """Outcome of :meth:`SchemaAutomaton.validate` with path-aware diagnostics."""
 
@@ -66,6 +78,9 @@ class SchemaAutomaton:
         self.delta: Dict[Any, Dict[str, Any]] = {initial: {}}
         self.content: Dict[Any, ContentModel] = {}
         self.vdom: Dict[Any, VDom] = {}
+        # states that also accept a JSON null in place of their normal structure
+        # (i.e. nullable objects/arrays — "object | null", "array | null")
+        self.nullable_struct: Dict[Any, bool] = {}
 
     # ------------------------------------------------------------------
     # Construction helpers
@@ -89,6 +104,16 @@ class SchemaAutomaton:
 
     def set_vdom(self, state: Any, vdom: VDom) -> None:
         self.vdom[state] = vdom
+
+    def set_struct_nullable(self, state: Any, nullable: bool = True) -> None:
+        """Mark a state as accepting a JSON null in place of its structure."""
+        if nullable:
+            self.nullable_struct[state] = True
+        else:
+            self.nullable_struct.pop(state, None)
+
+    def is_struct_nullable(self, state: Any) -> bool:
+        return self.nullable_struct.get(state, False)
 
     # Backward-compatible aliases (HLang is a ContentModel)
     set_hlang = set_content
@@ -135,6 +160,11 @@ class SchemaAutomaton:
             n = tree.node(node_id)
             content = self.get_content(state)
 
+            # Nullable object/array: a JSON null is accepted in place of the
+            # node's normal structure.
+            if self.is_struct_nullable(state) and _is_null_node(n):
+                return True
+
             # Optional structural-kind agreement (distinguishes empty map vs seq
             # vs scalar when the data tree carries kind information).
             if n.kind is not None and content.kind and n.kind != content.kind:
@@ -153,6 +183,9 @@ class SchemaAutomaton:
             for edge in tree.child_edges(node_id):
                 next_state = self.transition(state, edge.symbol)
                 if next_state is _DEAD:
+                    # an additional property of an open map: any subtree allowed
+                    if content.permits_untyped_child(edge.symbol):
+                        continue
                     return False
                 if not _check(edge.child_id, next_state):
                     return False
@@ -177,6 +210,9 @@ class SchemaAutomaton:
         def _check(node_id: Any, state: Any, path: str) -> None:
             n = tree.node(node_id)
             content = self.get_content(state)
+
+            if self.is_struct_nullable(state) and _is_null_node(n):
+                return
 
             if n.kind is not None and content.kind and n.kind != content.kind:
                 result.errors.append(ValidationError(

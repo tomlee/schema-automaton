@@ -24,34 +24,64 @@ against that interface, so they work identically for XML and JSON/TOML/YAML.
 
 This is the key extension over the paper, which only addresses XML/XSD.
 
-## Two "fits" relations, on purpose
+## Value domains: a set of kinds, typed throughout
 
-* `VDom.is_subset_of` follows XSD/string semantics (`INTS ⊆ STRS`) and is used
-  for **schema-vs-schema** subschema testing, as in the paper.
-* `VDom.admits` follows data-format semantics (`1 ≠ "1"`) and is used for
-  **validating a typed value**.
+A value domain admits a **set** of scalar kinds (e.g. `integer | string`), plus
+optional nullability and an optional enumeration. This is what lets schema
+inference represent a field that varies across samples *without* silently
+rejecting some of its own input.
 
-Keeping them separate lets the library stay faithful to the paper's XML
-computations while validating typed JSON/TOML/YAML correctly.
+Two relations operate on value domains, and both use **data-format (typed)
+semantics**, so they agree with each other:
+
+* `VDom.admits(value_type)` — can a value of this *type* appear in the domain?
+  Used when validating a typed node. `1` is rejected where a string is expected;
+  an integer is accepted where a *number* is expected (numeric widening).
+* `VDom.is_subset_of(other)` — domain-vs-domain inclusion, used for
+  **schema-vs-schema** subschema testing. Typed, so `INTS ⊆ DECS` but
+  `INTS ⊄ STRS`. This keeps `subschema_sa` consistent with `validate`.
+
+For *untyped* data (hand-built XML trees whose nodes carry no `vdom` hint),
+validation falls back to string-based `VDom.contains`, where `STRS` matches any
+string — faithful to the paper's XML/XSD value model.
 
 ---
+
+## What inference *can* now express
+
+Several cases that earlier raised `ValueError` are now first-class:
+
+* **Scalar unions** — a position that is `integer | string` across samples
+  becomes a union value domain that admits both (and exports as
+  `"type": ["integer", "string"]`). Numeric mixes widen: `integer + float` →
+  `number`. *This also fixed a soundness bug* where a generalised domain could
+  reject some of its own training data.
+* **Nullable scalars** — `string | null` via a nullable value domain.
+* **Nullable objects / arrays** — `object | null` and `array | null` via
+  per-state structural nullability. The non-null form is still fully type-checked
+  (e.g. an object's fields keep their types).
+* **Open objects** — `infer_schema(samples, open_maps=True)` produces maps that
+  tolerate undeclared keys (`additionalProperties: true`); undeclared keys carry
+  no type constraint.
+
+The guiding invariant, exercised by a property test over hundreds of random
+shapes: **an inferred schema always accepts every sample it was inferred from.**
 
 ## Known limitations
 
 These are honest boundaries of the current model, each chosen to fail loudly
 rather than silently produce a wrong schema.
 
-### 1. No union / nullable-complex types
+### 1. Genuine non-null structural unions
 
-A single SA state carries **one** content model and **one** value domain, so it
-cannot express `object | string`, `array | object`, or `object | null`. Schema
-**inference raises `ValueError`** when a position is structurally inconsistent
-across samples (including a scalar `null` co-occurring with an object/array),
-rather than guessing. Scalar nullability (`string | null`) *is* supported via
-nullable value domains, because that stays within a single scalar state.
+A single SA state carries one content model and one value domain, so it still
+cannot express a *non-null* union of unlike shapes — `object | string`,
+`array | object`, `array | string`. Inference **raises `ValueError`** for these
+rather than guessing. (Nullable variants — `object | null`, `array | null`,
+`scalar | null` — *are* supported, as above.)
 
-*Possible extension:* introduce explicit union states (a state that delegates to
-several alternative content models / domains).
+*Possible extension:* explicit union states that delegate to several alternative
+(content model, value domain) branches, discriminated by structural kind.
 
 ### 2. Arrays observed only empty
 
@@ -60,12 +90,12 @@ the position infers to **empty-sequence-only** and a later non-empty array is
 rejected. This keeps the automaton consistent (Definition 2) and predictable; it
 is conservative by design.
 
-### 3. Inference produces closed objects
+### 3. Open-map inference is all-or-nothing
 
-Inferred `MapModel`s are **closed** (`additionalProperties: false`). The model
-fully supports open maps — `MapModel(fields, open=True)` — but inference never
-emits them, because "allow arbitrary extra keys" cannot be concluded from a
-finite sample. Build open maps by hand when you want them.
+`open_maps=True` makes **every** inferred object open; the model supports
+per-object openness (`MapModel(fields, open=True)`) but inference applies one
+policy uniformly, since "this particular object allows extra keys" cannot be
+concluded from a finite sample.
 
 ### 4. XSD feature coverage
 

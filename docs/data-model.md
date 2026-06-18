@@ -201,35 +201,48 @@ MapModel.of(required=["host", "port"], optional=["tls"], open=False)
 
 ## 4. Value Domain (VDom)
 
-A **Value Domain** constrains the scalar value of a d-node. Named domains mirror
-the scalar types common to XML simple types and JSON/TOML/YAML scalars:
+A **Value Domain** admits a **set** of scalar kinds, optionally an enumeration of
+literal values, and optionally the null value (`nullable`). The kinds mirror the
+scalar types common to XML simple types and JSON/TOML/YAML scalars:
 
-| Domain | Admits | Maps to |
-|--------|--------|---------|
-| `STRS` | any string | `xs:string`, JSON string |
-| `INTS` | integer values | `xs:int`, JSON/TOML integer |
-| `DECS` | decimal / float values | `xs:decimal`, JSON/TOML float |
+| Kind | Admits | Maps to |
+|------|--------|---------|
+| `STRS` | strings | `xs:string`, JSON string |
+| `INTS` | integers | `xs:int`, JSON/TOML integer |
+| `DECS` | decimals / floats | `xs:decimal`, JSON/TOML float |
 | `BOOL` | `true` / `false` | `xs:boolean`, JSON/TOML bool |
-| `NULL` | only the null value `ε` | complex/map/sequence nodes |
-| finite enum | a fixed set of strings | enumerations |
 
-A domain may also be **nullable** (admits the null value in addition to its base
-type) — needed for *"string or null"* style fields.
+Special / composite domains:
 
-### Two notions of "fits", deliberately kept separate
+| Domain | Meaning |
+|--------|---------|
+| `VDom.null()` | the null value `ε` only (complex/map/sequence node values) |
+| nullable domain | a base kind set **plus** null — e.g. *string or null* |
+| **union domain** | **several kinds at once** — e.g. `VDom({INTS, STRS})` = *integer or string* |
+| `VDom.finite(...)` | an enumeration of fixed string values |
 
-* **`is_subset_of` (XSD/string semantics)** — used for *schema-vs-schema*
-  subschema testing per the paper. Here every integer string is also a string,
-  so `INTS ⊆ STRS`.
-* **`admits` (data-format semantics)** — used for *validating a typed value*. In
-  JSON, `1` and `"1"` are different types, so a number is **not** admitted where
-  a string is expected. Validation uses `admits` when a node carries a type hint
-  (`node.vdom`) and falls back to string-based `contains` otherwise (the paper's
-  untyped XML model).
+Admitting a *set* of kinds is what lets inference represent a field that is, say,
+integer in one sample and string in another, without rejecting either.
+`.kind` reports a single representative name (`"INTS"`, …) or `"UNION"` /
+`"NULL"` / `"CUSTOM"` for the composite cases.
+
+### Two relations, both typed and consistent
+
+* **`admits(value_type)`** — can a value of this *type* appear in the domain?
+  Used to validate a typed node. `1` is rejected where a string is expected; an
+  integer is accepted where a *number* is expected (numeric widening
+  `INTS → DECS`).
+* **`is_subset_of(other)`** — domain-vs-domain inclusion, used for
+  *schema-vs-schema* subschema testing. Also typed: `INTS ⊆ DECS` but
+  `INTS ⊄ STRS`, so `subschema_sa` agrees with `validate`.
+
+For *untyped* data (hand-built XML nodes with no `vdom` hint), validation uses
+string-based `contains`, where `STRS` matches any string — the paper's XML value
+model.
 
 `VDom.union(a, b)` computes the least domain covering both (used by inference):
-numeric widening `INTS ∪ DECS = DECS`, nullability `X ∪ NULL = X?`, and a fall
-back to `STRS` for unrelated kinds.
+kind-set union with numeric widening (`INTS ∪ DECS = DECS`), nullability
+(`X ∪ null = X?`), and enumeration merging.
 
 ---
 
@@ -241,6 +254,8 @@ back to `STRS` for unrelated kinds.
 | Schema Automaton (Def. 2) | `SchemaAutomaton` |
 | Acceptance (Def. 3) | `SchemaAutomaton.accepts` / `.validate` |
 | Horizontal language (HLang) | `HLang` (a `ContentModel`) |
-| Value domain (VDom) | `VDom` |
+| Value domain (VDom) | `VDom` (kind-set, nullable, enum) |
 | *(new)* unordered content | `MapModel` |
 | *(new)* typed value checking | `VDom.admits`, `DNode.vdom` |
+| *(new)* scalar unions | `VDom` with multiple kinds (e.g. `integer | string`) |
+| *(new)* nullable objects/arrays | `SchemaAutomaton.set_struct_nullable` |

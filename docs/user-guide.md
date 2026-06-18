@@ -54,13 +54,26 @@ Inference rules:
 * **Array item type** is generalised over all observed elements; the array is
   `item+` if every sample array was non-empty, `item*` if any was empty. An
   array seen only empty infers to *empty-only* (no element type was observed).
-* **Scalar domains** are generalised with `VDom.union` — e.g. an `int` in one
-  sample and a `float` in another become `DECS`; a value-or-`null` becomes a
-  nullable domain.
+* **Scalar domains** are generalised with `VDom.union`:
+  * `int` + `float` → `number` (`DECS`);
+  * `int` + `string` → a **union** domain admitting both
+    (`"type": ["integer", "string"]`);
+  * any type + `null` → a **nullable** scalar domain.
+* **Nullable objects / arrays** — if a field is an object (or array) in some
+  samples and `null` in others, the state is marked structurally nullable
+  (`"type": ["object", "null"]`); the non-null form keeps its full structure.
 
-> Inference produces **closed** objects (no unknown keys). It raises
-> `ValueError` if a position is structurally inconsistent across samples (object
-> in one, array/scalar in another, or `object | null`) — see
+Soundness guarantee: an inferred schema **always accepts every sample it was
+inferred from**.
+
+```python
+# open objects: tolerate undeclared keys (additionalProperties: true)
+schema = infer_schema(samples, open_maps=True)
+```
+
+> Inference produces **closed** objects by default. It raises `ValueError` only
+> for a *genuine non-null* structural union (object in one sample, array or a
+> non-null scalar in another) — see
 > [Design & Limitations](design-and-limitations.md).
 
 ---

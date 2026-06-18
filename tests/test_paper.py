@@ -335,11 +335,31 @@ class TestVDom:
         assert not v.contains("hello")
 
     def test_subset(self):
-        assert VDom.ints().is_subset_of(VDom.strs())
-        assert VDom.decs().is_subset_of(VDom.strs())
+        # Typed (data-format) semantics: a number is NOT a string, so the only
+        # cross-kind subset is integer ⊆ number (an integer is a valid number).
+        # This keeps subschema testing consistent with typed validation.
         assert VDom.ints().is_subset_of(VDom.decs())
+        assert VDom.ints().is_subset_of(VDom.ints())
+        assert VDom.strs().is_subset_of(VDom.strs())
+        assert not VDom.ints().is_subset_of(VDom.strs())
+        assert not VDom.decs().is_subset_of(VDom.ints())
         assert not VDom.strs().is_subset_of(VDom.ints())
-        assert VDom.null().is_subset_of(VDom.strs())
+        # a non-nullable domain is not a superset of a nullable one
+        assert VDom.strs().is_subset_of(VDom.strs().as_nullable())
+        assert not VDom.strs().as_nullable().is_subset_of(VDom.strs())
+
+    def test_union_admits_all_members(self):
+        u = VDom.union(VDom.ints(), VDom.strs())   # integer | string
+        assert u.admits(VDom.ints())
+        assert u.admits(VDom.strs())
+        assert not u.admits(VDom.bool_())
+        assert u.kinds == {VDom.INTS, VDom.STRS}
+
+    def test_numeric_union_widens_to_decimal(self):
+        u = VDom.union(VDom.ints(), VDom.decs())
+        assert u.kinds == {VDom.DECS}          # integer subsumed by number
+        assert u.admits(VDom.ints())
+        assert u.admits(VDom.decs())
 
 
 # ===========================================================================

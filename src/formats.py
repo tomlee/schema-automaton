@@ -159,8 +159,9 @@ class SchemaInferencer:
     absorbed as nullability of the co-occurring type.
     """
 
-    def __init__(self, item_symbol: str = ITEM) -> None:
+    def __init__(self, item_symbol: str = ITEM, open_maps: bool = False) -> None:
         self.item_symbol = item_symbol
+        self.open_maps = open_maps
         self.sa = SchemaAutomaton(0)
         self._counter = 0
 
@@ -195,26 +196,31 @@ class SchemaInferencer:
             raise ValueError(
                 "Cannot infer a single type for a group mixing "
                 f"{sorted(structural)} (union of object and array). "
-                "Union types are not representable by one Schema Automaton state."
+                "Mixed object/array union types are not representable by one "
+                "Schema Automaton state."
             )
 
         if structural:
-            # A structural type must not silently coexist with scalar values:
-            # that would be a union type (e.g. 'object | string') which a single
-            # SA state cannot represent. We reject rather than drop data.
-            scalars = [(t, n) for t, n, k in tagged if k == KIND_SCALAR]
-            if scalars:
+            # A structural type may coexist with JSON nulls — that is a nullable
+            # object/array, which we DO support (the state is marked nullable).
+            # But it must not coexist with a *non-null* scalar, which would be a
+            # genuine union (e.g. 'object | string'); reject rather than drop data.
+            non_null_scalars = [(t, n) for t, n, k in tagged
+                                if k == KIND_SCALAR and not _is_null(t, n)]
+            if non_null_scalars:
                 kind = next(iter(structural))
                 raise ValueError(
-                    f"Cannot infer a single type for a group mixing {kind} with "
-                    f"scalar value(s) (e.g. '{kind.lower()} | scalar', including "
-                    "nullable objects/arrays). Union types are not supported."
+                    f"Cannot infer a single type for a group mixing {kind} with a "
+                    f"non-null scalar value ('{kind.lower()} | scalar'). Such union "
+                    "types are not supported (nullable objects/arrays, i.e. "
+                    f"'{kind.lower()} | null', ARE supported)."
                 )
-
-        if KIND_MAP in structural:
-            self._build_map([(t, n) for t, n, k in tagged if k == KIND_MAP], state_id)
-        elif KIND_SEQUENCE in structural:
-            self._build_sequence([(t, n) for t, n, k in tagged if k == KIND_SEQUENCE], state_id)
+            nullable = any(k == KIND_SCALAR and _is_null(t, n) for t, n, k in tagged)
+            struct_group = [(t, n) for t, n, k in tagged if k in (KIND_MAP, KIND_SEQUENCE)]
+            if KIND_MAP in structural:
+                self._build_map(struct_group, state_id, nullable=nullable)
+            else:
+                self._build_sequence(struct_group, state_id, nullable=nullable)
         else:
             self._build_scalar([(t, n) for t, n, k in tagged], state_id)
 
@@ -228,7 +234,8 @@ class SchemaInferencer:
         self.sa.add_state(state_id, ScalarModel(), vdom or VDom.strs())
 
     # ------------------------------------------------------------------
-    def _build_sequence(self, group: List[Tuple[DataTree, Any]], state_id: int) -> None:
+    def _build_sequence(self, group: List[Tuple[DataTree, Any]], state_id: int,
+                        nullable: bool = False) -> None:
         # Pool all element nodes across every array in the group.
         elements: List[Tuple[DataTree, Any]] = []
         any_empty = False
@@ -245,6 +252,7 @@ class SchemaInferencer:
             # (Using item* here would be inconsistent: the content language would
             # admit `item` while δ has no transition for it, violating Def. 2.)
             self.sa.add_state(state_id, HLang.epsilon_lang(), VDom.null())
+            self.sa.set_struct_nullable(state_id, nullable)
             return
 
         self.sa.add_state(
@@ -252,12 +260,14 @@ class SchemaInferencer:
             _seq_model(self.item_symbol, plus=not any_empty),
             VDom.null(),
         )
+        self.sa.set_struct_nullable(state_id, nullable)
         item_state = self._alloc()
         self.sa.add_transition(state_id, self.item_symbol, item_state)
         self._build(elements, item_state)
 
     # ------------------------------------------------------------------
-    def _build_map(self, group: List[Tuple[DataTree, Any]], state_id: int) -> None:
+    def _build_map(self, group: List[Tuple[DataTree, Any]], state_id: int,
+                  nullable: bool = False) -> None:
         n_samples = len(group)
         # Collect, per key, the child nodes and how many samples contain the key.
         key_children: Dict[str, List[Tuple[DataTree, Any]]] = {}
@@ -273,12 +283,23 @@ class SchemaInferencer:
         fields: Dict[str, bool] = {
             key: (key_count[key] == n_samples) for key in key_children
         }
-        self.sa.add_state(state_id, MapModel(fields, open=False), VDom.null())
+        self.sa.add_state(state_id, MapModel(fields, open=self.open_maps), VDom.null())
+        self.sa.set_struct_nullable(state_id, nullable)
 
         for key, children in key_children.items():
             child_state = self._alloc()
             self.sa.add_transition(state_id, key, child_state)
             self._build(children, child_state)
+
+
+def _is_null(tree: DataTree, node_id: Any) -> bool:
+    """True if the node is an explicit JSON/YAML/TOML null (scalar, VDom.null())."""
+    n = tree.node(node_id)
+    if n.kind not in (None, KIND_SCALAR):
+        return False
+    if tree.child_edges(node_id):
+        return False
+    return n.vdom is not None and not n.vdom.kinds
 
 
 def _scalar_from_value(value: str) -> VDom:
@@ -300,6 +321,11 @@ def _scalar_from_value(value: str) -> VDom:
     return VDom.strs()
 
 
-def infer_schema(trees: Iterable[DataTree], item_symbol: str = ITEM) -> SchemaAutomaton:
-    """Convenience wrapper: infer a canonical SchemaAutomaton from sample trees."""
-    return SchemaInferencer(item_symbol).infer(list(trees))
+def infer_schema(trees: Iterable[DataTree], item_symbol: str = ITEM,
+                 open_maps: bool = False) -> SchemaAutomaton:
+    """Convenience wrapper: infer a canonical SchemaAutomaton from sample trees.
+
+    Set ``open_maps=True`` to infer *open* objects (additional, undeclared keys
+    are permitted) rather than the default closed objects.
+    """
+    return SchemaInferencer(item_symbol, open_maps=open_maps).infer(list(trees))

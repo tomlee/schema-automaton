@@ -1,6 +1,6 @@
 # Schema Automaton
 
-[![tests](https://img.shields.io/badge/tests-89%20passing-brightgreen)](tests/)
+[![tests](https://img.shields.io/badge/tests-109%20passing-brightgreen)](tests/)
 [![python](https://img.shields.io/badge/python-3.11%2B-blue)](docs/getting-started.md)
 
 A Python implementation of the **Data Tree** and **Schema Automaton** models and
@@ -151,7 +151,7 @@ demo.
 
 ```bash
 python main.py            # quick tour: paper examples + format-agnostic inference
-python -m pytest tests/   # 89 tests (paper examples + format layer)
+python -m pytest tests/   # 109 tests (paper examples + format layer)
 
 # focused, self-contained demos:
 python demos/01_xml_paper_examples.py     # the CIKM 2010 XML examples
@@ -159,6 +159,7 @@ python demos/02_infer_and_validate_json.py# infer + validate + JSON-Schema expor
 python demos/03_cross_format.py           # one schema validates JSON / YAML / TOML
 python demos/04_schema_versioning.py      # backward-compatibility via subschema
 python demos/05_subschema_extraction.py   # trim a schema to the keys a client needs
+python demos/06_unions_and_nullable.py    # scalar unions + nullable objects/arrays
 ```
 
 YAML support needs `pyyaml`; TOML uses the stdlib `tomllib` (Python 3.11+) or
@@ -194,13 +195,23 @@ patent grant. Copyright 2026 Thomas Y. Lee. See [NOTICE](NOTICE).
 The paper bundled under `docs/paper/` is © 2010 ACM and is included for reference
 only; it is not covered by the Apache License.
 
-## 7. Known limitations
+## 7. Inference capabilities & limitations
 
-* **Union / nullable-complex types.** A single SA state has one content model and
-  one value domain, so it cannot express `object | string` or `object | null`.
-  Schema inference *raises* on such samples rather than silently producing a
-  wrong schema (scalar `null` mixed with a structural type is included in this).
-* **Arrays seen only empty** infer to "empty sequence only" (no element type was
-  observed), so a later non-empty array is rejected.
-* Inference produces **closed** maps (`additionalProperties: false`); open maps
-  are supported by the model (`MapModel(open=True)`) but not inferred.
+Supported by schema inference (an inferred schema always accepts its own
+samples):
+
+* **Scalar unions** — `integer | string` across samples → a union value domain;
+  `integer + float` widens to `number`.
+* **Nullable scalars, objects, and arrays** — `string | null`, `object | null`,
+  `array | null`.
+* **Open objects** — `infer_schema(samples, open_maps=True)`.
+
+Remaining limitations (inference *raises* rather than guessing):
+
+* **Genuine non-null structural unions** — `object | string`, `object | array`
+  cannot be a single automaton state. (Nullable variants *are* supported.)
+* **Arrays seen only empty** infer to "empty sequence only", so a later non-empty
+  array is rejected.
+
+See [docs/design-and-limitations.md](docs/design-and-limitations.md) for the full
+discussion.

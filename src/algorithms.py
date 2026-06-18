@@ -174,6 +174,7 @@ def make_useful_sa(sa: SchemaAutomaton) -> None:
         sa.content.pop(q, None)
         sa.vdom.pop(q, None)
         sa.delta.pop(q, None)
+        sa.nullable_struct.pop(q, None)
 
     # Remove transitions pointing to useless states
     for q in list(sa.delta.keys()):
@@ -206,9 +207,10 @@ def minimize_sa(sa: SchemaAutomaton) -> SchemaAutomaton:
     if not working.states:
         return working
 
-    # Initial partition: group states by (HLang canonical key, VDom)
+    # Initial partition: group states by (content language, VDom, struct nullability)
     def _key(q: Any) -> tuple:
-        return (working.get_content(q).canonical_key(), working.get_vdom(q))
+        return (working.get_content(q).canonical_key(), working.get_vdom(q),
+                working.is_struct_nullable(q))
 
     blocks: Dict[tuple, Set[Any]] = {}
     for q in working.states:
@@ -266,6 +268,8 @@ def minimize_sa(sa: SchemaAutomaton) -> SchemaAutomaton:
         bid = block_id[block]
         rep = next(iter(block))
         result.add_state(bid, working.get_content(rep), working.get_vdom(rep))
+        if working.is_struct_nullable(rep):
+            result.set_struct_nullable(bid, True)
         for sym, dst in working.delta.get(rep, {}).items():
             dst_bid = _block_for(dst)
             if dst_bid is not None:
@@ -297,6 +301,8 @@ def equivalent_sa(sa_a: SchemaAutomaton, sa_b: SchemaAutomaton) -> bool:
         qa, qb = queue.pop(0)
 
         if a.get_vdom(qa) != b.get_vdom(qb):
+            return False
+        if a.is_struct_nullable(qa) != b.is_struct_nullable(qb):
             return False
         if not a.get_content(qa).language_equals(b.get_content(qb)):
             return False
@@ -342,6 +348,10 @@ def subschema_sa(
         qa, qb = queue.pop(0)
 
         if not working_a.get_vdom(qa).is_subset_of(sa_b.get_vdom(qb)):
+            report.vdom_issues.append((qa, qb))
+
+        # If A admits a null here but B does not, A is not a subschema of B.
+        if working_a.is_struct_nullable(qa) and not sa_b.is_struct_nullable(qb):
             report.vdom_issues.append((qa, qb))
 
         if not working_a.get_content(qa).is_subset_of(sa_b.get_content(qb)):

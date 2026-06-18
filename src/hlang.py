@@ -173,12 +173,19 @@ class HLang(ContentModel):
             # an ordered language is a subset of a map/scalar model only if it is
             # the empty language
             return self.is_empty()
+        # Literal-equality short-circuit (paper §6): identical regular-expression
+        # text denotes the same language, so the cheap string compare avoids the
+        # PSPACE DFA inclusion test in the common case.
+        if self.description and self.description == other.description:
+            return True
         return self._get_dfa().is_subset_of(other._get_dfa())
 
     def language_equals(self, other: "ContentModel") -> bool:
-        """Full DFA-based language equality test."""
+        """Full DFA-based language equality test (with a literal short-circuit)."""
         if not isinstance(other, HLang):
             return self.is_empty() and other.is_empty()
+        if self.description and self.description == other.description:
+            return True
         return self._get_dfa().language_equals(other._get_dfa())
 
     def canonical_key(self) -> tuple:

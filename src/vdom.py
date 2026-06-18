@@ -1,104 +1,96 @@
 """Value Domain (VDom) — constrains the data values stored in d-nodes.
 
-Named built-in domains mirror the common scalar types found across data
-formats (XML simple types, JSON/YAML/TOML scalars):
+A value domain admits a **set** of scalar kinds, optionally an enumeration of
+literal values, and optionally the null value (``nullable``).  Supporting a set
+of kinds (rather than a single kind) is what lets schema inference represent a
+position that is, e.g., *integer or string* across samples — without that, a
+generalised domain would silently reject some of its own input.
 
-    STRS  — any string                     (xs:string, JSON string)
-    INTS  — integer values                 (xs:int, JSON/TOML integer)
-    DECS  — decimal / floating values       (xs:decimal, JSON/TOML float)
-    BOOL  — boolean values                  (xs:boolean, JSON/TOML bool)
-    NULL  — only the null/empty value ε      (used for complex/map/seq nodes)
+Scalar kinds (mirroring XML simple types and JSON/TOML/YAML scalars):
 
-A domain may additionally be *nullable*, meaning it also admits the null value
-(needed for JSON/YAML fields that are "string or null", etc.).  Custom finite
-domains (enumerations) are supported via ``VDom.finite(...)``.
+    STRS  — string        (xs:string, JSON string)
+    INTS  — integer       (xs:int, JSON/TOML integer)
+    DECS  — decimal/float  (xs:decimal, JSON/TOML float)
+    BOOL  — boolean        (xs:boolean, JSON/TOML bool)
+
+The *null* value ``ε`` is modelled by ``nullable`` (and by the empty kind set,
+used for complex map/sequence nodes whose own value is ``ε``).
 """
 
 from __future__ import annotations
-from typing import Optional, Set
+from typing import FrozenSet, Iterable, Optional, Set
 
 
 class VDom:
+    # public single-kind names (also used as the kind atoms in the kind set)
     STRS = "STRS"
     INTS = "INTS"
     DECS = "DECS"
     BOOL = "BOOL"
-    NULL = "NULL"
-    CUSTOM = "CUSTOM"
+    NULL = "NULL"      # reported .kind for the pure-null / complex-node domain
+    CUSTOM = "CUSTOM"  # reported .kind for an enumeration
+    UNION = "UNION"    # reported .kind for a multi-kind domain
 
-    _NAMED = {STRS, INTS, DECS, BOOL, NULL}
-
-    # numeric generality ordering used by union()
-    _NUMERIC = {INTS, DECS}
+    _SCALAR_ATOMS = {STRS, INTS, DECS, BOOL}
 
     def __init__(
         self,
-        kind: str = STRS,
-        values: Optional[Set[str]] = None,
+        kinds: Iterable[str] = (),
         nullable: bool = False,
+        enum: Optional[Iterable[str]] = None,
     ) -> None:
-        if kind not in self._NAMED and kind != self.CUSTOM and values is None:
-            raise ValueError(f"Unknown domain kind {kind!r}; supply values= for custom domains")
-        self.kind = kind
-        self.values = frozenset(values) if values is not None else None
+        ks = frozenset(kinds)
+        bad = ks - self._SCALAR_ATOMS
+        if bad:
+            raise ValueError(f"Unknown scalar kind(s): {sorted(bad)}")
+        self.kinds: FrozenSet[str] = ks
         self.nullable = nullable
+        self.enum: Optional[FrozenSet[str]] = frozenset(enum) if enum is not None else None
 
     # ------------------------------------------------------------------
-    # Membership
+    # Back-compatible scalar single-kind view
+    # ------------------------------------------------------------------
+
+    @property
+    def kind(self) -> str:
+        """A representative kind name (back-compatible single-kind view)."""
+        if self.enum is not None:
+            return self.CUSTOM
+        if not self.kinds:
+            return self.NULL
+        if len(self.kinds) == 1:
+            return next(iter(self.kinds))
+        return self.UNION
+
+    @property
+    def values(self) -> Optional[FrozenSet[str]]:
+        """Back-compatible alias for the enumeration set."""
+        return self.enum
+
+    # ------------------------------------------------------------------
+    # Membership (string-based — for untyped / XML data)
     # ------------------------------------------------------------------
 
     def contains(self, value: str) -> bool:
-        if self.nullable and value in ("", None):
+        if value in ("", None):
+            # ε is admitted by nullable domains, the pure-null/complex domain,
+            # an enum containing it, or the string kind (the empty string is a
+            # string — matches the paper's STRS = "all strings").
+            if self.nullable or not self.kinds:
+                return True
+            if self.enum is not None:
+                return "" in self.enum
+            return self.STRS in self.kinds
+        if self.enum is not None:
+            return value in self.enum
+        if self.STRS in self.kinds:
             return True
-        return self._base_contains(value)
-
-    def _base_contains(self, value: str) -> bool:
-        if self.kind == self.STRS:
+        if self.INTS in self.kinds and _is_int(value):
             return True
-        if self.kind == self.NULL:
-            return value in ("", None)
-        if self.kind == self.BOOL:
-            return str(value).lower() in ("true", "false")
-        if self.kind == self.INTS:
-            try:
-                int(value)
-                return True
-            except (ValueError, TypeError):
-                return False
-        if self.kind == self.DECS:
-            try:
-                float(value)
-                return True
-            except (ValueError, TypeError):
-                return False
-        return value in (self.values or set())
-
-    # ------------------------------------------------------------------
-    # Subset relationship   (VDom(q) ⊆ VDom(q')  required by SubschemaSA)
-    # ------------------------------------------------------------------
-
-    def is_subset_of(self, other: "VDom") -> bool:
-        # nullability: if self admits null, other must too
-        if self.nullable and not (other.nullable or other._base_contains("")):
-            return False
-        return self._base_subset(other)
-
-    def _base_subset(self, other: "VDom") -> bool:
-        if other.kind == self.STRS:
-            return True  # STRS is universal
-        if self.kind == self.NULL:
-            return other._base_contains("")
-        if self.values is not None:
-            # finite domain ⊆ other iff every value is in other
-            return all(other._base_contains(v) for v in self.values)
-        if self.kind == other.kind:
-            if other.values is None:
-                return True
-            return False  # named (infinite) ⊄ finite
-        if self.kind == self.INTS and other.kind == self.DECS:
-            return True  # every integer is also a decimal
-        if self.kind == self.BOOL and other.values is not None:
-            return {"true", "false"} <= {v.lower() for v in other.values}
+        if self.DECS in self.kinds and _is_float(value):
+            return True
+        if self.BOOL in self.kinds and str(value).lower() in ("true", "false"):
+            return True
         return False
 
     # ------------------------------------------------------------------
@@ -108,20 +100,50 @@ class VDom:
     def admits(self, value_type: "VDom") -> bool:
         """Can a value whose *type* is ``value_type`` appear in this domain?
 
-        Unlike :meth:`is_subset_of` (which is XSD/string-based, so every integer
-        is also a string), this uses data-format semantics where ``1`` and
-        ``"1"`` are distinct types — needed to validate typed formats faithfully.
-        Enum domains are decided by value, not type, so callers handle those
-        separately via :meth:`contains`.
+        Uses data-format semantics where ``1`` and ``"1"`` are distinct types.
+        Enum domains are decided by value (via :meth:`contains`), so a typed
+        node against an enum domain returns True here and the caller checks the
+        literal value.
         """
-        if value_type.kind == self.NULL:
-            return self.nullable or self.kind == self.NULL
-        if self.values is not None:
-            return True  # enum: type alone is insufficient; value checked elsewhere
-        if value_type.kind == self.kind:
+        # the null value
+        if value_type.kind == self.NULL or (value_type.nullable and not value_type.kinds):
+            return self.nullable
+        if value_type.nullable and not self.nullable:
+            return False
+        if self.enum is not None:
+            return True  # decided by value elsewhere
+        for k in value_type.kinds:
+            if k in self.kinds:
+                continue
+            if k == self.INTS and self.DECS in self.kinds:
+                continue  # an integer is an admissible number
+            return False
+        return True
+
+    # ------------------------------------------------------------------
+    # Subset relationship   (VDom(q) ⊆ VDom(q')  for schema comparison)
+    # ------------------------------------------------------------------
+
+    def is_subset_of(self, other: "VDom") -> bool:
+        if self.nullable and not other.nullable:
+            return False
+        if self.enum is not None:
+            if other.enum is not None:
+                return self.enum <= other.enum
+            # enum of strings ⊆ other iff other admits strings (or the kinds match)
+            return all(other._base_admits_kind(self.STRS) for _ in [0]) \
+                if self.kinds <= {self.STRS} else \
+                all(other._base_admits_kind(k) for k in self.kinds)
+        if other.enum is not None:
+            # a non-enum domain is broader than an enumeration
+            return not self.kinds
+        return all(other._base_admits_kind(k) for k in self.kinds)
+
+    def _base_admits_kind(self, k: str) -> bool:
+        if k in self.kinds:
             return True
-        if value_type.kind == self.INTS and self.kind == self.DECS:
-            return True  # an integer is an admissible number
+        if k == self.INTS and self.DECS in self.kinds:
+            return True
         return False
 
     # ------------------------------------------------------------------
@@ -130,32 +152,20 @@ class VDom:
 
     @staticmethod
     def union(a: "VDom", b: "VDom") -> "VDom":
-        nullable = a.nullable or b.nullable or a.kind == VDom.NULL or b.kind == VDom.NULL
+        nullable = a.nullable or b.nullable
+        kinds: Set[str] = set(a.kinds) | set(b.kinds)
+        # numeric widening: a number kind subsumes integers
+        if VDom.DECS in kinds and VDom.INTS in kinds:
+            kinds.discard(VDom.INTS)
 
-        # treat NULL as contributing only nullability
-        bases = [d for d in (a, b) if d.kind != VDom.NULL]
-        if not bases:
-            return VDom(VDom.NULL, nullable=True)
-        if len(bases) == 1:
-            base = bases[0]
-            return VDom(base.kind, set(base.values) if base.values is not None else None,
-                        nullable=nullable)
-
-        x, y = bases
-        # both finite custom -> union the value sets
-        if x.values is not None and y.values is not None:
-            return VDom(VDom.CUSTOM, set(x.values) | set(y.values), nullable=nullable)
-        # numeric generalisation
-        if x.kind in VDom._NUMERIC and y.kind in VDom._NUMERIC:
-            kind = VDom.DECS if VDom.DECS in (x.kind, y.kind) else VDom.INTS
-            return VDom(kind, nullable=nullable)
-        if x.kind == y.kind and x.values is None and y.values is None:
-            return VDom(x.kind, nullable=nullable)
-        # fall back to the universal string domain
-        return VDom(VDom.STRS, nullable=nullable)
+        if a.enum is not None and b.enum is not None and a.kinds <= {VDom.STRS} \
+                and b.kinds <= {VDom.STRS}:
+            return VDom({VDom.STRS}, nullable=nullable, enum=set(a.enum) | set(b.enum))
+        # if either side is a non-enum domain, the union is a plain (non-enum) domain
+        return VDom(kinds, nullable=nullable)
 
     def as_nullable(self) -> "VDom":
-        return VDom(self.kind, set(self.values) if self.values is not None else None, nullable=True)
+        return VDom(self.kinds, nullable=True, enum=self.enum)
 
     # ------------------------------------------------------------------
     # Pre-built singletons
@@ -163,27 +173,34 @@ class VDom:
 
     @staticmethod
     def strs() -> "VDom":
-        return VDom(VDom.STRS)
+        return VDom({VDom.STRS})
 
     @staticmethod
     def ints() -> "VDom":
-        return VDom(VDom.INTS)
+        return VDom({VDom.INTS})
 
     @staticmethod
     def decs() -> "VDom":
-        return VDom(VDom.DECS)
+        return VDom({VDom.DECS})
 
     @staticmethod
     def bool_() -> "VDom":
-        return VDom(VDom.BOOL)
+        return VDom({VDom.BOOL})
 
     @staticmethod
     def null() -> "VDom":
-        return VDom(VDom.NULL)
+        return VDom((), nullable=True)
 
     @staticmethod
     def finite(*values: str) -> "VDom":
-        return VDom(VDom.CUSTOM, set(values))
+        return VDom({VDom.STRS}, enum=set(values))
+
+    @staticmethod
+    def union_of(*domains: "VDom") -> "VDom":
+        result = domains[0]
+        for d in domains[1:]:
+            result = VDom.union(result, d)
+        return result
 
     # ------------------------------------------------------------------
     # Dunder
@@ -192,15 +209,35 @@ class VDom:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, VDom):
             return False
-        return (self.kind == other.kind
-                and self.values == other.values
+        return (self.kinds == other.kinds
+                and self.enum == other.enum
                 and self.nullable == other.nullable)
 
     def __hash__(self) -> int:
-        return hash((self.kind, self.values, self.nullable))
+        return hash((self.kinds, self.enum, self.nullable))
 
     def __repr__(self) -> str:
         suffix = "?" if self.nullable else ""
-        if self.values is not None:
-            return f"VDom({{{', '.join(sorted(self.values))}}}){suffix}"
-        return f"VDom({self.kind}){suffix}"
+        if self.enum is not None:
+            return f"VDom({{{', '.join(sorted(self.enum))}}}){suffix}"
+        if not self.kinds:
+            return "VDom(NULL)" if self.nullable else "VDom(∅)"
+        if len(self.kinds) == 1:
+            return f"VDom({next(iter(self.kinds))}){suffix}"
+        return f"VDom({'|'.join(sorted(self.kinds))}){suffix}"
+
+
+def _is_int(value: str) -> bool:
+    try:
+        int(value)
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
+def _is_float(value: str) -> bool:
+    try:
+        float(value)
+        return True
+    except (ValueError, TypeError):
+        return False

@@ -67,6 +67,15 @@ class ContentModel(ABC):
     def is_mandatory(self, symbol: str) -> bool:
         return symbol in self.mandatory_symbols()
 
+    def permits_untyped_child(self, symbol: str) -> bool:
+        """True if a child on *symbol* is allowed without a declared type.
+
+        Only open maps return True (for additional/undeclared keys, whose value
+        is unconstrained). Such children have no δ transition and any subtree is
+        accepted under them.
+        """
+        return False
+
     # -- transformations ---------------------------------------------------
     @abstractmethod
     def remove_symbol(self, symbol: str) -> "ContentModel":
@@ -167,6 +176,9 @@ class MapModel(ContentModel):
         if self._empty:
             return set()
         return {k for k, required in self.fields.items() if required}
+
+    def permits_untyped_child(self, symbol: str) -> bool:
+        return self.open and symbol not in self.fields and symbol not in self.forbidden
 
     # -- transformations ---------------------------------------------------
     def remove_symbol(self, symbol: str) -> "ContentModel":
