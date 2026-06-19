@@ -75,8 +75,8 @@ See [docs/schema-dsl.md](docs/schema-dsl.md) for the full reference.
 ## Install
 
 ```bash
-git clone https://github.com/tomlee/schema-automaton.git
-cd schema-automaton
+git clone https://github.com/tomlee/dataspec.git
+cd dataspec
 python -m venv .venv && . .venv/bin/activate     # Windows: .venv\Scripts\activate
 
 # optional extras (only for the formats you use)

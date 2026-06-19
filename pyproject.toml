@@ -21,7 +21,7 @@ all = ["pyyaml", "tomli_w", "defusedxml"]
 dev = ["pytest", "pyyaml", "tomli_w", "defusedxml"]
 
 [project.urls]
-Homepage = "https://github.com/tomlee/schema-automaton"
+Homepage = "https://github.com/tomlee/dataspec"
 
 [tool.setuptools]
 packages = ["dataspec"]
