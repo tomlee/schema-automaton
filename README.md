@@ -1,6 +1,6 @@
 # dataspec
 
-[![tests](https://img.shields.io/badge/tests-224%20passing-brightgreen)](tests/)
+[![tests](https://github.com/tomlee/dataspec/actions/workflows/test.yml/badge.svg)](https://github.com/tomlee/dataspec/actions/workflows/test.yml)
 [![python](https://img.shields.io/badge/python-3.11%2B-blue)](#installation)
 [![license](https://img.shields.io/badge/license-Apache--2.0-lightgrey)](LICENSE)
 [![status](https://img.shields.io/badge/status-alpha-orange)](#status)
