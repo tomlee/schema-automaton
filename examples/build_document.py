@@ -25,7 +25,7 @@ def main():
     d.add("age", 30)
 
     address = d.add_object("address")          # returns a cursor to the new object
-    address.add("city", "HK")
+    address.add("city", "London")
     address.add("zip", "999")
 
     tags = d.add_array("tags")                 # returns a cursor to the new array

@@ -17,7 +17,7 @@ from dataspec import Doc, WriteError, WriteReport, check_toml, doc
 
 def main():
     d = Doc.from_json('{"name": "Ann", "age": 30, "tags": ["x", "y"], '
-                      '"address": {"city": "HK"}}')
+                      '"address": {"city": "London"}}')
 
     print("-- YAML --");  print(d.to_yaml(), end="")
     print("-- TOML --");  print(d.to_toml())

@@ -5,7 +5,7 @@ Everything below is importable directly from `dataspec`:
 ```python
 from dataspec import Doc, doc, obj, parse_schema, infer, WriteError   # etc.
 
-d = Doc.from_json('{"name": "Ann", "address": {"city": "HK"}}')
+d = Doc.from_json('{"name": "Ann", "address": {"city": "London"}}')
 schema = parse_schema("root { name: string, address: { city: string } }")
 schema.validate(d).ok      # True
 ```
@@ -131,7 +131,7 @@ the stdlib `datetime` / `date` / `time`.
 from dataspec import schema, obj, optional, doc, t
 
 s = schema(obj(name=t.string, address=optional(obj(city=t.string))))
-s.validate(doc({"name": "Ann", "address": {"city": "HK"}})).ok        # True
+s.validate(doc({"name": "Ann", "address": {"city": "London"}})).ok        # True
 ```
 
 ## Schema types

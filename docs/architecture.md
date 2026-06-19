@@ -40,7 +40,7 @@ in the middle and produce the same output:
 ```python
 from dataspec import write_toml, read_json, Doc
 
-s = '{"name": "Ann", "address": {"city": "HK"}}'
+s = '{"name": "Ann", "address": {"city": "London"}}'
 
 write_toml(read_json(s))          # purely functional
 Doc.from_json(s).to_toml()        # the object layer — same result

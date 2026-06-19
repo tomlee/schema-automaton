@@ -73,10 +73,10 @@ You move one level at a time and edit through the API (full details in
 [Documents](document.md)):
 
 ```python
-d = Doc.from_json('{"name": "Ann", "address": {"city": "HK"}, "tags": ["x"]}')
+d = Doc.from_json('{"name": "Ann", "address": {"city": "London"}, "tags": ["x"]}')
 
 d.get("name")                       # "Ann"
-d.child("address").get("city")      # "HK"   (navigate, then read)
+d.child("address").get("city")      # "London"   (navigate, then read)
 d.child("address").set("city", "NY")  # modify a scalar leaf
 d.child("tags").append("y")         # grow an array
 d.add("active", True)               # add a new field

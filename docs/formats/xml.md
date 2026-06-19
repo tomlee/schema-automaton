@@ -81,7 +81,7 @@ matter, validate against a schema after reading, or prefer JSON/TOML.
 A Document made of objects, named arrays, and scalars round-trips through XML:
 
 ```python
-data = {"name": "Ann", "age": 30, "tags": ["x", "y"], "addr": {"city": "HK"}}
+data = {"name": "Ann", "age": 30, "tags": ["x", "y"], "addr": {"city": "London"}}
 read_xml(write_xml(data, root="rec")) == data      # True
 ```
 

@@ -18,9 +18,9 @@ Document, which is what keeps it well-formed:
 ```python
 from dataspec import Doc, doc
 
-d = Doc.from_json('{"name": "Ann", "address": {"city": "HK"}}')   # import from a format
-d = doc({"name": "Ann", "address": {"city": "HK"}})               # import a Python value
-d.child("address").set("city", "Shenzhen")                         # edit through the API
+d = Doc.from_json('{"name": "Ann", "address": {"city": "London"}}')   # import from a format
+d = doc({"name": "Ann", "address": {"city": "London"}})               # import a Python value
+d.child("address").set("city", "Dublin")                         # edit through the API
 d.to_toml()                                                         # emit to any format
 ```
 
@@ -38,7 +38,7 @@ from dataspec import parse_schema, obj, schema, infer, t, doc
 
 parse_schema("root { name: string, address: { city: string } }")    # 1. the DSL (text)
 schema(obj(name=t.string, address=obj(city=t.string)))               # 2. the Python builder
-infer([doc({"name": "Ann", "address": {"city": "HK"}})])             # 3. inferred from samples
+infer([doc({"name": "Ann", "address": {"city": "London"}})])             # 3. inferred from samples
 ```
 
 See [Schemas](schema.md).
@@ -83,7 +83,7 @@ and records what changed in a report, rather than failing. Ask for the report,
 or opt into a strict lossless mode:
 
 ```python
-d = doc({"name": "Ann", "address": {"city": "HK"}, "born": None})
+d = doc({"name": "Ann", "address": {"city": "London"}, "born": None})
 d.to_toml()                       # lenient: adjust + succeed (the null is omitted)
 d.to_toml(strict=True)            # raise WriteError if anything is lossy
 ```

@@ -13,7 +13,7 @@ Every example on this page builds the same document — a user profile, three
 layers deep (object → object → object):
 
 ```python
-{"name": "Ann", "address": {"city": "HK", "geo": {"lat": 22.3, "lon": 114.2}}}
+{"name": "Ann", "address": {"city": "London", "geo": {"lat": 51.5, "lon": -0.1}}}
 ```
 
 ## Creating a Doc
@@ -26,7 +26,7 @@ matches what you have.
 ```python
 from dataspec import doc
 
-d = doc({"name": "Ann", "address": {"city": "HK", "geo": {"lat": 22.3, "lon": 114.2}}})
+d = doc({"name": "Ann", "address": {"city": "London", "geo": {"lat": 51.5, "lon": -0.1}}})
 ```
 
 **From a format string** — one `from_*` per built-in format, plus a generic
@@ -35,36 +35,36 @@ form that also works for plugin formats ([Formats](formats/overview.md)):
 ```python
 from dataspec import Doc
 
-Doc.from_json('{"name": "Ann", "address": {"city": "HK", "geo": {"lat": 22.3, "lon": 114.2}}}')
+Doc.from_json('{"name": "Ann", "address": {"city": "London", "geo": {"lat": 51.5, "lon": -0.1}}}')
 
 Doc.from_yaml("""
 name: Ann
 address:
-  city: HK
+  city: London
   geo:
-    lat: 22.3
-    lon: 114.2
+    lat: 51.5
+    lon: -0.1
 """)
 
 Doc.from_toml("""
 name = "Ann"
 
 [address]
-city = "HK"
+city = "London"
 
 [address.geo]
-lat = 22.3
-lon = 114.2
+lat = 51.5
+lon = -0.1
 """)
 
 Doc.from_xml("""
 <root>
   <name>Ann</name>
   <address>
-    <city>HK</city>
+    <city>London</city>
     <geo>
-      <lat>22.3</lat>
-      <lon>114.2</lon>
+      <lat>51.5</lat>
+      <lon>-0.1</lon>
     </geo>
   </address>
 </root>
@@ -91,14 +91,14 @@ d = doc()                          # empty object
 d.add("name", "Ann")
 
 address = d.add_object("address")  # add an empty object, get a cursor to it
-address.add("city", "HK")
+address.add("city", "London")
 
 geo = address.add_object("geo")    # nest another object inside it
-geo.add("lat", 22.3)
-geo.add("lon", 114.2)
+geo.add("lat", 51.5)
+geo.add("lon", -0.1)
 
 d.to_data()
-# {"name": "Ann", "address": {"city": "HK", "geo": {"lat": 22.3, "lon": 114.2}}}
+# {"name": "Ann", "address": {"city": "London", "geo": {"lat": 51.5, "lon": -0.1}}}
 ```
 
 Four different starting points — a Python value, four formats, and the
@@ -110,25 +110,25 @@ You move **one level at a time** — there are no deep paths, which keeps
 navigation unambiguous even when repeated keys have produced arrays.
 
 ```python
-d = doc({"name": "Ann", "address": {"city": "HK", "geo": {"lat": 22.3, "lon": 114.2}}})
+d = doc({"name": "Ann", "address": {"city": "London", "geo": {"lat": 51.5, "lon": -0.1}}})
 
 d.kind                          # "object"
 d.keys()                        # ["name", "address"]
 d.has("name")                   # True
 d.has("missing")                # False
 d.get("name")                   # "Ann"
-d.get("address")                # {"city": "HK", "geo": {...}}   (a detached snapshot copy)
+d.get("address")                # {"city": "London", "geo": {...}}   (a detached snapshot copy)
 d.get_or("missing", "n/a")      # "n/a" — default if absent
 
 address = d.child("address")    # a live cursor into the object
 address.path                    # "$.address"
-address.get("city")             # "HK"
+address.get("city")             # "London"
 
 geo = address.child("geo")      # navigate one more level
 geo.path                        # "$.address.geo"
-geo.get("lat")                  # 22.3
+geo.get("lat")                  # 51.5
 
-d.child("address").child("geo").get("lat")   # 22.3 — chaining is just repeated child()
+d.child("address").child("geo").get("lat")   # 51.5 — chaining is just repeated child()
 ```
 
 Two getters, by intent:
@@ -149,7 +149,7 @@ Mutation happens on the node you hold, one level at a time. Three verbs with
 sharp, non-overlapping jobs:
 
 ```python
-d = doc({"name": "Ann", "address": {"city": "HK"}})
+d = doc({"name": "Ann", "address": {"city": "London"}})
 
 d.add("age", 30)                 # create a new child (key must not exist)
 d.set("age", 31)                 # modify an existing scalar leaf, in place
@@ -157,7 +157,7 @@ d.remove("age")                  # delete the whole subtree at a key
 
 address = d.child("address")
 geo = address.add_object("geo")  # add an empty object, return a cursor to it
-geo.add("lat", 22.3)
+geo.add("lat", 51.5)
 
 tags = d.add_array("tags")       # add an empty array, return a cursor
 tags.append("vip"); tags.append("east")
@@ -190,7 +190,7 @@ d.child("address").drop()        # detach this node from its parent
 Python copy.
 
 ```python
-d = doc({"name": "Ann", "address": {"city": "HK", "geo": {"lat": 22.3, "lon": 114.2}}})
+d = doc({"name": "Ann", "address": {"city": "London", "geo": {"lat": 51.5, "lon": -0.1}}})
 
 d.to_json(indent=2)
 d.to_yaml()
@@ -221,10 +221,10 @@ Errors carry the path to the offender (`"$.a.b[1]: ..."`). Copy-in also means
 outside references can't corrupt the document after the fact:
 
 ```python
-src = {"address": {"city": "HK"}}
+src = {"address": {"city": "London"}}
 d = doc(src)
-src["address"]["city"] = "Shenzhen"   # mutate the original
-d.get("address")                      # {"city": "HK"} — the Doc is unaffected
+src["address"]["city"] = "Dublin"   # mutate the original
+d.get("address")                      # {"city": "London"} — the Doc is unaffected
 ```
 
 The guard checks **structure only** — that this is a legal Document. Whether it
@@ -237,13 +237,13 @@ matches an *expected shape* is a separate question, answered by a
 profile document, showing exactly what each one does and returns:
 
 ```python
-d = doc({"name": "Ann", "address": {"city": "HK", "geo": {"lat": 22.3, "lon": 114.2}}})
+d = doc({"name": "Ann", "address": {"city": "London", "geo": {"lat": 51.5, "lon": -0.1}}})
 
 len(d)                       # 2 — number of top-level keys (object) / elements (array)
 list(d)                      # ["name", "address"] — objects iterate over keys
 "name" in d                  # True — membership: keys for objects, values for arrays
 "missing" in d                # False
-d == {"name": "Ann", "address": {"city": "HK", "geo": {"lat": 22.3, "lon": 114.2}}}
+d == {"name": "Ann", "address": {"city": "London", "geo": {"lat": 51.5, "lon": -0.1}}}
                               # True — compares by data, against a Doc or a plain value
 repr(d)                       # "Doc(object: {'name': 'Ann', 'address': {...}})"
 ```

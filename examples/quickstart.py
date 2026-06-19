@@ -15,7 +15,7 @@ from dataspec import Doc, arr, doc, infer, obj, optional, schema, t
 def main():
     print("== 1. Import data into a Document (a guarded data structure) ==")
     d = Doc.from_json('{"name": "Ann", "age": 30, "tags": ["x", "y"], '
-                      '"address": {"city": "HK"}}')
+                      '"address": {"city": "London"}}')
     print("kind:", d.kind, "| keys:", d.keys())
 
     print("\n== 2. Navigate and edit through the API ==")

@@ -8,7 +8,7 @@ a small text language, parse it with `parse_schema`, and call `validate` on a
 from dataspec import parse_schema, doc
 
 schema = parse_schema("root { name: string, address: { city: string } }")
-schema.validate(doc({"name": "Ann", "address": {"city": "HK"}})).ok    # True
+schema.validate(doc({"name": "Ann", "address": {"city": "London"}})).ok    # True
 ```
 
 Validation isn't just a yes/no — a mismatch tells you exactly where and why:
@@ -262,11 +262,11 @@ type Address = { city: string, geo: { lat: number, lon: number }? }
 root { name: string, tags?: [string], address: Address }
 """)
 
-s.validate(doc({"name": "Ann", "address": {"city": "HK", "geo": None}})).ok
+s.validate(doc({"name": "Ann", "address": {"city": "London", "geo": None}})).ok
 # True — tags omitted (optional), geo present but null
 
 s.validate(doc({"name": "Ann", "tags": ["vip"],
-                "address": {"city": "HK", "geo": {"lat": 22.3, "lon": 114.2}}})).ok
+                "address": {"city": "London", "geo": {"lat": 51.5, "lon": -0.1}}})).ok
 # True
 ```
 

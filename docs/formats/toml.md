@@ -8,8 +8,8 @@ uses the standard-library `tomllib` (Python 3.11+); writing needs
 ```python
 from dataspec import read_toml, write_toml
 
-read_toml('name = "Ann"\n[address]\ncity = "HK"\n')
-# {'name': 'Ann', 'address': {'city': 'HK'}}
+read_toml('name = "Ann"\n[address]\ncity = "London"\n')
+# {'name': 'Ann', 'address': {'city': 'London'}}
 
 print(write_toml({"name": "Ann", "tags": ["x", "y"]}))
 # name = "Ann"
