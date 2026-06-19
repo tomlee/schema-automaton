@@ -58,6 +58,17 @@ class TestImport:
         with pytest.raises(DocumentError):
             doc(a)
 
+    def test_reject_excessive_nesting(self):
+        # Deeply/adversarially nested input must raise a clean DocumentError,
+        # not crash the process with an uncatchable RecursionError.
+        deep = {}
+        cur = deep
+        for _ in range(10_000):
+            cur["x"] = {}
+            cur = cur["x"]
+        with pytest.raises(DocumentError, match="maximum depth"):
+            doc(deep)
+
     def test_copy_in_severs_reference(self):
         src = {"xs": [1, 2]}
         d = doc(src)

@@ -99,6 +99,7 @@ truthiness of "no errors". The stable `code` values:
 | `float.special` | error | `NaN`/`Infinity` written to JSON |
 | `key.coerced` | warning | non-string object key coerced to a string (JSON) |
 | `key.sanitized` | warning | object key rewritten to a legal XML element name |
+| `key.collision` | error | two distinct keys coerced/sanitized to the same key, one overwriting the other (JSON/XML) |
 | `array.nested.ambiguous` | error | nested array wrapped in `<item>` elements (XML) |
 
 \* `warning` under `null_style="drop"`.

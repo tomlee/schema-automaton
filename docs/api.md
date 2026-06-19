@@ -34,8 +34,9 @@ the full guide). Build with `doc(...)` / `Doc.from_*`; everything else is method
 | `.to_data()` | a detached deep copy as plain Python |
 | `len(d)`, `iter(d)`, `k in d`, `==` | container-like dunders |
 
-Illegal values (non-string keys, unsupported types, cycles) raise
-`DocumentError`. `set` only modifies a scalar — reshaping is `remove` + `add`.
+Illegal values (non-string keys, unsupported types, cycles, nesting past a
+depth limit) raise `DocumentError`. `set` only modifies a scalar — reshaping
+is `remove` + `add`.
 
 ## Reading and writing formats
 

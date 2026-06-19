@@ -58,7 +58,8 @@ use `report=`, `check_xml(doc)`, or `strict=True` to see or forbid them.
 | Namespaces | read | prefix **stripped** (`<n:a>` reads as `a`) |
 | Top-level array/scalar | write | wrapped under `wrap_key` (default `"value"`), reported |
 | Nested / bare arrays (array of arrays) | write | wrapped in `<item>` elements, reported as `error` |
-| Object key that isn't a legal XML name | write | sanitized (e.g. `"a b"` → `<a_b>`), reported |
+| Object key that isn't a legal XML name | write | sanitized (e.g. `"a b"` → `<a_b>`), reported as a warning |
+| Two distinct keys that sanitize to the same name | write | merge into one list on read; reported as `key.collision`, **error** |
 | Date / time | write | written as text, reported (reads back as a string) |
 
 If your XML uses attributes, transform it first (for example with XSLT) into an

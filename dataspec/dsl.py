@@ -127,7 +127,13 @@ class _Opt(_N):
 
 
 class _Parser:
-    def __init__(self, toks): self.t = toks; self.i = 0
+    # Bounds nesting depth well under Python's default recursion limit (1000).
+    # Each level of DSL nesting costs ~5 Python stack frames (_type -> _union
+    # -> _postfix -> _atom -> _array/_object -> _type), so this must be much
+    # lower than document.py's bound for the same safety margin.
+    _MAX_DEPTH = 100
+
+    def __init__(self, toks): self.t = toks; self.i = 0; self._depth = 0
 
     def _peek(self): return self.t[self.i]
     def _next(self): tok = self.t[self.i]; self.i += 1; return tok
@@ -161,7 +167,16 @@ class _Parser:
             raise SchemaError("schema has no 'root'")
         return typedefs, root
 
-    def _type(self): return self._union()
+    def _type(self):
+        self._depth += 1
+        if self._depth > self._MAX_DEPTH:
+            raise SchemaError(
+                f"type nesting exceeds the maximum depth ({self._MAX_DEPTH}) "
+                f"at {self._peek().pos}")
+        try:
+            return self._union()
+        finally:
+            self._depth -= 1
 
     def _union(self):
         alts = [self._postfix()]

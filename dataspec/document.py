@@ -30,6 +30,11 @@ from .errors import DetachedNode, DocumentError
 
 _MISSING = object()
 
+# Bounds recursion depth well under Python's default recursion limit (1000),
+# so deeply/adversarially nested input raises a clean DocumentError instead of
+# crashing the process with an uncatchable RecursionError.
+_MAX_DEPTH = 200
+
 
 # ===========================================================================
 # Legalization: validate + deep-copy a Python value into a Document fragment
@@ -39,7 +44,8 @@ def _legalize(value: Any, path: str) -> Any:
     """Return a deep copy of ``value`` proven to be a legal Document fragment.
 
     Tuples become lists.  Raises :class:`DocumentError` (with the offending path)
-    for unsupported types, non-string keys, or cycles.
+    for unsupported types, non-string keys, cycles, or nesting past
+    :data:`_MAX_DEPTH`.
     """
     return _legalize_inner(value, path, ())
 
@@ -49,22 +55,22 @@ def _legalize_inner(value: Any, path: str, ancestors: tuple) -> Any:
         return value                              # scalars (bool/int covered)
     if isinstance(value, (_dt.date, _dt.time, _dt.datetime)):
         return value                              # temporal scalars (immutable)
-    if isinstance(value, (list, tuple)):
+    if isinstance(value, (list, tuple, dict)):
         if id(value) in ancestors:
             raise DocumentError(f"{path}: cycle detected")
         anc = ancestors + (id(value),)
+        if len(anc) > _MAX_DEPTH:
+            raise DocumentError(
+                f"{path}: nesting exceeds the maximum depth ({_MAX_DEPTH})")
+        if isinstance(value, dict):
+            out = {}
+            for k, v in value.items():
+                if not isinstance(k, str):
+                    raise DocumentError(
+                        f"{path}: object key {k!r} is not a string")
+                out[k] = _legalize_inner(v, _join(path, k), anc)
+            return out
         return [_legalize_inner(v, f"{path}[{i}]", anc) for i, v in enumerate(value)]
-    if isinstance(value, dict):
-        if id(value) in ancestors:
-            raise DocumentError(f"{path}: cycle detected")
-        anc = ancestors + (id(value),)
-        out = {}
-        for k, v in value.items():
-            if not isinstance(k, str):
-                raise DocumentError(
-                    f"{path}: object key {k!r} is not a string")
-            out[k] = _legalize_inner(v, _join(path, k), anc)
-        return out
     raise DocumentError(
         f"{path}: {type(value).__name__} is not a Document value")
 

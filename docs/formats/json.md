@@ -35,7 +35,9 @@ write_json({"name": "Ann", "n": 1}, indent=2)
   reported as a `float.special` **error** (use `check_json`/`strict=True` to
   catch them).
 - **Non-string keys** are coerced to strings (a `key.coerced` warning), matching
-  the standard library.
+  the standard library. If two different keys coerce to the *same* string
+  (`1` and `"1"`, say), one silently overwrites the other — that's a
+  `key.collision` **error**, not just a warning.
 - **Comments aren't allowed** by JSON at all.
 
 ## Round-trip behaviour

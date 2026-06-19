@@ -1,7 +1,7 @@
 """DSL parse + serialize round-trip."""
 import pytest
 
-from dataspec import parse_schema, to_dsl
+from dataspec import SchemaError, parse_schema, to_dsl
 
 CASES = [
     "root string",
@@ -38,3 +38,11 @@ def test_to_dsl_readable():
     assert "name: string" in dsl
     assert "age?: integer" in dsl
     assert "[string]+" in dsl
+
+
+def test_reject_excessive_nesting():
+    # Deeply/adversarially nested DSL text must raise a clean SchemaError,
+    # not crash the process with an uncatchable RecursionError.
+    text = "root " + "[" * 10_000 + "string" + "]" * 10_000
+    with pytest.raises(SchemaError, match="maximum depth"):
+        parse_schema(text)

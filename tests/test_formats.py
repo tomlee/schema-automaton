@@ -5,6 +5,7 @@ import json
 import pytest
 
 from dataspec import (
+    DocumentError,
     ParseError,
     WriteError,
     WriteReport,
@@ -289,6 +290,53 @@ class TestJsonReports:
         out = write_json({"a": 1}, strict=True)
         assert json.loads(out) == {"a": 1}
 
+    def test_colliding_keys_after_coercion_is_error(self):
+        # 1 and "1" are distinct dict keys but coerce to the same JSON key,
+        # silently dropping one value on read-back -- this must be an error,
+        # not a soft warning, since it corrupts the data.
+        rep = check_json({1: "a", "1": "b"})
+        collisions = [a for a in rep if a.code == "key.collision"]
+        assert len(collisions) == 1
+        assert collisions[0].severity == "error"
+        assert bool(rep) is False
+
+    def test_strict_raises_on_key_collision(self):
+        with pytest.raises(WriteError):
+            write_json({1: "a", "1": "b"}, strict=True)
+
+    def test_distinct_string_keys_no_collision(self):
+        rep = check_json({"a": 1, "b": 2})
+        assert [a.code for a in rep if a.code == "key.collision"] == []
+
+
+class TestDepthGuard:
+    """Deeply/adversarially nested input must raise a clean error, not crash
+    the process with an uncatchable RecursionError."""
+
+    def _deep(self, n):
+        d = {}
+        cur = d
+        for _ in range(n):
+            cur["x"] = {}
+            cur = cur["x"]
+        return d
+
+    def test_write_json_rejects_excessive_nesting(self):
+        with pytest.raises(DocumentError, match="maximum depth"):
+            write_json(self._deep(10_000))
+
+    def test_write_yaml_rejects_excessive_nesting(self):
+        with pytest.raises(DocumentError, match="maximum depth"):
+            write_yaml(self._deep(10_000))
+
+    def test_write_toml_rejects_excessive_nesting(self):
+        with pytest.raises(DocumentError, match="maximum depth"):
+            write_toml(self._deep(10_000))
+
+    def test_write_xml_rejects_excessive_nesting(self):
+        with pytest.raises(DocumentError, match="maximum depth"):
+            write_xml(self._deep(10_000))
+
 
 # ------------------------------------------------- check_yaml / write_yaml reports
 class TestYamlReports:
@@ -384,3 +432,23 @@ class TestXmlReports:
             write_xml({"d": datetime.date(2024, 1, 1)}, root="r", strict=True)
         assert ei.value.report is not None
         assert ei.value.report.adjustments
+
+    def test_colliding_keys_after_sanitization_is_error(self):
+        # "my key" and "my_key" are distinct dict keys but sanitize to the
+        # same XML element name, merging into one list on read-back -- this
+        # must be an error, not a soft warning, since it corrupts the data.
+        rep = check_xml({"my key": 1, "my_key": 2}, root="r")
+        collisions = [a for a in rep if a.code == "key.collision"]
+        assert len(collisions) == 1
+        assert collisions[0].severity == "error"
+        assert bool(rep) is False
+
+    def test_strict_raises_on_key_collision(self):
+        with pytest.raises(WriteError):
+            write_xml({"my key": 1, "my_key": 2}, root="r", strict=True)
+
+    def test_repeated_element_from_a_single_key_is_not_a_collision(self):
+        # A list value legitimately repeats its own tag -- that's the normal
+        # array representation, not a collision between two different keys.
+        rep = check_xml({"tags": ["a", "b"]}, root="r")
+        assert [a.code for a in rep if a.code == "key.collision"] == []

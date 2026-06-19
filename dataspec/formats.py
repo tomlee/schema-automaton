@@ -40,8 +40,29 @@ import math as _math
 import re as _re
 from typing import Any, Optional, Tuple
 
-from .errors import ParseError
+from .errors import DocumentError, ParseError
 from .report import WriteReport, finish_write
+
+# Bounds recursion depth well under Python's default recursion limit (1000),
+# so deeply/adversarially nested data raises a clean error instead of
+# crashing the process with an uncatchable RecursionError.
+_MAX_DEPTH = 200
+
+
+def _depth_guard(path: str, depth: int) -> None:
+    if depth > _MAX_DEPTH:
+        raise DocumentError(
+            f"{path}: nesting exceeds the maximum depth ({_MAX_DEPTH})")
+
+
+def _json_key_str(k: Any) -> str:
+    """The key string ``json.dumps`` would emit for a non-string dict key."""
+    if isinstance(k, bool):
+        return "true" if k else "false"
+    if k is None:
+        return "null"
+    return str(k)
+
 
 # ===========================================================================
 # JSON
@@ -66,13 +87,13 @@ def check_json(data: Any) -> WriteReport:
 def _serialize_json(data: Any, *, indent: Optional[int],
                     sort_keys: bool) -> Tuple[str, WriteReport]:
     rep = WriteReport()
-    _scan_json(data, "$", rep)
+    _scan_json(data, "$", rep, 0)
     text = _json.dumps(data, indent=indent, sort_keys=sort_keys,
                        ensure_ascii=False, default=_iso)
     return text, rep
 
 
-def _scan_json(data: Any, path: str, rep: WriteReport) -> None:
+def _scan_json(data: Any, path: str, rep: WriteReport, depth: int) -> None:
     if isinstance(data, bool):
         return
     if isinstance(data, float):
@@ -85,14 +106,25 @@ def _scan_json(data: Any, path: str, rep: WriteReport) -> None:
                 "temporal value written as an ISO-8601 string", "warning")
         return
     if isinstance(data, dict):
+        _depth_guard(path, depth + 1)
+        seen: dict = {}
         for k, v in data.items():
             if not isinstance(k, str):
                 rep.add(f"{path}.{k}", "key.coerced",
                         f"non-string key {k!r} coerced to a string", "warning")
-            _scan_json(v, f"{path}.{k}", rep)
+            key_str = k if isinstance(k, str) else _json_key_str(k)
+            if key_str in seen:
+                rep.add(f"{path}.{k}", "key.collision",
+                        f"key {k!r} collides with {seen[key_str]!r} after "
+                        f"coercion to {key_str!r}; one overwrites the other",
+                        "error")
+            else:
+                seen[key_str] = k
+            _scan_json(v, f"{path}.{k}", rep, depth + 1)
     elif isinstance(data, list):
+        _depth_guard(path, depth + 1)
         for i, v in enumerate(data):
-            _scan_json(v, f"{path}[{i}]", rep)
+            _scan_json(v, f"{path}[{i}]", rep, depth + 1)
 
 
 def _iso(o: Any) -> str:
@@ -111,7 +143,7 @@ def read_yaml(text: str) -> Any:
         data = yaml.safe_load(text)
     except yaml.YAMLError as exc:  # pragma: no cover
         raise ParseError(f"invalid YAML: {exc}") from exc
-    _yaml_core_check(data, "$", set())
+    _yaml_core_check(data, "$", set(), 0)
     return data
 
 
@@ -129,14 +161,14 @@ def check_yaml(data: Any) -> WriteReport:
 
 def _serialize_yaml(data: Any, *, sort_keys: bool) -> Tuple[str, WriteReport]:
     rep = WriteReport()
-    prepared = _yaml_prepare(data, "$", rep)
+    prepared = _yaml_prepare(data, "$", rep, 0)
     yaml = _need("yaml", "PyYAML", "pip install pyyaml")
     text = yaml.safe_dump(prepared, sort_keys=sort_keys, allow_unicode=True,
                           default_flow_style=False)
     return text, rep
 
 
-def _yaml_prepare(data: Any, path: str, rep: WriteReport) -> Any:
+def _yaml_prepare(data: Any, path: str, rep: WriteReport, depth: int) -> Any:
     # YAML carries dates/datetimes natively; only a standalone time has no
     # representation, so it downgrades to a string.
     if isinstance(data, _dt.time):
@@ -145,27 +177,33 @@ def _yaml_prepare(data: Any, path: str, rep: WriteReport) -> Any:
                 "warning")
         return data.isoformat()
     if isinstance(data, dict):
-        return {k: _yaml_prepare(v, f"{path}.{k}", rep) for k, v in data.items()}
+        _depth_guard(path, depth + 1)
+        return {k: _yaml_prepare(v, f"{path}.{k}", rep, depth + 1)
+                for k, v in data.items()}
     if isinstance(data, list):
-        return [_yaml_prepare(v, f"{path}[{i}]", rep) for i, v in enumerate(data)]
+        _depth_guard(path, depth + 1)
+        return [_yaml_prepare(v, f"{path}[{i}]", rep, depth + 1)
+                for i, v in enumerate(data)]
     return data
 
 
-def _yaml_core_check(node: Any, path: str, seen: set) -> None:
+def _yaml_core_check(node: Any, path: str, seen: set, depth: int) -> None:
     if isinstance(node, dict):
         if id(node) in seen:
             raise ParseError(f"recursive YAML (anchors/aliases) at {path} is not supported")
+        _depth_guard(path, depth + 1)
         seen = seen | {id(node)}
         for k, v in node.items():
             if not isinstance(k, str):
                 raise ParseError(f"non-string key {k!r} at {path} is not supported")
-            _yaml_core_check(v, f"{path}.{k}", seen)
+            _yaml_core_check(v, f"{path}.{k}", seen, depth + 1)
     elif isinstance(node, list):
         if id(node) in seen:
             raise ParseError(f"recursive YAML at {path} is not supported")
+        _depth_guard(path, depth + 1)
         seen = seen | {id(node)}
         for i, v in enumerate(node):
-            _yaml_core_check(v, f"{path}[{i}]", seen)
+            _yaml_core_check(v, f"{path}[{i}]", seen, depth + 1)
 
 
 # ===========================================================================
@@ -197,7 +235,7 @@ def check_toml(data: Any, *, null_style: str = "omit",
 def _serialize_toml(data: Any, *, null_style: str,
                     wrap_key: str) -> Tuple[str, WriteReport]:
     rep = WriteReport()
-    body = _strip_nulls(data, "$", rep, null_style)
+    body = _strip_nulls(data, "$", rep, null_style, 0)
     if body is None:
         rep.add("$", "null.toplevel.empty",
                 "top-level null written as an empty document", "error")
@@ -211,7 +249,8 @@ def _serialize_toml(data: Any, *, null_style: str,
     return tomli_w.dumps(body), rep
 
 
-def _strip_nulls(data: Any, path: str, rep: WriteReport, null_style: str) -> Any:
+def _strip_nulls(data: Any, path: str, rep: WriteReport, null_style: str,
+                 depth: int) -> Any:
     """Remove nulls for formats that have none (TOML/XML), recording each removal.
 
     Null *object fields* are omitted (warning).  Null *array items* are dropped;
@@ -219,15 +258,17 @@ def _strip_nulls(data: Any, path: str, rep: WriteReport, null_style: str) -> Any
     ``null_style="omit"`` and an ordinary warning under ``"drop"``.
     """
     if isinstance(data, dict):
+        _depth_guard(path, depth + 1)
         out = {}
         for k, v in data.items():
             if v is None:
                 rep.add(f"{path}.{k}", "null.field.omitted",
                         "null object field omitted", "warning")
                 continue
-            out[k] = _strip_nulls(v, f"{path}.{k}", rep, null_style)
+            out[k] = _strip_nulls(v, f"{path}.{k}", rep, null_style, depth + 1)
         return out
     if isinstance(data, list):
+        _depth_guard(path, depth + 1)
         out = []
         for i, v in enumerate(data):
             if v is None:
@@ -235,7 +276,7 @@ def _strip_nulls(data: Any, path: str, rep: WriteReport, null_style: str) -> Any
                 rep.add(f"{path}[{i}]", "null.item.dropped",
                         "null array item dropped (shifts positions)", sev)
                 continue
-            out.append(_strip_nulls(v, f"{path}[{i}]", rep, null_style))
+            out.append(_strip_nulls(v, f"{path}[{i}]", rep, null_style, depth + 1))
         return out
     return data
 
@@ -277,7 +318,7 @@ def check_xml(data: Any, *, root: str = "root", null_style: str = "omit",
 def _serialize_xml(data: Any, *, root: str, null_style: str,
                    wrap_key: str) -> Tuple[str, WriteReport]:
     rep = WriteReport()
-    body = _strip_nulls(data, "$", rep, null_style)
+    body = _strip_nulls(data, "$", rep, null_style, 0)
     if body is None:
         rep.add("$", "null.toplevel.empty",
                 "top-level null written as an empty element", "error")
@@ -289,16 +330,17 @@ def _serialize_xml(data: Any, *, root: str, null_style: str,
         body = {wrap_key: body}
     import xml.etree.ElementTree as ET
     el = ET.Element(root)
-    _data_to_xml(body, el, "$", rep)
+    _data_to_xml(body, el, "$", rep, 0)
     _indent(el)
     return ET.tostring(el, encoding="unicode"), rep
 
 
-def _xml_to_data(elem, path: str) -> Any:
+def _xml_to_data(elem, path: str, depth: int = 0) -> Any:
     if elem.attrib:
         raise ParseError(f"attributes at {path} are not supported (data-XML)")
     children = list(elem)
     if children:
+        _depth_guard(path, depth + 1)
         if (elem.text and elem.text.strip()):
             raise ParseError(f"mixed content at {path} is not supported")
         grouped = {}
@@ -310,42 +352,52 @@ def _xml_to_data(elem, path: str) -> Any:
             if tag not in grouped:
                 grouped[tag] = []
                 order.append(tag)
-            grouped[tag].append(_xml_to_data(child, f"{path}.{tag}"))
+            grouped[tag].append(_xml_to_data(child, f"{path}.{tag}", depth + 1))
         return {tag: (vs[0] if len(vs) == 1 else vs) for tag in order
                 for vs in [grouped[tag]]}
     return _coerce(elem.text or "")
 
 
-def _data_to_xml(data: Any, parent, path: str, rep: WriteReport) -> None:
+def _data_to_xml(data: Any, parent, path: str, rep: WriteReport, depth: int) -> None:
     import xml.etree.ElementTree as ET
     if isinstance(data, dict):
+        _depth_guard(path, depth + 1)
+        seen_tags: dict = {}
         for k, v in data.items():
             tag = _xml_name(str(k), f"{path}.{k}", rep)
+            if tag in seen_tags and seen_tags[tag] != k:
+                rep.add(f"{path}.{k}", "key.collision",
+                        f"key {k!r} writes the same XML element name {tag!r} as "
+                        f"key {seen_tags[tag]!r}; they will merge into one list "
+                        "on read", "error")
+            else:
+                seen_tags[tag] = k
             if isinstance(v, list):
                 for i, item in enumerate(v):
                     child = ET.SubElement(parent, tag)
-                    _xml_child(item, child, f"{path}.{k}[{i}]", rep)
+                    _xml_child(item, child, f"{path}.{k}[{i}]", rep, depth + 1)
             else:
                 child = ET.SubElement(parent, tag)
-                _data_to_xml(v, child, f"{path}.{k}", rep)
+                _data_to_xml(v, child, f"{path}.{k}", rep, depth + 1)
     elif isinstance(data, list):
+        _depth_guard(path, depth + 1)
         # A list reaching a scalar position (e.g. nested array): wrap each item
         # in a synthetic <item> element.  Not unambiguously reversible.
         # Report is added by _xml_child, not here, to avoid double-counting.
         for i, item in enumerate(data):
             child = ET.SubElement(parent, "item")
-            _xml_child(item, child, f"{path}[{i}]", rep)
+            _xml_child(item, child, f"{path}[{i}]", rep, depth + 1)
     else:
         parent.text = _xml_text(data, path, rep)
 
 
-def _xml_child(item: Any, child, path: str, rep: WriteReport) -> None:
+def _xml_child(item: Any, child, path: str, rep: WriteReport, depth: int) -> None:
     if isinstance(item, list):
         rep.add(path, "array.nested.ambiguous",
                 "nested array wrapped in <item> elements", "error")
-        _data_to_xml({"item": item}, child, path, rep)
+        _data_to_xml({"item": item}, child, path, rep, depth)
     else:
-        _data_to_xml(item, child, path, rep)
+        _data_to_xml(item, child, path, rep, depth)
 
 
 def _xml_name(k: str, path: str, rep: WriteReport) -> str:
