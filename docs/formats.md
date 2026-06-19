@@ -1,107 +1,84 @@
-# Formats: the Data Tree as a canonical hub
+# Formats
 
-The **Data Tree** is a format-neutral model of a data *instance*; the
-**Schema Automaton** is the format-neutral model of a *schema*. Concrete
-serialization syntaxes — JSON, YAML, TOML (and, later, XML) — are **codecs**
-around these canonical models.
+Every format is a **codec** over the same Document, so transcoding is just *read
+one, write another*. The readers and writers:
 
-```
-   JSON ─┐                                   ┌─ JSON
-   YAML ─┼─ load ─►  Data Tree  ─► emit ─────┼─ YAML
-   TOML ─┘        (canonical model)          └─ TOML
-```
+| Format | Read | Write | Needs |
+|---|---|---|---|
+| JSON | `read_json` | `write_json` | stdlib |
+| YAML | `read_yaml` | `write_yaml` | `pyyaml` |
+| TOML | `read_toml` | `write_toml` | stdlib `tomllib` (read) + `tomli_w` (write) |
+| XML  | `read_xml`  | `write_xml`  | `defusedxml` (recommended) |
 
-Transcoding is therefore just *load one syntax, emit another*:
+## The guarantee: lossless, or a clear error
 
-```python
-from src import tree_from_json, to_toml
+A writer never produces something that silently loses your data. If a Document
+can't be represented in the target format, you get a `WriteError` that says
+where and why. So a conversion either preserves the data or fails loudly.
 
-toml_text = to_toml(tree_from_json('{"name": "Ann", "tags": ["x", "y"]}'))
-```
+The formats differ only at the edges:
 
-## Loaders (syntax → Data Tree)
+| | JSON | YAML | TOML | XML |
+|---|---|---|---|---|
+| `null` | ✅ | ✅ | ⚠️ (see below) | ⚠️ (see below) |
+| typed scalars (int/number/bool) | ✅ | ✅ | ✅ | best-effort |
+| native date/time/datetime | string | ✅ | ✅ | string |
+| top-level array / scalar | ✅ | ✅ | ❌ (object only) | ❌ (object only) |
 
-| Function | Needs |
-|----------|-------|
-| `tree_from_json(text)` | stdlib |
-| `tree_from_yaml(text)` | `pyyaml` |
-| `tree_from_toml(text)` | stdlib `tomllib` (3.11+) or `tomli` |
-| `tree_from_python(obj)` | — (already-parsed `dict`/`list`/scalar) |
+## `null` (Option C)
 
-## Emitters (Data Tree → syntax)
+TOML and XML have no `null`. dataspec handles this predictably:
 
-| Function | Needs |
-|----------|-------|
-| `to_json(tree, *, indent=None, sort_keys=False)` | stdlib |
-| `to_yaml(tree, *, sort_keys=False)` | `pyyaml` |
-| `to_toml(tree)` | `tomli_w` |
-| `tree_to_python(tree)` | — (the hub; reconstructs a typed Python value) |
-
-`tree_to_python` is the inverse of `tree_from_python` and the basis for all the
-emitters.
-
-## Type fidelity
-
-Each scalar d-node carries a `vdom` **type hint** set by the loader, so values
-survive a round-trip with their type intact:
+- a **null object field** is **omitted** when writing TOML/XML;
+- a **null array item** or a **top-level null** raises `WriteError` (there's no
+  way to represent it);
+- pass `strict=True` to *also* raise on the omitted-field case, if you'd rather
+  be told than have a field silently dropped.
 
 ```python
-to_json(tree_from_python({"age": 30, "zip": "999"}))
-# {"age": 30, "zip": "999"}      # 30 stays a number, "999" stays a string
+write_toml({"a": 1, "b": None})              # -> a = 1   (b omitted)
+write_toml({"a": 1, "b": None}, strict=True) # -> WriteError
+write_toml({"xs": [1, None]})                # -> WriteError (null in array)
 ```
 
-A tree built by hand (no hints) falls back to a best-effort interpretation of the
-string value.
+Round-trip note: a `null` survives JSON↔YAML exactly, but once it crosses into
+TOML/XML (as an omitted field) it comes back as a *missing* field. That single
+`null → missing` normalisation is the only place a value-level loss can happen,
+and it only happens going **into** a format that has no null.
 
-## The canonical model is the JSON data model
+## Temporal values
 
-The hub models record / list / scalar over **string · number · bool · null**.
-Each target syntax is a *projection* of it, and they do not all cover the same
-ground:
+`datetime` / `date` / `time` are native in TOML and YAML and round-trip
+faithfully there. JSON and XML have no temporal type, so they are written as
+ISO-8601 **strings**. A schema can re-impose the type: a `date` field accepts
+both a real date and an ISO date string, so JSON data still validates.
 
-| Target | Coverage | Notes |
-|--------|----------|-------|
-| **JSON** | full | the reference data model |
-| **YAML** | full | superset of JSON; `null`, any top-level value |
-| **TOML** | **partial** | **no `null`**; the **top level must be a table** (object) |
+## YAML — core subset
 
-When a tree cannot be represented in the target syntax, the emitter raises
-`SerializationError` with the offending path — it never emits invalid output:
+YAML is read as its **JSON-compatible core**. Features outside a plain tree of
+string-keyed maps are rejected with a `ParseError`: non-string keys and
+recursive anchors/aliases. (Comments and presentation are ignored, as data.)
 
-```python
-to_toml(tree_from_python({"x": None}))
-# SerializationError: TOML has no null value; cannot serialize null at $.x.
+## XML — data-XML profile
 
-to_toml(tree_from_python([1, 2, 3]))
-# SerializationError: TOML documents must have a table (object) at the top level; got list.
-```
+XML is treated purely as a way to serialize tree data, not as markup:
 
-These are real differences between the formats' data models, not bugs — JSON and
-YAML accept both of those documents.
+- **elements only** — no attributes, no mixed content, no namespaces, no CDATA
+  constructs (these raise `ParseError`, except namespaces which are stripped to
+  local names);
+- **repeated child names become a list**: `<r><item>1</item><item>2</item></r>`
+  → `{"item": [1, 2]}`;
+- order across different names is not significant;
+- a top-level array has no element name, so `write_xml([...])` raises;
+- `write_xml(data, root="name")` sets the wrapping root element name.
 
-## Where XML fits
+XML scalars are untyped text, so they're read back with **best-effort typing**
+(`"30"` → `30`, `"true"` → `True`). This means `1` and `"1"` are
+indistinguishable after an XML round-trip — inherent to XML, and the one place
+XML differs from the typed formats.
 
-XML is structurally different (ordered children, attributes, mixed text), so it
-is **not** a projection of the JSON data model. Supporting XML as another codec
-is the motivation for making list/record addressing first-class in the model —
-see [Design & Limitations](design-and-limitations.md). For now the hub covers the
-modern JSON-family syntaxes; XML is a planned codec.
+## Security
 
-## Example: a config converter
-
-```python
-from src import tree_from_json, to_toml, to_yaml
-
-config_json = '''
-{
-  "service": "api",
-  "port": 8080,
-  "tls": {"enabled": true, "ciphers": ["A", "B"]}
-}
-'''
-tree = tree_from_json(config_json)
-print(to_toml(tree))   # emit the same config as TOML
-print(to_yaml(tree))   # ...or YAML
-```
-
-See [demos/08_format_hub.py](../demos/08_format_hub.py) for a runnable tour.
+The XML reader uses `defusedxml` when available to block the classic XML attacks
+(external-entity injection, entity-expansion DoS). Install it for untrusted
+input: `pip install defusedxml`.

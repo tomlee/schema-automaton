@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dataspec"
+version = "0.1.0"
+description = "One data model, many formats: read, validate, and write JSON, YAML, TOML, and XML."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Thomas Y. Lee" }]
+keywords = ["schema", "validation", "json", "yaml", "toml", "xml", "data", "convert"]
+dependencies = []
+
+[project.optional-dependencies]
+yaml = ["pyyaml"]
+toml = ["tomli_w"]          # writing TOML; reading uses stdlib tomllib (3.11+)
+xml = ["defusedxml"]
+all = ["pyyaml", "tomli_w", "defusedxml"]
+dev = ["pytest", "pyyaml", "tomli_w", "defusedxml"]
+
+[project.urls]
+Homepage = "https://github.com/tomlee/schema-automaton"
+
+[tool.setuptools]
+packages = ["dataspec"]

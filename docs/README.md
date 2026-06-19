@@ -1,51 +1,34 @@
 # Documentation
 
-`schema-automaton` is a Python library that models the **structure** of
-hierarchical data — XML, JSON, YAML, TOML — with one canonical, schema-language
-independent model, and computes on those schemas (equivalence, subschema /
-compatibility testing, minimization, and subschema extraction).
+**dataspec** — one data model, many formats. Read JSON / YAML / TOML / XML into
+plain Python data, validate it against a schema, and write it back out to any of
+them.
 
-It is a faithful implementation of, and an extension to:
+## Start here
 
-> Thomas Y. Lee & David W. Cheung,
-> *"XML Schema Computations: Schema Compatibility Testing and Subschema
-> Extraction"*, CIKM 2010 — [`paper/`](paper/Lee-Cheung-2010-XML-Schema-Computations-CIKM.pdf).
-
-## Contents
-
-| Document | What it covers |
-|----------|----------------|
-| [Getting Started](getting-started.md) | Install, run the test suite, run the demos |
-| [Data Model Specification](data-model.md) | Formal definitions: Data Tree, Schema Automaton, Content Model, Value Domain |
-| [User Guide](user-guide.md) | Task-oriented how-to with runnable examples |
-| [Formats](formats.md) | The Data Tree as a JSON/YAML/TOML hub (load + emit) |
-| [Schema DSL](schema-dsl.md) | The textual language for authoring/printing schemas |
-| [Algorithms](algorithms.md) | The schema computations (incl. conformance) and complexity |
-| [Design & Limitations](design-and-limitations.md) | Why it is format-agnostic; known limits and extensions |
+- **[Concepts](concepts.md)** — the whole mental model (Document + Schema) in one page.
+- **[Usage](usage.md)** — task-oriented recipes with runnable examples.
+- **[Schema DSL](schema-dsl.md)** — the text language for writing schemas.
+- **[Formats](formats.md)** — what each format can represent; the lossless-or-error rule.
 
 ## At a glance
 
 ```python
-from src import tree_from_json, tree_from_python, infer_schema, to_json_schema
+from dataspec import read_json, write_toml, parse_schema, infer
 
-# 1. Infer a canonical schema from sample data
-schema = infer_schema([
-    tree_from_json('{"host": "a", "port": 80,  "tags": ["x"]}'),
-    tree_from_json('{"host": "b", "port": 443, "tags": ["y", "z"], "tls": true}'),
-])
+data   = read_json('{"name": "Ann", "tags": ["x", "y"]}')
+toml   = write_toml(data)                       # transcode JSON -> TOML
 
-# 2. Validate documents (from any format) with path-aware diagnostics
-print(schema.validate(tree_from_python({"host": "h", "port": 22, "tags": ["s"]})))
-# valid
+schema = parse_schema("root { name: string, tags: [string] }")
+schema.validate(data).ok                        # True
 
-print(schema.validate(tree_from_python({"host": "h", "tags": [1]})))
-# invalid:
-#   at $: missing required ['port']
-#   at $.tags[]: value '1' (found VDom(INTS)) not in VDom(STRS)
-
-# 3. Inspect it as a JSON-Schema-like view
-import json; print(json.dumps(to_json_schema(schema), indent=2))
+schema2 = infer([data])                         # learn a schema from samples
 ```
 
-The same engine reproduces every worked example from the paper — see
-[demos/01_xml_paper_examples.py](../demos/01_xml_paper_examples.py).
+## Background
+
+The schema model is inspired by the formal Data Tree / Schema Automaton models
+in Lee & Cheung, *"XML Schema Computations"* (CIKM 2010), included under
+[`paper/`](paper/Lee-Cheung-2010-XML-Schema-Computations-CIKM.pdf). The library
+deliberately trades the paper's academic vocabulary for a simple, practical
+mental model: plain Python data, plain-language schemas, and ordinary functions.
