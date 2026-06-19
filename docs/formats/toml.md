@@ -13,7 +13,10 @@ read_toml('name = "Ann"\n[address]\ncity = "HK"\n')
 
 print(write_toml({"name": "Ann", "tags": ["x", "y"]}))
 # name = "Ann"
-# tags = ["x", "y"]
+# tags = [
+#     "x",
+#     "y",
+# ]
 ```
 
 ## What's supported
@@ -53,9 +56,9 @@ adjustment into a `WriteError`.
   key (`wrap_key`, default `"value"`):
 
   ```python
-  write_toml([1, 2, 3])                       # 'value = [1, 2, 3]\n'
-  write_toml([1, 2, 3], wrap_key="items")     # 'items = [1, 2, 3]\n'
-  write_toml([1, 2, 3], strict=True)          # WriteError
+  write_toml([1, 2, 3])                       # 'value = [\n    1,\n    2,\n    3,\n]\n'
+  write_toml([1, 2, 3], wrap_key="items")     # 'items = [\n    1,\n    2,\n    3,\n]\n'
+  write_toml([1, 2, 3], strict=True)          # WriteError -- top-level array wrapped
   ```
 
 - **Comments aren't preserved.** TOML allows comments, but they aren't part of
