@@ -31,8 +31,8 @@ doesn't make you handle an error for the common case:
 
 ```python
 from dataspec import write_toml
-write_toml({"x": None})         # 'x' is dropped (TOML has no null)
-write_toml([1, 2, 3])           # wrapped: 'value = [1, 2, 3]'
+write_toml({"x": None})         # '' -- 'x' is dropped (TOML has no null)
+write_toml([1, 2, 3])           # wrapped under the key "value"
 ```
 
 Every adjustment is **recorded** so nothing is lost silently. You choose how much
