@@ -145,6 +145,7 @@ Apache-2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
 ## Background
 
 The schema model was inspired by Lee & Cheung,
-[*"XML Schema Computations"*](docs/paper/Lee-Cheung-2010-XML-Schema-Computations-CIKM.pdf)
+[*"XML Schema Computations: Schema Compatibility Testing and Subschema
+Extraction"*](docs/paper/Lee-Cheung-2010-XML-Schema-Computations-CIKM.pdf)
 (CIKM 2010), but the library deliberately trades the paper's vocabulary for a
 small, practical API.
