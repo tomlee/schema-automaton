@@ -7,8 +7,17 @@ a small text language, parse it with `parse_schema`, and call `validate` on a
 ```python
 from dataspec import parse_schema, doc
 
-schema = parse_schema("root { name: string, age: integer }")
-schema.validate(doc({"name": "Ann", "age": 30})).ok    # True
+schema = parse_schema("root { name: string, address: { city: string } }")
+schema.validate(doc({"name": "Ann", "address": {"city": "HK"}})).ok    # True
+```
+
+Validation isn't just a yes/no — a mismatch tells you exactly where and why:
+
+```python
+result = schema.validate(doc({"name": "Ann", "address": {"city": 42}}))
+result.ok                       # False
+result.errors[0].path           # '$.address.city'
+result.errors[0].message        # 'expected string, got integer'
 ```
 
 > Validation is **Doc-only** — wrap your data with `doc(...)` (or read it with
@@ -20,26 +29,17 @@ every type, with examples.
 
 ## Concepts
 
-A Document is built from three kinds of values, and a schema has a type for each.
+A schema is built from the same three kinds of values as a Document — scalar,
+array, object — plus nullability and named types layered on top. See
+[Concepts](concepts.md#document) for the full definitions; in short:
 
-**Scalar** — a single, indivisible value: a piece of text, a number, a boolean,
-or a date/time. `"Ann"`, `30`, `3.14`, `true`, and `2024-01-01` are all scalars.
-
-**Array** — an ordered list of values that all share one type, like
-`[1, 2, 3]` or `["a", "b"]`. Position matters; the values are homogeneous.
-
-**Object** — a collection of named fields, where each key is a string and each
-value is itself a Document: `{"name": "Ann", "age": 30}`. This is a Python
-`dict`. An object can also be used as a **map** — arbitrary keys that all share
-one value type (see [Maps](#maps)).
-
-On top of those, two ideas apply everywhere:
-
-**Nullability** — whether a position may also hold `null` (Python `None`). It is
-not a separate type; any type can be made nullable by adding `?`.
-
-**Named types** — a reusable, possibly self-referencing type you define once and
-refer to by name. This is how you describe trees and other recursive shapes.
+- a **scalar** type matches one indivisible value (text, number, boolean, date/time);
+- an **array** type matches a homogeneous, ordered list;
+- an **object** type matches a set of named fields (or, as a **map**, arbitrary
+  keys sharing one value type — see [Maps](#maps));
+- any type can be made **nullable** with `?`;
+- a **named type** is defined once and reused by name, which is how recursive
+  shapes like trees are described.
 
 ## The schema text
 
@@ -238,6 +238,38 @@ A reference to an undefined type is caught when you parse the schema:
 parse_schema("root { a: Missing }")      # raises SchemaError: unknown type 'Missing'
 ```
 
+## Putting it together
+
+A realistic schema combines several of the above: a named type, an optional
+field, a nullable nested field, and an array.
+
+```
+type Address = {
+    city: string,
+    geo:  { lat: number, lon: number }?,   # may be null
+}
+
+root {
+    name:    string,
+    tags?:   [string],                     # optional field
+    address: Address,
+}
+```
+
+```python
+s = parse_schema("""
+type Address = { city: string, geo: { lat: number, lon: number }? }
+root { name: string, tags?: [string], address: Address }
+""")
+
+s.validate(doc({"name": "Ann", "address": {"city": "HK", "geo": None}})).ok
+# True — tags omitted (optional), geo present but null
+
+s.validate(doc({"name": "Ann", "tags": ["vip"],
+                "address": {"city": "HK", "geo": {"lat": 22.3, "lon": 114.2}}})).ok
+# True
+```
+
 ## Validation results
 
 `validate` returns a `ValidationResult`:
@@ -260,18 +292,6 @@ r.errors[0].message     # 'expected integer, got string'
 `schema.to_dsl()` (or `to_dsl(schema)`) prints a schema back as DSL text — handy
 for showing an inferred schema or saving one to a file. Parsing that text gives
 back an equivalent schema.
-
-## Limitations
-
-- **No structural unions.** You can union scalars (`integer | string`) and enum
-  values, but not two different object or array shapes. If you need
-  "either this object or that one," model it as one open or `any`-valued object,
-  or validate the variants separately.
-- **Arrays are homogeneous.** There's no fixed-length, mixed-type tuple such as
-  `[string, integer, boolean]`. Use a union item type for mixed scalars, or an
-  object with named fields when each position has a distinct meaning.
-- **Map keys are always strings.** That matches JSON/YAML/TOML/XML, where object
-  keys are strings.
 
 ## The Python builder
 
@@ -327,3 +347,22 @@ The builder produces ordinary `ObjectType` / `ScalarType` / … objects, which y
 can also navigate with uniform getters: `obj_type.field("name")`,
 `obj_type.children()`, `array_type.item`, `object_type.rest`. See the
 [API reference](api.md#schema-builder).
+
+## Limitations
+
+- **No structural unions.** You can union scalars (`integer | string`) and enum
+  values, but not two different object or array shapes. If you need
+  "either this object or that one," model it as one open or `any`-valued object,
+  or validate the variants separately.
+- **Arrays are homogeneous.** There's no fixed-length, mixed-type tuple such as
+  `[string, integer, boolean]`. Use a union item type for mixed scalars, or an
+  object with named fields when each position has a distinct meaning.
+- **Map keys are always strings.** That matches JSON/YAML/TOML/XML, where object
+  keys are strings.
+
+## See also
+
+- [Inferring schemas](infer.md) — draft a schema from example Documents instead
+  of writing one by hand.
+- [API reference](api.md#schemas) — the full `Schema`, `ValidationResult`, and
+  type-class reference.
