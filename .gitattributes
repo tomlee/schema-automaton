@@ -1,0 +1,5 @@
+# Normalize line endings to LF for everyone, regardless of platform.
+* text=auto eol=lf
+
+# Binary files git must never touch.
+*.pdf binary

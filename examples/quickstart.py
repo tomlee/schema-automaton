@@ -1,4 +1,5 @@
-"""A 60-second tour of dataspec. Run: python examples/quickstart.py"""
+#!/usr/bin/env python3
+"""A 60-second tour of dataspec. Run: python3 examples/quickstart.py"""
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 try:

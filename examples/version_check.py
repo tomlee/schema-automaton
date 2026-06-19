@@ -1,6 +1,7 @@
+#!/usr/bin/env python3
 """Check whether a new schema version is backward-compatible with the old one.
 
-Run: python examples/version_check.py
+Run: python3 examples/version_check.py
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

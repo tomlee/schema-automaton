@@ -54,8 +54,16 @@ you get a `WriteError` instead of silently corrupted output.
 ## Installation
 
 Requires **Python 3.11+** (it uses the standard-library `tomllib`). The core
-library and JSON support have no dependencies. Install extras only for the
-formats you actually use:
+library and JSON support have no dependencies.
+
+```bash
+git clone https://github.com/tomlee/dataspec.git
+cd dataspec
+python3 -m venv .venv && source .venv/bin/activate
+pip install .                    # core + JSON
+```
+
+Pull in extras only for the formats you actually use:
 
 ```bash
 pip install pyyaml      # YAML
@@ -63,8 +71,7 @@ pip install tomli_w     # writing TOML  (reading uses the stdlib on 3.11+)
 pip install defusedxml  # hardened XML parsing
 ```
 
-> The package isn't on PyPI yet. For now, clone the repo and put it on your path,
-> or `pip install .` from a checkout.
+> The package isn't on PyPI yet, so install it from a checkout as shown above.
 
 ## A 60-second tour
 
@@ -80,7 +87,7 @@ print(schema.to_dsl())                  # root { id: integer, email: string, rol
 print(schema.validate(doc))             # valid
 ```
 
-Run the full tour with `python examples/quickstart.py`.
+Run the full tour with `python3 examples/quickstart.py`.
 
 ## Documentation
 
@@ -101,7 +108,7 @@ Run the full tour with `python examples/quickstart.py`.
 
 ```bash
 pip install pytest pyyaml tomli_w defusedxml
-python -m pytest          # 108 tests
+python3 -m pytest          # 108 tests
 ```
 
 ## License

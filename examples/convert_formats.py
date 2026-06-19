@@ -1,6 +1,7 @@
+#!/usr/bin/env python3
 """Convert one document between all four formats, and show the null rule.
 
-Run: python examples/convert_formats.py
+Run: python3 examples/convert_formats.py
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

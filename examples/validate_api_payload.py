@@ -1,6 +1,7 @@
+#!/usr/bin/env python3
 """Validate an incoming JSON payload against a schema and report errors.
 
-Run: python examples/validate_api_payload.py
+Run: python3 examples/validate_api_payload.py
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

@@ -19,8 +19,15 @@ extra only for each format you use:
 If an extra is missing, the matching function raises a clear `ImportError`
 telling you what to install — nothing else breaks.
 
-The package isn't published to PyPI yet. Clone the repo and either run from the
-checkout or `pip install .`.
+The package isn't published to PyPI yet, so install it from a checkout:
+
+```bash
+git clone https://github.com/tomlee/dataspec.git
+cd dataspec
+python3 -m venv .venv && source .venv/bin/activate
+pip install .                          # core + JSON
+pip install pyyaml tomli_w defusedxml  # all format extras (optional)
+```
 
 ## The two ideas you need
 
