@@ -34,8 +34,17 @@ are thin conveniences over lower ones — there is one source of truth for data
   constructs Schemas in Python. Both are sugar: a `Doc` holds plain Python; the
   builder produces ordinary type objects.
 
-You can stay purely functional (`write_toml(read_json(s))`) or work entirely in
-the object layer (`Doc.from_json(s).to_toml()`) — they meet in the middle.
+You can stay purely functional or work entirely in the object layer — they meet
+in the middle and produce the same output:
+
+```python
+from dataspec import write_toml, read_json, Doc
+
+s = '{"name": "Ann", "address": {"city": "HK"}}'
+
+write_toml(read_json(s))          # purely functional
+Doc.from_json(s).to_toml()        # the object layer — same result
+```
 
 ## The OO structure
 
@@ -106,3 +115,9 @@ registry, so a newly registered format is immediately usable. See
 4. **One model, many doors.** DSL, builder, and inference all yield the same
    `Schema` object tree; `read_*`, literals, and `from_format` all yield the same
    Document.
+
+## See also
+
+- [Concepts](concepts.md) — the five ideas this architecture implements.
+- [Documents](document.md) — the `Doc` API, explained with examples.
+- [Schemas](schema.md) — the schema language and Python builder, explained with examples.
