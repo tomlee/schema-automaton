@@ -37,16 +37,23 @@ You don't need an existing value or format string at all — start from `doc()`
 ```python
 d = doc()                          # empty object
 d.add("name", "Ann")
-tags = d.add_array("tags")         # add an empty array, get a cursor to it
-tags.append("x")
-tags.append("y")
 
-d.to_data()                        # {"name": "Ann", "tags": ["x", "y"]}
+address = d.add_object("address")  # add an empty object, get a cursor to it
+address.add("city", "HK")
+
+items = d.add_array("items")       # add an empty array, get a cursor to it
+item = items.append_object()       # append an object, get a cursor to it
+item.add("id", 1)
+
+d.to_data()                        # {"name": "Ann",
+                                    #  "address": {"city": "HK"},
+                                    #  "items": [{"id": 1}]}
 ```
 
-This is the same `Doc` you'd get from `doc({"name": "Ann", "tags": ["x", "y"]})`
-or `Doc.from_json('{"name": "Ann", "tags": ["x", "y"]}')` — three different
-starting points, one guarded result.
+This is the same `Doc` you'd get from
+`doc({"name": "Ann", "address": {"city": "HK"}, "items": [{"id": 1}]})` or the
+equivalent JSON via `Doc.from_json(...)` — three different starting points, one
+guarded result.
 
 ## Navigating
 
