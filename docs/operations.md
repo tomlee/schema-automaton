@@ -3,6 +3,9 @@
 When a schema is versioned — an API payload, a config format — you need to know
 whether a change is safe. dataspec answers two questions directly.
 
+> For these operations used against one realistic, multi-format schema rather
+> than the toy schemas below, see [A worked example](example.md#using-compatible_with-is-a-schema-change-backward-compatible).
+
 ## `compatible_with` — is a change backward-compatible?
 
 `a.compatible_with(b)` is `True` when **every document that `a` accepts is also

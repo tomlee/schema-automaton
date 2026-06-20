@@ -112,6 +112,8 @@ Run the full tour with `python3 examples/quickstart.py`.
   import / edit / validate / convert.
 - **[Documents](docs/document.md)** — the `Doc` API: build, navigate, edit, emit.
 - **[Schemas](docs/schema.md)** — the schema language *and* the Python builder.
+- **[A worked example](docs/example.md)** — one realistic schema, documents in
+  every format (accepted and rejected), and the schema operations in action.
 - **[Formats](docs/formats/overview.md)** — what each format supports and the
   comparison table.
   ([JSON](docs/formats/json.md) · [YAML](docs/formats/yaml.md) ·

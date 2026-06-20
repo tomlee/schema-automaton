@@ -169,6 +169,8 @@ and arrays.
   and how the layers fit together.
 - [Documents](document.md) — the full `Doc` API: build, navigate, edit, emit.
 - [Schemas](schema.md) — the schema language *and* the Python builder.
+- [A worked example](example.md) — one realistic schema, documents in every
+  format, and the schema operations used together.
 - [Formats](formats/overview.md) — per-format support and the comparison table.
 - [Comparing schemas](operations.md) — backward-compatibility checks for
   versioned APIs and configs.

@@ -25,8 +25,9 @@ result.errors[0].message        # 'expected string, got integer'
 
 You can also build the same schema in Python instead of as text — see
 [The Python builder](#the-python-builder). This page defines every concept and
-every type, with examples; if you'd rather see them all combined first, jump
-to [A full example](#a-full-example).
+every type, with examples; for a complete, realistic schema combining them
+all at once, with real documents and operations, see
+[A worked example](example.md).
 
 ### DSL or builder?
 
@@ -284,97 +285,12 @@ A reference to an undefined type is caught when you parse the schema:
 parse_schema("root { a: Missing }")      # raises SchemaError: unknown type 'Missing'
 ```
 
-## A full example
-
-A realistic schema combines several of the above at once. Here's one for an
-order — two named types, an enum, a required array with a minimum length, an
-optional field, and a map for arbitrary extra metadata — built **both** ways,
-so you can see the DSL text and its exact builder equivalent side by side.
-This is [`examples/build_schema.py`](../examples/build_schema.py); every
-output below is its actual, tested output, not illustrative pseudocode.
-
-**As DSL text:**
-
-```
-type Address = { street: string, city: string }
-type LineItem = { sku: string, qty: integer, price: number }
-
-root {
-    order: {
-        id:      string,
-        status:  "pending" | "shipped" | "cancelled",
-        total:   number,
-        address: Address,
-        items:   [LineItem]+,          # at least one line item
-        coupon?: string,               # optional
-        tags:    { [string]: string }, # arbitrary extra keys -> string
-    },
-}
-```
-
-**The same schema with the builder:**
-
-```python
-from dataspec import arr, enum, mapping, obj, optional, schema, t
-
-address_t = obj(street=t.string, city=t.string)
-line_item_t = obj(sku=t.string, qty=t.integer, price=t.number)
-order_t = obj(
-    id=t.string,
-    status=enum("pending", "shipped", "cancelled"),
-    total=t.number,
-    address=address_t,
-    items=arr(line_item_t, min=1),
-    coupon=optional(t.string),
-    tags=mapping(t.string),
-)
-s_builder = schema(obj(order=order_t))
-```
-
-Both produce an equivalent `Schema` — `s_dsl.equivalent(s_builder)` is `True`.
-(The root is `{ order: {...} }`, one top-level key, rather than the order
-fields directly at the root — this makes the same Document also a valid,
-lossless single XML document later; see [XML](formats/xml.md#xml-is-single-rooted).)
-
-**A document it accepts** (`coupon` omitted — it's optional):
-
-```python
-good = {
-    "order": {
-        "id": "A1001",
-        "status": "shipped",
-        "total": 29.97,
-        "address": {"street": "1 Main St", "city": "London"},
-        "items": [{"sku": "WIDGET", "qty": 3, "price": 9.99}],
-        "tags": {"region": "EU"},
-    }
-}
-s_dsl.validate(doc(good))
-# valid
-```
-
-**A document it rejects**, with one error per problem:
-
-```python
-bad = {
-    "order": {
-        "id": "A1002",
-        "status": "lost",          # not one of the enum values
-        "total": 10,
-        "address": {"street": "2 Main St", "city": "London"},
-        "items": [],                # violates the [LineItem]+ minimum
-        "tags": {},
-    }
-}
-s_dsl.validate(doc(bad))
-# invalid:
-#   at $.order.status: 'lost' not one of ['cancelled', 'pending', 'shipped']
-#   at $.order.items: array length 0 is not at least 1
-```
-
-Run `python3 examples/build_schema.py` to see this end to end, including
-navigating the built schema with the uniform getters (`.field()`,
-`.children()`) covered in [Architecture](architecture.md).
+For a complete, realistic schema combining several of the above at once —
+two named types, an enum, a required array with a minimum length, an
+optional field, and a map — built both as DSL text and via the builder, with
+documents from every format (some accepted, some rejected) and the
+`compatible_with`/`normalize` operations used against it, see
+[A worked example](example.md).
 
 ## Validation results
 

@@ -211,3 +211,4 @@ One warning, not an exception — parsing still succeeds:
 - [Concepts](concepts.md) — the five ideas this API implements.
 - [Documents](document.md) — the `Doc` API, explained with examples.
 - [Schemas](schema.md) — the schema language and Python builder, explained with examples.
+- [A worked example](example.md) — one realistic schema, multi-format documents, and the schema operations together.
