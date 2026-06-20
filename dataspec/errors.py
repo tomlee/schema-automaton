@@ -1,4 +1,4 @@
-"""Exceptions used across dataspec."""
+"""Exceptions (and one warning) used across dataspec."""
 
 
 class DataspecError(Exception):
@@ -43,3 +43,16 @@ class WriteError(DataspecError):
     def __init__(self, message: str, report=None):
         super().__init__(message)
         self.report = report
+
+
+class UnsafeXMLWarning(UserWarning):
+    """``defusedxml`` isn't installed, so ``read_xml`` fell back to the
+    standard library's XML parser, which is vulnerable to entity-expansion
+    and external-entity (XXE) attacks on untrusted input.
+
+    Not an exception — parsing still succeeds. ``pip install defusedxml``
+    (or the ``xml`` / ``all`` extra) to remove the warning and the risk. If
+    you've deliberately decided this doesn't apply (e.g. the XML is never
+    from an untrusted source), suppress it with
+    ``warnings.filterwarnings("ignore", category=dataspec.UnsafeXMLWarning)``.
+    """

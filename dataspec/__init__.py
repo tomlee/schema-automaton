@@ -35,6 +35,7 @@ from .errors import (
     DocumentError,
     ParseError,
     SchemaError,
+    UnsafeXMLWarning,
     WriteError,
 )
 from .formats import (
@@ -80,7 +81,7 @@ from .schema import (
 __all__ = [
     # errors
     "DataspecError", "SchemaError", "ParseError", "WriteError", "DocumentError",
-    "DetachedNode",
+    "DetachedNode", "UnsafeXMLWarning",
     # serialization reports
     "WriteReport", "Adjustment", "finish_write",
     # document (data DOM)

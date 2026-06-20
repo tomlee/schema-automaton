@@ -198,6 +198,12 @@ All inherit from `DataspecError`, so you can catch everything with one `except`.
 | `DocumentError` | a value isn't a legal Document, or a `Doc` operation is invalid |
 | `DetachedNode` | a `Doc` cursor was used after its node was removed (subclass of `DocumentError`) |
 
+One warning, not an exception — parsing still succeeds:
+
+| Warning | Raised when |
+|---|---|
+| `UnsafeXMLWarning` | `read_xml` fell back to the standard library's XML parser because `defusedxml` isn't installed; that parser has no protection against entity-expansion/XXE attacks on untrusted input |
+
 ## See also
 
 - [Concepts](concepts.md) — the five ideas this API implements.

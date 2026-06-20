@@ -8,6 +8,7 @@ import pytest
 from dataspec import (
     DocumentError,
     ParseError,
+    UnsafeXMLWarning,
     WriteError,
     WriteReport,
     check_json,
@@ -165,6 +166,27 @@ class TestXml:
 
     def test_namespaces_stripped(self):
         assert read_xml('<r xmlns:n="urn:x"><n:a>1</n:a></r>') == {"a": 1}
+
+    def test_warns_when_defusedxml_is_unavailable(self, monkeypatch):
+        # read_xml() used to silently fall back to the standard library's
+        # XML parser (vulnerable to XXE / entity expansion) with no
+        # indication to the caller that defusedxml wasn't being used.
+        import builtins
+
+        real_import = builtins.__import__
+
+        def blocking_import(name, *args, **kwargs):
+            if name == "defusedxml" or name.startswith("defusedxml."):
+                raise ImportError("simulated: not installed")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", blocking_import)
+        with pytest.warns(UnsafeXMLWarning):
+            assert read_xml("<r><a>1</a></r>") == {"a": 1}
+
+    def test_no_warning_when_defusedxml_is_available(self, recwarn):
+        read_xml("<r><a>1</a></r>")
+        assert not any(isinstance(w.message, UnsafeXMLWarning) for w in recwarn.list)
 
     def test_omits_null_field(self):
         assert "<b>" not in write_xml({"a": 1, "b": None}, root="r")

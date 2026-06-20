@@ -7,7 +7,11 @@ Documents as the other formats.
 
 Install `pip install defusedxml` so parsing is hardened against entity-expansion
 and external-entity attacks. If it isn't installed, the standard library is used
-as a fallback.
+as a fallback — `read_xml` emits an `UnsafeXMLWarning` each time this happens
+(Python's default warning filter shows it once per call site, not on every
+call), since the stdlib parser has no protection against those attacks on
+untrusted input. Suppress it only if you've deliberately decided it doesn't
+apply, e.g. `warnings.filterwarnings("ignore", category=UnsafeXMLWarning)`.
 
 ```python
 from dataspec import read_xml, write_xml

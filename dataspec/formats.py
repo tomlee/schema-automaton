@@ -40,7 +40,7 @@ import math as _math
 import re as _re
 from typing import Any, Optional, Tuple
 
-from .errors import DocumentError, ParseError
+from .errors import DocumentError, ParseError, UnsafeXMLWarning
 from .report import WriteReport, finish_write
 
 # Bounds recursion depth well under Python's default recursion limit (1000),
@@ -532,7 +532,14 @@ def _xml_parser():
     try:
         import defusedxml.ElementTree as ET  # safe against XXE / billion-laughs
         return ET
-    except ImportError:  # pragma: no cover
+    except ImportError:
+        import warnings
+        warnings.warn(
+            "defusedxml is not installed; read_xml() will use the standard "
+            "library's XML parser, which is vulnerable to entity-expansion "
+            "and external-entity (XXE) attacks on untrusted input. "
+            "pip install defusedxml (or the 'xml'/'all' extra) to fix this.",
+            UnsafeXMLWarning, stacklevel=3)
         import xml.etree.ElementTree as ET
         return ET
 
