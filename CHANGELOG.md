@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.1.0a7]
+
+No code changes — a packaging/release-readiness check ahead of
+eventually dropping the alpha suffix and publishing.
+
+- Verified the package actually builds and installs as a real
+  artifact, not just from an editable source checkout: `python -m
+  build` produces a valid sdist and wheel, `twine check` passes both,
+  `py.typed` is correctly included in the wheel, and installing the
+  built wheel into a clean virtualenv (no source tree on the path)
+  and running the full test suite against it passes.
+- Found a real blocker for publishing to PyPI under the name
+  `dataspec`: an unrelated package already holds it (Covera Health's
+  "Data specification and normalization toolkit," last released in
+  2020). Resolving this — a different distribution name, or
+  requesting release of the apparently-abandoned name — is a
+  prerequisite for any PyPI publish, independent of code readiness.
+
 ## [v0.1.0a6]
 
 Performance only — no behavior changes (verified: every existing test

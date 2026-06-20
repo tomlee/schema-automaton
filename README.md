@@ -133,7 +133,7 @@ python3 -m pytest          # 224 tests
 
 ## Status
 
-dataspec is **alpha** (v0.1.0a6) and under active development. The core model,
+dataspec is **alpha** (v0.1.0a7) and under active development. The core model,
 schema language, and format codecs are working and tested, but the public API may
 change before a stable release. It is not yet on PyPI — install from a checkout.
 
