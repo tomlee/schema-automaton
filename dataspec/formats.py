@@ -143,7 +143,7 @@ def read_yaml(text: str) -> Any:
         data = yaml.safe_load(text)
     except yaml.YAMLError as exc:  # pragma: no cover
         raise ParseError(f"invalid YAML: {exc}") from exc
-    _yaml_core_check(data, "$", set(), 0)
+    _yaml_core_check(data, "$", frozenset(), set(), 0)
     return data
 
 
@@ -187,23 +187,36 @@ def _yaml_prepare(data: Any, path: str, rep: WriteReport, depth: int) -> Any:
     return data
 
 
-def _yaml_core_check(node: Any, path: str, seen: set, depth: int) -> None:
-    if isinstance(node, dict):
-        if id(node) in seen:
-            raise ParseError(f"recursive YAML (anchors/aliases) at {path} is not supported")
-        _depth_guard(path, depth + 1)
-        seen = seen | {id(node)}
-        for k, v in node.items():
-            if not isinstance(k, str):
-                raise ParseError(f"non-string key {k!r} at {path} is not supported")
-            _yaml_core_check(v, f"{path}.{k}", seen, depth + 1)
-    elif isinstance(node, list):
-        if id(node) in seen:
+def _yaml_core_check(node: Any, path: str, ancestors: frozenset, visited: set,
+                     depth: int) -> None:
+    """Validate a parsed YAML tree: string keys only, no cycles, bounded depth.
+
+    ``visited`` records nodes already fully checked via one alias reference,
+    so a node reused by many aliases -- YAML's normal, memory-sharing way of
+    representing repeated structure, not necessarily a cycle -- is walked
+    once, not once per reference.  Without this, a small, perfectly ordinary
+    YAML payload using aliases takes time exponential in the nesting depth to
+    validate even though ``yaml.safe_load`` parses it instantly (PyYAML
+    shares the constructed objects; this function used to re-walk them).
+    ``ancestors`` is unrelated and tracks the current path, to still catch a
+    genuine cycle (a node that contains itself).
+    """
+    if isinstance(node, (dict, list)):
+        if id(node) in ancestors:
             raise ParseError(f"recursive YAML at {path} is not supported")
+        if id(node) in visited:
+            return
         _depth_guard(path, depth + 1)
-        seen = seen | {id(node)}
-        for i, v in enumerate(node):
-            _yaml_core_check(v, f"{path}[{i}]", seen, depth + 1)
+        anc = ancestors | {id(node)}
+        if isinstance(node, dict):
+            for k, v in node.items():
+                if not isinstance(k, str):
+                    raise ParseError(f"non-string key {k!r} at {path} is not supported")
+                _yaml_core_check(v, f"{path}.{k}", anc, visited, depth + 1)
+        else:
+            for i, v in enumerate(node):
+                _yaml_core_check(v, f"{path}[{i}]", anc, visited, depth + 1)
+        visited.add(id(node))
 
 
 # ===========================================================================

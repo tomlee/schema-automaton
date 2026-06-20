@@ -1,6 +1,7 @@
 """Format codecs: round-trip, cross-format transcode, and profile limits."""
 import datetime
 import json
+import time
 
 import pytest
 
@@ -71,6 +72,38 @@ class TestYaml:
     def test_rejects_non_string_keys(self):
         with pytest.raises(ParseError):
             read_yaml("1: a\n2: b\n")
+
+    def test_rejects_genuine_cycle(self):
+        with pytest.raises(ParseError):
+            read_yaml("a: &a\n  b: *a\n")
+
+    def test_aliases_share_the_underlying_object(self):
+        # PyYAML reuses the same constructed object for every reference to
+        # an anchor -- not a bug, just how YAML represents shared structure.
+        result = read_yaml("shared: &s [1, 2, 3]\nx: *s\ny: *s\n")
+        assert result["x"] is result["y"]
+
+    def test_aliased_structure_validates_in_linear_not_exponential_time(self):
+        # Regression: _yaml_core_check used to re-walk a shared/aliased
+        # subtree once per *reference* rather than once per unique object,
+        # so a small, ordinary YAML payload using aliases took time
+        # exponential in the nesting depth to validate -- even though
+        # yaml.safe_load parses it instantly, since PyYAML shares the
+        # constructed objects rather than duplicating them. 50 levels would
+        # be a logical size of 10**50 if it were actually expanded; this
+        # must stay fast because nothing is actually duplicated.
+        levels = 50
+        lines = ["a0: &a0 [" + ", ".join(["x"] * 30) + "]"]
+        for i in range(1, levels):
+            lines.append(f"a{i}: &a{i} [" + ", ".join([f"*a{i - 1}"] * 10) + "]")
+        text = "\n".join(lines)
+        start = time.monotonic()
+        read_yaml(text)
+        elapsed = time.monotonic() - start
+        # generous bound -- this finishes in ~0.05s when not exponential;
+        # a regression back to exponential would take longer than the age
+        # of the universe at 50 levels, so 5s has no realistic false-fail risk
+        assert elapsed < 5, f"took {elapsed:.2f}s -- looks exponential again"
 
 
 # ---------------------------------------------------------------- TOML

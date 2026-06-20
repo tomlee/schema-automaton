@@ -42,6 +42,14 @@ plain Document:
 Other advanced YAML (custom tags like `!!python/...`, etc.) never appears because
 the safe loader doesn't produce it.
 
+Non-cyclic anchors/aliases (reusing the same anchored value at several points)
+are supported and validated efficiently regardless of how large the structure
+would be if every reference were actually duplicated — a YAML payload using a
+handful of nested aliases can represent an astronomically large *logical*
+structure (the "billion laughs" pattern) while parsing and validating in a
+fraction of a second, since PyYAML shares the underlying object rather than
+copying it, and reading it doesn't re-walk a shared subtree once per reference.
+
 Standalone **time-of-day** values (`datetime.time`) have no native YAML form, so
 on write they're converted to a string and reported as a `temporal.stringified`
 warning (`check_yaml(doc)` shows it). Dates and datetimes are unaffected — YAML
