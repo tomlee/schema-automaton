@@ -470,6 +470,11 @@ def _xml_text(v: Any, path: str, rep: WriteReport) -> str:
         rep.add(path, "string.ambiguous",
                 f"string {v!r} looks like a different type and will not "
                 "read back as a string", "warning")
+    elif isinstance(v, str) and "\r" in v:
+        rep.add(path, "string.line_ending_normalized",
+                "the XML spec requires \\r\\n and \\r to be normalized to "
+                "\\n on read, so this string will not read back unchanged",
+                "warning")
     return str(v)
 
 

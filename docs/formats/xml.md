@@ -62,6 +62,7 @@ use `report=`, `check_xml(doc)`, or `strict=True` to see or forbid them.
 | Two distinct keys that sanitize to the same name | write | merge into one list on read; reported as `key.collision`, **error** |
 | Date / time | write | written as text, reported (reads back as a string) |
 | A string that looks like a number/bool/`null` (e.g. `"true"`, `"123"`) | write | reads back as that type, not a string; reported as `string.ambiguous` |
+| A string containing `\r` (e.g. CRLF line endings) | write | the XML spec normalizes `\r\n`/`\r` to `\n` on read; reported as `string.line_ending_normalized` |
 | Empty object `{}` or empty array `[]` as a value | write | reads back as `""` (an empty string); reported as `container.empty.ambiguous` |
 
 If your XML uses attributes, transform it first (for example with XSLT) into an
@@ -85,7 +86,11 @@ for you to discover on the next read — same with an empty object or array,
 which has no representation in XML at all (a self-closing element is the only
 way to write "nothing here," so `{}`, `[]`, and `""` are indistinguishable on
 read; writing either of the first two is reported as `container.empty.ambiguous`).
-`strict=True` rejects both.
+A string containing `\r` (a Windows-style `\r\n` line ending, for instance) is
+also reported (`string.line_ending_normalized`): the XML spec itself mandates
+normalizing `\r\n`/`\r` to `\n` on read, regardless of parser, so this isn't
+something dataspec could preserve even with attributes or a different parser.
+`strict=True` rejects all three.
 
 ## Round-trip behaviour
 

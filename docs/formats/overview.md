@@ -102,6 +102,7 @@ truthiness of "no errors". The stable `code` values:
 | `key.collision` | error | two distinct keys coerced/sanitized to the same key, one overwriting the other (JSON/XML) |
 | `array.nested.ambiguous` | error | nested array wrapped in `<item>` elements (XML) |
 | `string.ambiguous` | warning | a string that looks like a number/bool/null written to XML; reads back as that type, not as a string |
+| `string.line_ending_normalized` | warning | a string containing `\r` written to XML; the XML spec normalizes it to `\n` on read |
 | `container.empty.ambiguous` | warning | an empty object/array written to XML; reads back as an empty string, not as an empty object/array |
 | `integer.out_of_range` | warning | integer outside TOML's signed 64-bit range; round-trips here, but may not in another TOML implementation |
 
