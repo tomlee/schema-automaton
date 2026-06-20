@@ -22,7 +22,6 @@ is the job of a :class:`~dataspec.schema.Schema`, applied with ``validate``.
 
 from __future__ import annotations
 
-import copy as _copy
 import datetime as _dt
 from typing import Any, Iterator, List, Optional, Tuple
 
@@ -334,7 +333,7 @@ class Doc:
     def to_data(self) -> Any:
         """A detached deep copy of this node's data as plain Python."""
         self._attached()
-        return _copy.deepcopy(self._data)
+        return _fast_deepcopy(self._data)
 
     def to_format(self, name: str, **opts: Any) -> str:
         self._attached()
@@ -419,7 +418,22 @@ class Doc:
 
 
 def _snapshot(v: Any) -> Any:
-    return _copy.deepcopy(v) if _is_container(v) else v
+    return _fast_deepcopy(v) if _is_container(v) else v
+
+
+def _fast_deepcopy(v: Any) -> Any:
+    """Deep-copy a Document value without ``copy.deepcopy``'s generic
+    dispatch/memo machinery.  Safe because a ``Doc`` only ever holds the
+    Document model's own types (dict/list/scalars) -- the guard already
+    enforces that on the way in -- so none of ``deepcopy``'s generality
+    (arbitrary classes, ``__deepcopy__`` hooks, reference-cycle tracking) is
+    needed; the result is the same, just faster.
+    """
+    if isinstance(v, dict):
+        return {k: _fast_deepcopy(x) for k, x in v.items()}
+    if isinstance(v, list):
+        return [_fast_deepcopy(x) for x in v]
+    return v  # str/int/float/bool/None/date/time/datetime are all immutable
 
 
 def _kindof(v: Any) -> str:

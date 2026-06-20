@@ -275,9 +275,7 @@ _TOML_INT_MAX = 2 ** 63 - 1
 def _serialize_toml(data: Any, *, null_style: str,
                     wrap_key: str) -> Tuple[str, WriteReport]:
     rep = WriteReport()
-    _scan_toml_int_range(data, "$", rep, 0)
-    data = _fix_toml_offset_times(data, "$", rep, 0)
-    body = _strip_nulls(data, "$", rep, null_style, 0)
+    body = _prepare_toml(data, "$", rep, null_style, 0)
     if body is None:
         rep.add("$", "null.toplevel.empty",
                 "top-level null written as an empty document", "error")
@@ -291,39 +289,67 @@ def _serialize_toml(data: Any, *, null_style: str,
     return tomli_w.dumps(body), rep
 
 
-def _scan_toml_int_range(data: Any, path: str, rep: WriteReport, depth: int) -> None:
-    """Flag integers outside TOML's signed 64-bit range.
+def _prepare_toml(data: Any, path: str, rep: WriteReport, null_style: str,
+                  depth: int) -> Any:
+    """One tree walk doing everything TOML needs before ``tomli_w.dumps``:
+    flag out-of-range integers, stringify offset-aware times, and strip
+    nulls (TOML has none of the three natively). Combined into a single
+    pass -- rather than three separate ones, each re-walking and (for two of
+    them) rebuilding the whole tree -- since profiling showed the three
+    passes cost roughly as much as ``tomli_w``'s own serialization combined.
 
-    ``tomli_w``/``tomllib`` round-trip these fine (Python ints are unbounded),
-    but the output violates the TOML spec and may be rejected by a
-    spec-compliant parser in another language.
+    Null *object fields* are omitted (warning).  Null *array items* are
+    dropped; that shifts positions, so it is an error-severity adjustment
+    under ``null_style="omit"`` and an ordinary warning under ``"drop"``.
     """
     if isinstance(data, bool):
-        return
+        return data
     if isinstance(data, int):
         if not (_TOML_INT_MIN <= data <= _TOML_INT_MAX):
             rep.add(path, "integer.out_of_range",
                     f"{data} is outside TOML's signed 64-bit integer range "
                     "and may not round-trip in other TOML implementations",
                     "warning")
-        return
+        return data
+    if isinstance(data, _dt.time) and data.tzinfo is not None:
+        rep.add(path, "temporal.stringified",
+                "a time with a UTC offset has no native TOML representation "
+                "(only date-time can carry an offset); written as text",
+                "warning")
+        return data.isoformat()
     if isinstance(data, dict):
         _depth_guard(path, depth + 1)
+        out = {}
         for k, v in data.items():
-            _scan_toml_int_range(v, f"{path}.{k}", rep, depth + 1)
-    elif isinstance(data, list):
+            if v is None:
+                rep.add(f"{path}.{k}", "null.field.omitted",
+                        "null object field omitted", "warning")
+                continue
+            out[k] = _prepare_toml(v, f"{path}.{k}", rep, null_style, depth + 1)
+        return out
+    if isinstance(data, list):
         _depth_guard(path, depth + 1)
+        out = []
         for i, v in enumerate(data):
-            _scan_toml_int_range(v, f"{path}[{i}]", rep, depth + 1)
+            if v is None:
+                sev = "warning" if null_style == "drop" else "error"
+                rep.add(f"{path}[{i}]", "null.item.dropped",
+                        "null array item dropped (shifts positions)", sev)
+                continue
+            out.append(_prepare_toml(v, f"{path}[{i}]", rep, null_style, depth + 1))
+        return out
+    return data
 
 
 def _strip_nulls(data: Any, path: str, rep: WriteReport, null_style: str,
                  depth: int) -> Any:
-    """Remove nulls for formats that have none (TOML/XML), recording each removal.
+    """Remove nulls for formats that have none (XML; TOML uses
+    :func:`_prepare_toml` instead, which folds this in with its other
+    TOML-only checks), recording each removal.
 
-    Null *object fields* are omitted (warning).  Null *array items* are dropped;
-    that shifts positions, so it is an error-severity adjustment under
-    ``null_style="omit"`` and an ordinary warning under ``"drop"``.
+    Null *object fields* are omitted (warning).  Null *array items* are
+    dropped; that shifts positions, so it is an error-severity adjustment
+    under ``null_style="omit"`` and an ordinary warning under ``"drop"``.
     """
     if isinstance(data, dict):
         _depth_guard(path, depth + 1)
@@ -346,30 +372,6 @@ def _strip_nulls(data: Any, path: str, rep: WriteReport, null_style: str,
                 continue
             out.append(_strip_nulls(v, f"{path}[{i}]", rep, null_style, depth + 1))
         return out
-    return data
-
-
-def _fix_toml_offset_times(data: Any, path: str, rep: WriteReport, depth: int) -> Any:
-    """Stringify a timezone-aware ``time`` -- TOML's native time type has no
-    offset slot at all (only ``date-time`` can carry one), so ``tomli_w``
-    raises ``ValueError`` on it directly. Converting it to text first, the
-    same way JSON/XML/YAML already handle temporal values TOML or they
-    can't hold natively, turns that crash into the usual lenient adjustment.
-    """
-    if isinstance(data, _dt.time) and data.tzinfo is not None:
-        rep.add(path, "temporal.stringified",
-                "a time with a UTC offset has no native TOML representation "
-                "(only date-time can carry an offset); written as text",
-                "warning")
-        return data.isoformat()
-    if isinstance(data, dict):
-        _depth_guard(path, depth + 1)
-        return {k: _fix_toml_offset_times(v, f"{path}.{k}", rep, depth + 1)
-                for k, v in data.items()}
-    if isinstance(data, list):
-        _depth_guard(path, depth + 1)
-        return [_fix_toml_offset_times(v, f"{path}[{i}]", rep, depth + 1)
-                for i, v in enumerate(data)]
     return data
 
 

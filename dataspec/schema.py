@@ -240,7 +240,9 @@ class Schema:
     def peel(self, t: Type) -> Tuple[Type, bool]:
         """Resolve refs to a concrete type, OR-ing nullability along the chain."""
         nullable = t.nullable
-        seen = set()
+        if not isinstance(t, RefType):
+            return t, nullable  # common case: skip allocating `seen` entirely
+        seen: set = set()
         while isinstance(t, RefType):
             if t.name in seen:
                 raise SchemaError(f"cyclic type alias chain at {t.name!r}")

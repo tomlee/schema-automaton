@@ -420,6 +420,33 @@ class TestReports:
         assert check_toml({"t": naive_time}).adjustments == []
         assert check_toml({"dt": offset_dt}).adjustments == []
 
+    def test_toml_combined_adjustments_in_one_document(self):
+        # Regression for merging the int-range/offset-time/null checks into
+        # one tree walk (_prepare_toml): all three must still fire correctly
+        # when present together in a single document, not just in isolation.
+        offset_time = datetime.time(12, 0, tzinfo=datetime.timezone.utc)
+        data = {
+            "big": 2 ** 63,
+            "t": offset_time,
+            "n": None,
+            "xs": [1, None, 2],
+        }
+        rep = check_toml(data)
+        codes = sorted(a.code for a in rep)
+        assert codes == [
+            "integer.out_of_range",
+            "null.field.omitted",
+            "null.item.dropped",
+            "temporal.stringified",
+        ]
+        out = write_toml(data)
+        parsed = tomllib.loads(out)
+        assert parsed == {
+            "big": 2 ** 63,
+            "t": "12:00:00+00:00",
+            "xs": [1, 2],
+        }
+
 
 # ------------------------------------------------- check_json / write_json reports
 class TestJsonReports:
