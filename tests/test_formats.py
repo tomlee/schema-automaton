@@ -180,6 +180,22 @@ class TestXml:
     def test_namespaces_stripped(self):
         assert read_xml('<r xmlns:n="urn:x"><n:a>1</n:a></r>') == {"a": 1}
 
+    def test_root_element_name_is_arbitrary_on_read(self):
+        # read_xml never inspects the root tag itself, only its children --
+        # the name is a wrapper, not part of the data, on both write (the
+        # `root=` parameter) and read.
+        a = read_xml("<r><name>Ann</name></r>")
+        b = read_xml("<totallydifferent><name>Ann</name></totallydifferent>")
+        assert a == b == {"name": "Ann"}
+
+    def test_write_then_read_with_different_root_names(self):
+        data = {"name": "Ann"}
+        out = write_xml(data, root="person")
+        assert "<person>" in out
+        assert read_xml(out) == data
+        # the reader doesn't care what the writer called it, either
+        assert read_xml(out.replace("person", "anything")) == data
+
     def test_warns_when_defusedxml_is_unavailable(self, monkeypatch):
         # read_xml() used to silently fall back to the standard library's
         # XML parser (vulnerable to XXE / entity expansion) with no
@@ -603,3 +619,72 @@ class TestXmlReports:
         # array representation, not a collision between two different keys.
         rep = check_xml({"tags": ["a", "b"]}, root="r")
         assert [a.code for a in rep if a.code == "key.collision"] == []
+
+
+# --------------------------------------- key names: permitted here, not there
+class TestCrossFormatKeyCompatibility:
+    """Key names that are syntactically significant in one format's grammar
+    but ordinary text in the others. JSON/YAML/TOML never need to touch any
+    of these. Spelled out explicitly here, in addition to being part of the
+    generic sweep in test_edge_cases.py, so the "permitted in some formats,
+    not others" contrast is readable as a single test rather than only
+    provable by inference from the sweep's invariants.
+    """
+
+    # Most of these aren't legal XML names, so they get key.sanitized.
+    KEYS_XML_MUST_SANITIZE = {
+        "space": "my key",
+        "empty": "",
+        "unicode": "clé",
+        "numeric_looking": "123",
+        "digit_prefix": "123abc",            # XML names can't start with a digit
+        "toml_equals": "a=b",
+        "toml_brackets": "a[b]",
+        "yaml_colon": "a:b",
+        "shared_hash": "a#b",
+    }
+
+    # "." and "-" are legal *inside* an XML name (just not as the first
+    # character), so a key that's syntactically special in TOML (dotted-key
+    # nesting) can still be a legal XML name as-is -- the two formats'
+    # "special character" sets don't even line up with each other.
+    KEYS_XML_ACCEPTS_UNCHANGED = {
+        "toml_dot": "a.b",
+    }
+
+    @pytest.mark.parametrize("key", KEYS_XML_MUST_SANITIZE.values(),
+                            ids=KEYS_XML_MUST_SANITIZE.keys())
+    def test_json_yaml_toml_accept_as_is_xml_sanitizes(self, key):
+        data = {key: 1}
+        self._assert_clean_in_json_yaml_toml(data)
+
+        # XML: not a legal element name, so it's sanitized into one --
+        # reported, and the key changes shape, but the value is never lost.
+        rep = check_xml(data, root="r")
+        assert [a.code for a in rep] == ["key.sanitized"]
+        back = read_xml(write_xml(data, root="r"))
+        assert back != data                 # the key did not survive unchanged
+        assert list(back.values()) == [1]   # but the value did
+
+    @pytest.mark.parametrize("key", KEYS_XML_ACCEPTS_UNCHANGED.values(),
+                            ids=KEYS_XML_ACCEPTS_UNCHANGED.keys())
+    def test_special_only_in_toml_xml_accepts_unchanged(self, key):
+        data = {key: 1}
+        self._assert_clean_in_json_yaml_toml(data)
+
+        # Unlike every other case above, this key IS already a legal XML
+        # name (TOML and XML don't agree on what "special" means), so XML
+        # needs no adjustment either -- it round-trips exactly everywhere.
+        assert check_xml(data, root="r").adjustments == []
+        assert read_xml(write_xml(data, root="r")) == data
+
+    @staticmethod
+    def _assert_clean_in_json_yaml_toml(data):
+        # None of these characters need any special handling in JSON, YAML,
+        # or TOML -- the key round-trips exactly, with no adjustment at all.
+        assert read_json(write_json(data)) == data
+        assert check_json(data).adjustments == []
+        assert read_yaml(write_yaml(data)) == data
+        assert check_yaml(data).adjustments == []
+        assert read_toml(write_toml(data)) == data
+        assert check_toml(data).adjustments == []

@@ -70,6 +70,13 @@ use `report=`, `check_xml(doc)`, or `strict=True` to see or forbid them.
 | Empty object `{}` or empty array `[]` as a value | write | reads back as `""` (an empty string); reported as `container.empty.ambiguous` |
 | A string containing a character with no legal XML representation (most C0 controls, surrogates) | write | the character is removed; reported as `string.illegal_xml_char`, **error** |
 
+A legal XML name allows letters, digits (not as the first character),
+underscore, `.`, and `-` — so a key like `"a.b"` is written **unchanged**,
+with no `key.sanitized` adjustment, even though a literal dot is
+syntactically special in TOML (it denotes a nested table there). "Special" in
+one format's grammar doesn't mean special in another's; each format only
+sanitizes what's actually illegal in *its own* syntax.
+
 If your XML uses attributes, transform it first (for example with XSLT) into an
 attribute-free shape, then read that.
 
@@ -113,3 +120,22 @@ read_xml(write_xml(data, root="rec")) == data      # True
 
 The caveats above are the exceptions: numeric-looking strings are retyped as
 numbers, and dates return as strings.
+
+**The root element's name is never part of the round trip.** `read_xml`
+discards it — it's a wrapper, not data, so it isn't in the Document at all.
+This is fine for an XML → XML round trip *if* you pass the same `root=` again,
+but it means the name doesn't survive a detour through another format: reading
+`<k>...</k>`, converting to JSON (or any other format — none of them have a
+place to put a root name either) and back to XML gives you `<root>...</root>`
+(or whatever `root=` you pass, default `"root"`), not `<k>...</k>`, unless you
+explicitly remember and re-supply `"k"` yourself. dataspec has no way to do
+this for you — the name was never part of the data to begin with.
+
+```python
+from dataspec import read_xml, write_xml, read_json, write_json
+
+original = "<k><name>Ann</name></k>"
+roundtrip = write_xml(read_json(write_json(read_xml(original))))
+roundtrip                                    # '<root>\n  <name>Ann</name>\n</root>\n'
+roundtrip == original                        # False -- "k" became "root"
+```

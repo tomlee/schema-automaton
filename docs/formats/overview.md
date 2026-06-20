@@ -23,6 +23,39 @@ only thing you have to know is what each format can and can't represent. The
 `Doc.to_*` methods take the same options (`strict`, `report`, `null_style`,
 `wrap_key`, `root`) as the `write_*` functions below.
 
+## How incompatibilities are handled
+
+JSON, YAML, TOML, and XML don't all represent the same things the same way —
+TOML has no `null`, XML element text is untyped, a literal `.` means
+something different in TOML than in an XML name, and so on. Every such
+incompatibility falls into exactly one of three buckets; there's no fourth
+"just silently corrupts the value with no trace" case (and where one was
+found, it was treated as a bug and fixed — see [SECURITY.md](../../SECURITY.md)
+for that history):
+
+1. **Input that's outright illegal raises.** Malformed text (`read_*`),
+   nesting past the depth limit, an unsupported Python type going into a
+   `Doc` — these raise `ParseError`/`DocumentError`/`SchemaError` immediately.
+   Nothing is written or returned; there's no document to inspect.
+2. **A value that's legal but can't be represented losslessly is *adjusted
+   and reported*.** This is the [adjustment-report](#adjustment-reports)
+   mechanism below — every code in the table is a value that changes shape
+   on write, with a `WriteReport` entry to prove it happened. Lenient by
+   default; `report=`/`check_*` show you the list; `strict=True` turns any
+   of them into a `WriteError` instead.
+3. **A handful of things are silently normalized on *read*, with no report
+   mechanism at all**, because they were never part of the Document model to
+   begin with — there's nothing for a `WriteReport` to describe, since
+   nothing was written. Specifically: **comments** (TOML/YAML/XML allow them;
+   the parser discards them before dataspec's code runs) and **XML namespace
+   prefixes** (`<n:a>` reads as `a`). If you need to know whether a comment
+   was present, you have to check the raw text yourself before calling
+   `read_*` — there's no flag or report for it.
+
+In practice, (3) is a short, fixed list (documented per format below); when in
+doubt about a *specific* value, `check_*`/`report=` (bucket 2) will tell you,
+and anything not covered by either 2 or 3 falls through to bucket 1.
+
 ## Conversion is lenient by default
 
 When a target format can't hold a value (TOML/XML have no `null`; JSON has no

@@ -77,7 +77,9 @@ All four produce the identical `Doc`. The XML wrapper element name (`root`
 above) is arbitrary — `from_xml` doesn't care what it's called, it just reads
 the outer element's children; use whatever name fits your data (e.g.
 `Doc.from_xml(text)` paired with `d.to_xml(root="profile")`, see
-[Serializing](#serializing)).
+[Serializing](#serializing)). That name isn't part of the `Doc` at all — it's
+discarded on import, so it doesn't survive a detour through another format
+(see [XML](formats/xml.md#round-trip-behaviour)).
 
 `doc(value)` and `Doc.from_data(value)` are the same thing. Tuples are accepted
 and become lists; anything outside the Document model raises `DocumentError`

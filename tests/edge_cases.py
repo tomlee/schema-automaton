@@ -83,10 +83,21 @@ CASES = [
     EdgeCase("moderately_nested", {"a": {"b": {"c": {"d": {"e": [1, 2, 3]}}}}}),
 
     # -- keys -----------------------------------------------------------
+    # Each of these is syntactically significant in at least one format
+    # (TOML: . = [ ] denote nested tables/assignment/array literals; YAML: :
+    # starts a mapping value, # starts a comment) but not in the others --
+    # the formats that don't care write it as-is; the ones that do quote or
+    # escape it. None of these should ever raise or lose the value.
     EdgeCase("key_with_space", {"my key": 1}),
     EdgeCase("key_unicode", {"clé": "valeur"}),
     EdgeCase("key_empty_string", {"": "value"}),
     EdgeCase("key_numeric_looking", {"123": "value"}),
+    EdgeCase("key_digit_prefix", {"123abc": 1}),  # illegal XML name start
+    EdgeCase("key_toml_dot", {"a.b": 1}),          # TOML dotted-key syntax
+    EdgeCase("key_toml_equals", {"a=b": 1}),       # TOML key/value separator
+    EdgeCase("key_toml_brackets", {"a[b]": 1}),    # TOML table-array syntax
+    EdgeCase("key_yaml_colon", {"a:b": 1}),        # YAML key/value separator
+    EdgeCase("key_shared_hash", {"a#b": 1}),       # comment marker (TOML/YAML)
 
     # -- temporal -----------------------------------------------------------
     EdgeCase("date_epoch", datetime.date(1970, 1, 1)),
