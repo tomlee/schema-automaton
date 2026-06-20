@@ -68,6 +68,7 @@ use `report=`, `check_xml(doc)`, or `strict=True` to see or forbid them.
 | A string that looks like a number/bool/`null` (e.g. `"true"`, `"123"`) | write | reads back as that type, not a string; reported as `string.ambiguous` |
 | A string containing `\r` (e.g. CRLF line endings) | write | the XML spec normalizes `\r\n`/`\r` to `\n` on read; reported as `string.line_ending_normalized` |
 | Empty object `{}` or empty array `[]` as a value | write | reads back as `""` (an empty string); reported as `container.empty.ambiguous` |
+| A string containing a character with no legal XML representation (most C0 controls, surrogates) | write | the character is removed; reported as `string.illegal_xml_char`, **error** |
 
 If your XML uses attributes, transform it first (for example with XSLT) into an
 attribute-free shape, then read that.
@@ -94,7 +95,12 @@ A string containing `\r` (a Windows-style `\r\n` line ending, for instance) is
 also reported (`string.line_ending_normalized`): the XML spec itself mandates
 normalizing `\r\n`/`\r` to `\n` on read, regardless of parser, so this isn't
 something dataspec could preserve even with attributes or a different parser.
-`strict=True` rejects all three.
+A string containing a character with no legal XML representation at all
+(most C0 control characters, surrogates) has that character **removed**,
+reported as `string.illegal_xml_char` — the one `error`-severity string
+adjustment, since the alternative isn't a different reading on the other
+end, it's output that doesn't parse as XML at all. `strict=True` rejects
+all four of the cases above.
 
 ## Round-trip behaviour
 

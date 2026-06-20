@@ -95,7 +95,11 @@ read because they don't map to a plain Document. See [YAML](formats/yaml.md).
 
 Install `defusedxml` (`pip install defusedxml`) and dataspec uses it
 automatically, guarding against entity-expansion ("billion laughs") and
-external-entity attacks. Without it, the standard library is used as a fallback.
+external-entity attacks. Without it, `read_xml` falls back to the standard
+library's parser — which has no such protection — and raises an
+`UnsafeXMLWarning` each time, specifically so the gap isn't silent. See
+[SECURITY.md](../SECURITY.md) for the full trust model, including YAML's
+alias handling.
 
 ### Which Python versions are supported?
 
