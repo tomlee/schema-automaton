@@ -4,6 +4,41 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.1.0a3]
+
+- Fixed: deeply/adversarially nested input (`Doc` construction, the
+  functional `write_*`/`read_*` codecs, and the schema DSL parser) used
+  to crash with an uncatchable `RecursionError`; each now raises a clean
+  `DocumentError`/`SchemaError` past a depth limit.
+- Fixed: a real key collision (e.g. JSON's `{1: "a", "1": "b"}`, or two
+  XML keys sanitizing to the same element name) was reported as a soft
+  warning even though it silently overwrites one value with the other;
+  now reported as `key.collision`, an **error**.
+- Fixed: the format registry (`register_format`/`get_format`/`formats()`)
+  was an unsynchronized global dict; a plugin registered from a
+  background thread could race a concurrent lookup. Now thread-safe.
+- Fixed: three more silent XML/TOML data-corruption cases found by a
+  systematic edge-case sweep — a string that looks like a number/bool/
+  `null` silently changing type on read (`string.ambiguous`), an empty
+  object/array silently becoming an empty string or vanishing entirely
+  (`container.empty.ambiguous`), an integer beyond TOML's signed 64-bit
+  range written without warning (`integer.out_of_range`), and a string
+  containing `\r` silently losing its line endings per the XML spec's
+  own normalization rules (`string.line_ending_normalized`). All four
+  are now reported, and rejected by `strict=True`.
+- New: `tests/edge_cases.py` / `tests/test_edge_cases.py` — a shared
+  corpus of ~45 edge-case values swept across every format and a few
+  API operations (`Doc`, `infer`, DSL round-trip) via general
+  invariants rather than hand-coded expectations per case.
+- New: `tests/test_dsl.py` negative-path coverage — one case per
+  distinct `SchemaError` the hand-written DSL parser can raise.
+- CI now runs `ruff check .` and every `examples/*.py` script, not just
+  `pytest`.
+- New: `CONTRIBUTING.md`.
+- Removed the redundant `sys.path.insert` boilerplate from every
+  example and test file (the editable install already covers it); a
+  few `pyproject.toml` metadata fields filled in.
+
 ## [v0.1.0a2]
 
 - New: `finish_write(text, rep, *, strict=False, report=None)`, a public
