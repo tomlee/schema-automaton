@@ -238,6 +238,22 @@ class TestReports:
         rep = check_xml({"a": "Ann", "b": ""}, root="r")
         assert rep.adjustments == []
 
+    def test_xml_string_with_crlf_is_reported(self):
+        # The XML spec requires \r\n/\r to be normalized to \n on read --
+        # found by the edge-case sweep (tests/test_edge_cases.py), which
+        # caught it via a string that doesn't look like a different type,
+        # just one with different line endings.
+        rep = check_xml({"a": "line1\r\nline2"}, root="r")
+        assert [a.code for a in rep] == ["string.line_ending_normalized"]
+
+    def test_xml_string_with_plain_newline_is_silent(self):
+        rep = check_xml({"a": "line1\nline2"}, root="r")
+        assert rep.adjustments == []
+
+    def test_xml_strict_raises_on_crlf(self):
+        with pytest.raises(WriteError):
+            write_xml({"a": "line1\r\nline2"}, root="r", strict=True)
+
     def test_xml_strict_raises_on_ambiguous_string(self):
         with pytest.raises(WriteError):
             write_xml({"a": "true"}, root="r", strict=True)
