@@ -61,6 +61,8 @@ use `report=`, `check_xml(doc)`, or `strict=True` to see or forbid them.
 | Object key that isn't a legal XML name | write | sanitized (e.g. `"a b"` → `<a_b>`), reported as a warning |
 | Two distinct keys that sanitize to the same name | write | merge into one list on read; reported as `key.collision`, **error** |
 | Date / time | write | written as text, reported (reads back as a string) |
+| A string that looks like a number/bool/`null` (e.g. `"true"`, `"123"`) | write | reads back as that type, not a string; reported as `string.ambiguous` |
+| Empty object `{}` or empty array `[]` as a value | write | reads back as `""` (an empty string); reported as `container.empty.ambiguous` |
 
 If your XML uses attributes, transform it first (for example with XSLT) into an
 attribute-free shape, then read that.
@@ -76,6 +78,14 @@ read_xml("<r><n>30</n><ok>true</ok><s>x</s></r>")
 This means a string that looks like a number (`"30"`) comes back as a number.
 Dates come back as plain strings (they aren't guessed). When exact scalar types
 matter, validate against a schema after reading, or prefer JSON/TOML.
+
+Because the writer knows this in advance, writing a string that looks like a
+number, boolean, or `null` is reported (`string.ambiguous`) rather than left
+for you to discover on the next read — same with an empty object or array,
+which has no representation in XML at all (a self-closing element is the only
+way to write "nothing here," so `{}`, `[]`, and `""` are indistinguishable on
+read; writing either of the first two is reported as `container.empty.ambiguous`).
+`strict=True` rejects both.
 
 ## Round-trip behaviour
 

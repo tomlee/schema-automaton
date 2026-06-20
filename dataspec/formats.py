@@ -232,9 +232,14 @@ def check_toml(data: Any, *, null_style: str = "omit",
     return rep
 
 
+_TOML_INT_MIN = -(2 ** 63)
+_TOML_INT_MAX = 2 ** 63 - 1
+
+
 def _serialize_toml(data: Any, *, null_style: str,
                     wrap_key: str) -> Tuple[str, WriteReport]:
     rep = WriteReport()
+    _scan_toml_int_range(data, "$", rep, 0)
     body = _strip_nulls(data, "$", rep, null_style, 0)
     if body is None:
         rep.add("$", "null.toplevel.empty",
@@ -247,6 +252,32 @@ def _serialize_toml(data: Any, *, null_style: str,
         body = {wrap_key: body}
     tomli_w = _need("tomli_w", "tomli_w", "pip install tomli_w")
     return tomli_w.dumps(body), rep
+
+
+def _scan_toml_int_range(data: Any, path: str, rep: WriteReport, depth: int) -> None:
+    """Flag integers outside TOML's signed 64-bit range.
+
+    ``tomli_w``/``tomllib`` round-trip these fine (Python ints are unbounded),
+    but the output violates the TOML spec and may be rejected by a
+    spec-compliant parser in another language.
+    """
+    if isinstance(data, bool):
+        return
+    if isinstance(data, int):
+        if not (_TOML_INT_MIN <= data <= _TOML_INT_MAX):
+            rep.add(path, "integer.out_of_range",
+                    f"{data} is outside TOML's signed 64-bit integer range "
+                    "and may not round-trip in other TOML implementations",
+                    "warning")
+        return
+    if isinstance(data, dict):
+        _depth_guard(path, depth + 1)
+        for k, v in data.items():
+            _scan_toml_int_range(v, f"{path}.{k}", rep, depth + 1)
+    elif isinstance(data, list):
+        _depth_guard(path, depth + 1)
+        for i, v in enumerate(data):
+            _scan_toml_int_range(v, f"{path}[{i}]", rep, depth + 1)
 
 
 def _strip_nulls(data: Any, path: str, rep: WriteReport, null_style: str,
@@ -328,6 +359,10 @@ def _serialize_xml(data: Any, *, root: str, null_style: str,
                 f"top-level {_name(body)} wrapped under {wrap_key!r} "
                 "(XML needs a top-level element)", "warning")
         body = {wrap_key: body}
+    elif not body:
+        rep.add("$", "container.empty.ambiguous",
+                "empty object written as an empty element; reads back as "
+                "an empty string, not an empty object", "warning")
     import xml.etree.ElementTree as ET
     el = ET.Element(root)
     _data_to_xml(body, el, "$", rep, 0)
@@ -373,10 +408,22 @@ def _data_to_xml(data: Any, parent, path: str, rep: WriteReport, depth: int) -> 
             else:
                 seen_tags[tag] = k
             if isinstance(v, list):
+                if not v:
+                    rep.add(f"{path}.{k}", "container.empty.ambiguous",
+                            "empty array written as an empty element; reads "
+                            "back as an empty string, not an empty array",
+                            "warning")
+                    ET.SubElement(parent, tag)
+                    continue
                 for i, item in enumerate(v):
                     child = ET.SubElement(parent, tag)
                     _xml_child(item, child, f"{path}.{k}[{i}]", rep, depth + 1)
             else:
+                if isinstance(v, dict) and not v:
+                    rep.add(f"{path}.{k}", "container.empty.ambiguous",
+                            "empty object written as an empty element; reads "
+                            "back as an empty string, not an empty object",
+                            "warning")
                 child = ET.SubElement(parent, tag)
                 _data_to_xml(v, child, f"{path}.{k}", rep, depth + 1)
     elif isinstance(data, list):
@@ -419,6 +466,10 @@ def _xml_text(v: Any, path: str, rep: WriteReport) -> str:
                 "temporal value written as text (reads back as a string)",
                 "warning")
         return v.isoformat()
+    if isinstance(v, str) and _coerce(v) != v:
+        rep.add(path, "string.ambiguous",
+                f"string {v!r} looks like a different type and will not "
+                "read back as a string", "warning")
     return str(v)
 
 

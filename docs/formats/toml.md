@@ -64,10 +64,22 @@ adjustment into a `WriteError`.
 - **Comments aren't preserved.** TOML allows comments, but they aren't part of
   the data model.
 
+- **Integers are signed 64-bit** per the TOML spec. A Python `int` outside that
+  range is written anyway — `tomli_w`/`tomllib` don't enforce the limit, so
+  dataspec's own round-trip survives — but it's reported (`warning`) since a
+  spec-compliant parser in another language may reject it:
+
+  ```python
+  from dataspec import check_toml, write_toml
+  check_toml({"x": 2**63}).warnings   # [Adjustment(..., 'integer.out_of_range', ...)]
+  write_toml({"x": 2**63}, strict=True)   # WriteError
+  ```
+
 ## Round-trip behaviour
 
 For any Document that TOML can represent, data and types are preserved exactly,
-including dates. The lossy cases — dropped nulls and top-level wrapping — are
-exactly the adjustments the report lists, so `check_toml(doc)` (or
-`write_toml(doc, strict=True)`) tells you up front whether a given Document
-round-trips perfectly.
+including dates. The lossy cases — dropped nulls, top-level wrapping, and
+out-of-range integers — are exactly the adjustments the report lists, so
+`check_toml(doc)` (or `write_toml(doc, strict=True)`) tells you up front
+whether a given Document round-trips perfectly (and, for the integer case,
+portably).

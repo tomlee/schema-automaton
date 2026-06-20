@@ -101,6 +101,9 @@ truthiness of "no errors". The stable `code` values:
 | `key.sanitized` | warning | object key rewritten to a legal XML element name |
 | `key.collision` | error | two distinct keys coerced/sanitized to the same key, one overwriting the other (JSON/XML) |
 | `array.nested.ambiguous` | error | nested array wrapped in `<item>` elements (XML) |
+| `string.ambiguous` | warning | a string that looks like a number/bool/null written to XML; reads back as that type, not as a string |
+| `container.empty.ambiguous` | warning | an empty object/array written to XML; reads back as an empty string, not as an empty object/array |
+| `integer.out_of_range` | warning | integer outside TOML's signed 64-bit range; round-trips here, but may not in another TOML implementation |
 
 \* `warning` under `null_style="drop"`.
 
@@ -111,10 +114,10 @@ Legend: ✅ full support · ⚠️ works with a caveat · ❌ not supported.
 
 | Capability | JSON | YAML | TOML | XML |
 |---|:---:|:---:|:---:|:---:|
-| Object / map | ✅ | ✅ | ✅ | ✅ |
+| Object / map | ✅ | ✅ | ✅ | ⚠️ |
 | Array / list | ✅ | ✅ | ✅ | ⚠️ |
-| String | ✅ | ✅ | ✅ | ✅ |
-| Integer | ✅ | ✅ | ✅ | ⚠️ |
+| String | ✅ | ✅ | ✅ | ⚠️ |
+| Integer | ✅ | ✅ | ⚠️ | ⚠️ |
 | Number (float) | ✅ | ✅ | ✅ | ⚠️ |
 | Boolean | ✅ | ✅ | ✅ | ⚠️ |
 | `null` | ✅ | ✅ | ❌ | ❌ |
@@ -133,8 +136,18 @@ Notes on the caveats:
   `<item>` elements (reported as an `error`, since it isn't cleanly reversible).
 - **XML arrays** are repeated elements and must be a named field. **XML scalars**
   are untyped text, so types are recovered on read with best-effort guessing
-  (`"30"` → `30`, `"true"` → `True`), which means a numeric-looking string can
-  come back as a number.
+  (`"30"` → `30`, `"true"` → `True`), which means a string that looks like a
+  number, boolean, or `null` comes back as that type, not as a string — this
+  is reported (`string.ambiguous`), and `strict=True` rejects it.
+- **Empty objects and empty arrays have no representation in XML.** A self-
+  closing element (`<x/>`) is the only way to write "nothing here," so an
+  empty object, an empty array, and an empty string are indistinguishable on
+  read — all three come back as `""`. Writing an empty object/array is
+  reported (`container.empty.ambiguous`) rather than silently losing the
+  distinction.
+- **TOML integers are signed 64-bit** per the spec; dataspec's own
+  read/write round-trips a larger Python `int` fine (reported as
+  `integer.out_of_range`), but another TOML implementation may reject it.
 - **Dates** have no representation in JSON or XML, so they travel as ISO-8601
   strings; schemas accept those. TOML has native date types. YAML reads/writes
   dates and datetimes natively but not standalone times.

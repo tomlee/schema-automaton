@@ -228,6 +228,53 @@ class TestReports:
         rep = check_xml({"grid": [[1, 2], [3, 4]]}, root="r")
         assert any(a.code == "array.nested.ambiguous" for a in rep.errors)
 
+    def test_xml_string_that_looks_like_a_bool_is_reported(self):
+        # write_xml({"a": "true"}) used to silently round-trip as a bool with
+        # no adjustment at all -- this must be flagged so a caller can tell.
+        rep = check_xml({"a": "true", "b": "123", "c": "1.5"}, root="r")
+        assert [a.code for a in rep] == ["string.ambiguous"] * 3
+
+    def test_xml_string_that_does_not_look_like_anything_else_is_silent(self):
+        rep = check_xml({"a": "Ann", "b": ""}, root="r")
+        assert rep.adjustments == []
+
+    def test_xml_strict_raises_on_ambiguous_string(self):
+        with pytest.raises(WriteError):
+            write_xml({"a": "true"}, root="r", strict=True)
+
+    def test_xml_empty_array_value_keeps_the_key_and_is_reported(self):
+        # write_xml({"xs": []}) used to silently drop the key entirely --
+        # no <xs> element was written at all.
+        rep = WriteReport()
+        out = write_xml({"xs": []}, root="r", report=rep)
+        assert "<xs" in out
+        assert [a.code for a in rep] == ["container.empty.ambiguous"]
+
+    def test_xml_empty_object_value_is_reported(self):
+        rep = check_xml({"meta": {}}, root="r")
+        assert [a.code for a in rep] == ["container.empty.ambiguous"]
+
+    def test_xml_empty_top_level_object_is_reported(self):
+        rep = check_xml({}, root="r")
+        assert [a.code for a in rep] == ["container.empty.ambiguous"]
+
+    def test_xml_non_empty_object_value_is_silent(self):
+        rep = check_xml({"address": {"city": "London"}}, root="r")
+        assert rep.adjustments == []
+
+    def test_toml_integer_beyond_i64_is_a_warning(self):
+        rep = check_toml({"x": 2 ** 63})
+        assert [a.code for a in rep] == ["integer.out_of_range"]
+        assert rep.warnings and not rep.errors
+
+    def test_toml_integer_within_i64_is_silent(self):
+        rep = check_toml({"x": 2 ** 62, "y": -(2 ** 63), "z": 2 ** 63 - 1})
+        assert rep.adjustments == []
+
+    def test_toml_strict_raises_on_integer_beyond_i64(self):
+        with pytest.raises(WriteError):
+            write_toml({"x": 2 ** 63}, strict=True)
+
 
 # ------------------------------------------------- check_json / write_json reports
 class TestJsonReports:
