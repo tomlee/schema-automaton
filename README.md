@@ -133,12 +133,13 @@ python3 -m pytest          # 224 tests
 
 ## Status
 
-dataspec is **alpha** (v0.1.0a1) and under active development. The core model,
+dataspec is **alpha** (v0.1.0a2) and under active development. The core model,
 schema language, and format codecs are working and tested, but the public API may
 change before a stable release. It is not yet on PyPI — install from a checkout.
 
 Feedback and bug reports are welcome:
-<https://github.com/tomlee/dataspec/issues>
+<https://github.com/tomlee/dataspec/issues>. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow.
 
 ## License
 
