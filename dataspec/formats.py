@@ -68,6 +68,15 @@ def _json_key_str(k: Any) -> str:
 # JSON
 # ===========================================================================
 
+# JavaScript represents all numbers as IEEE-754 doubles, which can only
+# represent integers exactly up to 2**53 (Number.MAX_SAFE_INTEGER). A Python
+# int beyond this round-trips exactly through dataspec's own read_json (it
+# uses arbitrary-precision ints), but silently loses precision in a
+# JS-based JSON parser -- the same class of interop risk as TOML's i64 limit.
+_JS_SAFE_INT_MAX = 2 ** 53
+_JS_SAFE_INT_MIN = -(2 ** 53)
+
+
 def read_json(text: str) -> Any:
     try:
         return _json.loads(text)
@@ -98,6 +107,14 @@ def _serialize_json(data: Any, *, indent: Optional[int],
 
 def _scan_json(data: Any, path: str, rep: WriteReport, depth: int) -> None:
     if isinstance(data, bool):
+        return
+    if isinstance(data, int):
+        if not (_JS_SAFE_INT_MIN <= data <= _JS_SAFE_INT_MAX):
+            rep.add(path, "integer.precision_risk",
+                    f"{data} exceeds JavaScript's safe integer range "
+                    "(±2**53) and may lose precision in a JS-based "
+                    "JSON parser, even though it round-trips exactly here",
+                    "warning")
         return
     if isinstance(data, float):
         if _math.isnan(data) or _math.isinf(data):
@@ -259,6 +276,7 @@ def _serialize_toml(data: Any, *, null_style: str,
                     wrap_key: str) -> Tuple[str, WriteReport]:
     rep = WriteReport()
     _scan_toml_int_range(data, "$", rep, 0)
+    data = _fix_toml_offset_times(data, "$", rep, 0)
     body = _strip_nulls(data, "$", rep, null_style, 0)
     if body is None:
         rep.add("$", "null.toplevel.empty",
@@ -328,6 +346,30 @@ def _strip_nulls(data: Any, path: str, rep: WriteReport, null_style: str,
                 continue
             out.append(_strip_nulls(v, f"{path}[{i}]", rep, null_style, depth + 1))
         return out
+    return data
+
+
+def _fix_toml_offset_times(data: Any, path: str, rep: WriteReport, depth: int) -> Any:
+    """Stringify a timezone-aware ``time`` -- TOML's native time type has no
+    offset slot at all (only ``date-time`` can carry one), so ``tomli_w``
+    raises ``ValueError`` on it directly. Converting it to text first, the
+    same way JSON/XML/YAML already handle temporal values TOML or they
+    can't hold natively, turns that crash into the usual lenient adjustment.
+    """
+    if isinstance(data, _dt.time) and data.tzinfo is not None:
+        rep.add(path, "temporal.stringified",
+                "a time with a UTC offset has no native TOML representation "
+                "(only date-time can carry an offset); written as text",
+                "warning")
+        return data.isoformat()
+    if isinstance(data, dict):
+        _depth_guard(path, depth + 1)
+        return {k: _fix_toml_offset_times(v, f"{path}.{k}", rep, depth + 1)
+                for k, v in data.items()}
+    if isinstance(data, list):
+        _depth_guard(path, depth + 1)
+        return [_fix_toml_offset_times(v, f"{path}[{i}]", rep, depth + 1)
+                for i, v in enumerate(data)]
     return data
 
 

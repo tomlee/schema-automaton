@@ -40,6 +40,13 @@ write_json({"name": "Ann", "n": 1}, indent=2)
   (`1` and `"1"`, say), one silently overwrites the other — that's a
   `key.collision` **error**, not just a warning.
 - **Comments aren't allowed** by JSON at all.
+- **Integers beyond JavaScript's safe-integer range** (`±2**53`,
+  `Number.MAX_SAFE_INTEGER`) round-trip exactly through dataspec's own
+  `read_json`/`write_json` (Python ints are arbitrary precision), but a
+  JS-based JSON parser — a browser, Node.js — represents every number as an
+  IEEE-754 double and would silently lose precision. Reported as
+  `integer.precision_risk` (`warning`); `strict=True` rejects it. The same
+  class of interop risk as TOML's signed-64-bit integer check.
 
 ## Round-trip behaviour
 

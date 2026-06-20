@@ -23,7 +23,8 @@ print(write_toml({"name": "Ann", "tags": ["x", "y"]}))
 
 - Objects (tables), arrays, strings, integers, numbers, and booleans.
 - **Native date types.** `date`, `time`, and `datetime` values round-trip as
-  real temporal values, not strings — TOML's standout feature.
+  real temporal values, not strings — TOML's standout feature. (One
+  exception: a timezone-aware `time` — see [Limitations](#limitations).)
 - Malformed TOML raises `ParseError` on read.
 
 ```python
@@ -76,11 +77,25 @@ adjustment into a `WriteError`.
   write_toml({"x": 2**63}, strict=True)   # WriteError
   ```
 
+- **A `time` with a UTC offset has no native TOML representation.** TOML's
+  spec gives `date-time` an optional offset, but plain `time` has none at all
+  — only a "local time." A timezone-*naive* `time`, and a `datetime` *with*
+  an offset, are both fine; only an offset on a bare `time` is the problem.
+  It's written as text instead (`warning`):
+
+  ```python
+  import datetime
+  from dataspec import check_toml, write_toml
+  t = datetime.time(12, 0, tzinfo=datetime.timezone.utc)
+  check_toml({"t": t}).warnings   # [Adjustment(..., 'temporal.stringified', ...)]
+  write_toml({"t": t}, strict=True)   # WriteError
+  ```
+
 ## Round-trip behaviour
 
 For any Document that TOML can represent, data and types are preserved exactly,
-including dates. The lossy cases — dropped nulls, top-level wrapping, and
-out-of-range integers — are exactly the adjustments the report lists, so
-`check_toml(doc)` (or `write_toml(doc, strict=True)`) tells you up front
-whether a given Document round-trips perfectly (and, for the integer case,
-portably).
+including dates. The lossy cases — dropped nulls, top-level wrapping,
+out-of-range integers, and an offset `time` — are exactly the adjustments the
+report lists, so `check_toml(doc)` (or `write_toml(doc, strict=True)`) tells
+you up front whether a given Document round-trips perfectly (and, for the
+integer case, portably).

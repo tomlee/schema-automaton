@@ -128,7 +128,7 @@ truthiness of "no errors". The stable `code` values:
 | `null.item.dropped` | error\* | `null` array item dropped (TOML/XML) |
 | `null.toplevel.empty` | error | top-level `null` became an empty doc (TOML/XML) |
 | `toplevel.wrapped` | warning | top-level array/scalar wrapped under `wrap_key` (TOML/XML) |
-| `temporal.stringified` | warning | date/time written as a string (JSON/XML/YAML-time) |
+| `temporal.stringified` | warning | date/time written as a string (JSON/XML/YAML-time/TOML-offset-time) |
 | `float.special` | error | `NaN`/`Infinity` written to JSON |
 | `key.coerced` | warning | non-string object key coerced to a string (JSON) |
 | `key.sanitized` | warning | object key rewritten to a legal XML element name |
@@ -139,6 +139,7 @@ truthiness of "no errors". The stable `code` values:
 | `container.empty.ambiguous` | warning | an empty object/array written to XML; reads back as an empty string, not as an empty object/array |
 | `string.illegal_xml_char` | error | string contains a character with no legal XML representation at all; removed |
 | `integer.out_of_range` | warning | integer outside TOML's signed 64-bit range; round-trips here, but may not in another TOML implementation |
+| `integer.precision_risk` | warning | integer outside JavaScript's safe-integer range (`±2**53`); round-trips here, but may lose precision in a JS-based JSON parser (JSON) |
 
 \* `warning` under `null_style="drop"`.
 

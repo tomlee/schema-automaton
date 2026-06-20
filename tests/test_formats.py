@@ -395,6 +395,31 @@ class TestReports:
         with pytest.raises(WriteError):
             write_toml({"x": 2 ** 63}, strict=True)
 
+    def test_toml_offset_time_is_stringified_with_a_warning(self):
+        # write_toml/check_toml used to crash with a raw ValueError ("TOML
+        # does not support offset times") on a timezone-aware time -- TOML's
+        # native time type has no offset slot at all, only date-time does.
+        t = datetime.time(12, 0, 0, tzinfo=datetime.timezone(datetime.timedelta(hours=-5)))
+        rep = check_toml({"t": t})
+        assert [a.code for a in rep] == ["temporal.stringified"]
+        assert rep.warnings and not rep.errors
+        out = write_toml({"t": t})
+        assert tomllib.loads(out) == {"t": "12:00:00-05:00"}
+
+    def test_toml_strict_raises_on_offset_time(self):
+        t = datetime.time(12, 0, 0, tzinfo=datetime.timezone.utc)
+        with pytest.raises(WriteError):
+            write_toml({"t": t}, strict=True)
+
+    def test_toml_naive_time_and_offset_datetime_are_unaffected(self):
+        # plain time (no tz) and datetime *with* a tz both have a native
+        # TOML representation -- only an offset on a bare time is the
+        # problem, since only date-time can carry an offset.
+        naive_time = datetime.time(9, 30)
+        offset_dt = datetime.datetime(2024, 1, 1, 12, 0, tzinfo=datetime.timezone.utc)
+        assert check_toml({"t": naive_time}).adjustments == []
+        assert check_toml({"dt": offset_dt}).adjustments == []
+
 
 # ------------------------------------------------- check_json / write_json reports
 class TestJsonReports:
@@ -428,6 +453,27 @@ class TestJsonReports:
         rep = check_json({"x": float("inf")})
         assert rep.adjustments[0].code == "float.special"
         assert bool(rep) is False
+
+    def test_integer_beyond_js_safe_range_is_a_warning(self):
+        # dataspec's own round-trip is exact (Python ints are arbitrary
+        # precision), but a JS-based JSON parser represents all numbers as
+        # IEEE-754 doubles and would silently lose precision past 2**53 --
+        # the same class of interop risk as TOML's i64 check.
+        rep = check_json({"x": 2 ** 53 + 1})
+        assert [a.code for a in rep] == ["integer.precision_risk"]
+        assert rep.warnings and not rep.errors
+
+    def test_integer_within_js_safe_range_is_silent(self):
+        rep = check_json({"x": 2 ** 53, "y": -(2 ** 53), "z": 42})
+        assert rep.adjustments == []
+
+    def test_bool_does_not_trigger_integer_precision_check(self):
+        rep = check_json({"x": True, "y": False})
+        assert rep.adjustments == []
+
+    def test_strict_raises_on_integer_beyond_js_safe_range(self):
+        with pytest.raises(WriteError):
+            write_json({"x": 2 ** 53 + 1}, strict=True)
 
     def test_nested_temporal_path(self):
         rep = check_json({"meta": {"created": datetime.date(2024, 1, 1)}})

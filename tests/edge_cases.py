@@ -48,10 +48,16 @@ CASES = [
     # -- numbers ------------------------------------------------------------
     EdgeCase("int_zero", 0),
     EdgeCase("int_negative", -42),
+    # Note: "in range" here is relative to TOML's i64 bound; 2**62 is well
+    # past JSON's own interop boundary (JS's 2**53 safe-integer limit), so
+    # this case is clean in TOML but reported in JSON -- both correctly, per
+    # each format's own check.
     EdgeCase("int_large_in_range", 2 ** 62),
     EdgeCase("int_beyond_i64", 2 ** 63),
     EdgeCase("int_i64_min_boundary", -(2 ** 63)),
     EdgeCase("int_i64_max_boundary", 2 ** 63 - 1),
+    EdgeCase("int_js_safe_boundary", 2 ** 53),    # exactly at JSON's interop limit
+    EdgeCase("int_beyond_js_safe", 2 ** 53 + 1),  # one past it
     EdgeCase("float_zero", 0.0),
     EdgeCase("float_negative_zero", -0.0),
     EdgeCase("float_integral", 1.0),
