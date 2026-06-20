@@ -1,4 +1,6 @@
 """The format registry: built-ins plus registering a new format as a plugin."""
+import threading
+
 import pytest
 
 from dataspec import (
@@ -50,6 +52,38 @@ class TestPluginFormat:
         # to_format on an unknown name surfaces the registry error
         with pytest.raises(KeyError):
             doc({"a": 1}).to_format("nope")
+
+    def test_concurrent_registration_does_not_corrupt_the_registry(self):
+        # Registering from many threads at once must not raise or drop an
+        # entry -- register_format/get_format/formats() share a lock.
+        def read(text):
+            return text
+
+        def write(data, **opts):
+            return str(data)
+
+        def check(data, **opts):
+            return WriteReport()
+
+        names = [f"concurrent-{i}" for i in range(50)]
+        errors = []
+
+        def register(name):
+            try:
+                register_format(Format(name, read, write, check))
+            except Exception as exc:  # pragma: no cover
+                errors.append(exc)
+
+        threads = [threading.Thread(target=register, args=(n,)) for n in names]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert errors == []
+        assert set(names) <= set(formats())
+        for name in names:
+            assert get_format(name).name == name
 
 
 class TestFinishWrite:

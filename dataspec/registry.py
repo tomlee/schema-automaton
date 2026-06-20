@@ -20,6 +20,7 @@ and ``doc.to_format("csv")``.
 
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Tuple
 
@@ -39,22 +40,32 @@ class Format:
 
 
 _FORMATS: Dict[str, Format] = {}
+_LOCK = threading.Lock()
 
 
 def register_format(fmt: Format) -> None:
-    """Add (or replace) a format in the registry, keyed by ``fmt.name``."""
-    _FORMATS[fmt.name] = fmt
+    """Add (or replace) a format in the registry, keyed by ``fmt.name``.
+
+    Thread-safe: registration is rare (typically once, at import time), so a
+    lock costs nothing in practice but protects every lookup
+    (``get_format``/``formats``/``Doc.from_format``/``to_format``) from racing
+    a plugin registered from another thread.
+    """
+    with _LOCK:
+        _FORMATS[fmt.name] = fmt
 
 
 def get_format(name: str) -> Format:
     """Look up a registered format by name, or raise a clear error."""
-    try:
-        return _FORMATS[name]
-    except KeyError:
-        known = ", ".join(sorted(_FORMATS)) or "(none)"
-        raise KeyError(f"unknown format {name!r}; registered: {known}") from None
+    with _LOCK:
+        try:
+            return _FORMATS[name]
+        except KeyError:
+            known = ", ".join(sorted(_FORMATS)) or "(none)"
+            raise KeyError(f"unknown format {name!r}; registered: {known}") from None
 
 
 def formats() -> List[str]:
     """The names of all registered formats, sorted."""
-    return sorted(_FORMATS)
+    with _LOCK:
+        return sorted(_FORMATS)
