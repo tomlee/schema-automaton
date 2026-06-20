@@ -21,7 +21,7 @@ Doc.from_json('{"name": "Ann"}').to_toml()   # 'name = "Ann"\n'
 Because they share one model, converting is just *read one, write another*. The
 only thing you have to know is what each format can and can't represent. The
 `Doc.to_*` methods take the same options (`strict`, `report`, `null_style`,
-`wrap_key`, `root`) as the `write_*` functions below.
+and TOML's `wrap_key`) as the `write_*` functions below.
 
 ## How incompatibilities are handled
 
@@ -108,7 +108,10 @@ JSON and YAML have `null`. TOML and XML don't. When writing to a format without
 - **omits** a `null` **object field** (a `warning` — absence reads back close to
   null);
 - **drops** a `null` **array item** (an `error` — it shifts later positions);
-- writes a top-level `null` as an **empty document** (an `error`).
+- (TOML only) writes a top-level `null` as an **empty document** (an `error`).
+  XML has no top-level-`null` case of its own: a bare `null` isn't
+  single-rooted, so `write_xml` raises for the more general reason described
+  in [XML](xml.md#xml-is-single-rooted).
 
 `null_style="drop"` (the default is `"omit"`) demotes the dropped-array-item case
 from `error` to `warning`, for when you've decided dropping is fine. Either way,
@@ -126,8 +129,9 @@ truthiness of "no errors". The stable `code` values:
 |---|---|---|
 | `null.field.omitted` | warning | `null` object field dropped (TOML/XML) |
 | `null.item.dropped` | error\* | `null` array item dropped (TOML/XML) |
-| `null.toplevel.empty` | error | top-level `null` became an empty doc (TOML/XML) |
-| `toplevel.wrapped` | warning | top-level array/scalar wrapped under `wrap_key` (TOML/XML) |
+| `null.toplevel.empty` | error | top-level `null` became an empty doc (TOML) |
+| `toplevel.wrapped` | warning | top-level array/scalar wrapped under `wrap_key` (TOML) |
+| `toplevel.not_rooted` | error | Document isn't single-rooted; `write_xml` always raises (XML) — see [XML](xml.md) |
 | `temporal.stringified` | warning | date/time written as a string (JSON/XML/YAML-time/TOML-offset-time) |
 | `float.special` | error | `NaN`/`Infinity` written to JSON |
 | `key.coerced` | warning | non-string object key coerced to a string (JSON) |
@@ -158,18 +162,24 @@ Legend: ✅ full support · ⚠️ works with a caveat · ❌ not supported.
 | Boolean | ✅ | ✅ | ✅ | ⚠️ |
 | `null` | ✅ | ✅ | ❌ | ❌ |
 | Date / time / datetime | ⚠️ | ⚠️ | ✅ | ⚠️ |
-| Top-level array | ✅ | ✅ | ⚠️ | ⚠️ |
-| Top-level scalar | ✅ | ✅ | ⚠️ | ⚠️ |
+| Top-level array | ✅ | ✅ | ⚠️ | ❌ |
+| Top-level scalar | ✅ | ✅ | ⚠️ | ❌ |
 | Nested arrays (array of arrays) | ✅ | ✅ | ✅ | ⚠️ |
 | Comments in the format | ❌ | ✅ | ✅ | ✅ |
 | Exact scalar type after round-trip | ✅ | ✅ | ✅ | ⚠️ |
 
 Notes on the caveats:
 
-- **Top-level arrays/scalars** aren't native to TOML/XML, so they're wrapped
-  under a key (`wrap_key`, default `"value"`) and the wrap is reported. **Nested
+- **Top-level arrays/scalars aren't native to TOML**, so they're wrapped
+  under a key (`wrap_key`, default `"value"`) and the wrap is reported.
+  **XML has no fallback for this at all**: a Document must be single-rooted
+  (exactly one top-level key, holding an object or scalar, not a list) to
+  have a single-XML-document representation — `write_xml` raises `WriteError`
+  for anything else, always, not just under `strict` (use
+  `write_xml_documents` for a forest of documents instead). **Nested
   arrays in XML** have no element name, so each level is wrapped in synthetic
   `<item>` elements (reported as an `error`, since it isn't cleanly reversible).
+  See [XML](xml.md#xml-is-single-rooted).
 - **XML arrays** are repeated elements and must be a named field. **XML scalars**
   are untyped text, so types are recovered on read with best-effort guessing
   (`"30"` → `30`, `"true"` → `True`), which means a string that looks like a

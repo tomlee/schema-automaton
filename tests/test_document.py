@@ -265,7 +265,7 @@ class TestSerialization:
         d = doc({"a": 1, "b": "x"})
         assert "a = 1" in d.to_toml()
         assert "a: 1" in d.to_yaml()
-        assert "<a>1</a>" in d.to_xml(root="r")
+        assert "<a>1</a>" in doc({"r": {"a": 1, "b": "x"}}).to_xml()
 
     def test_to_format_passes_options(self):
         # null is dropped writing TOML; option threads through

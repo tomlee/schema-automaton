@@ -58,7 +58,7 @@ lon = -0.1
 """)
 
 Doc.from_xml("""
-<root>
+<profile>
   <name>Ann</name>
   <address>
     <city>London</city>
@@ -67,18 +67,18 @@ Doc.from_xml("""
       <lon>-0.1</lon>
     </geo>
   </address>
-</root>
+</profile>
 """)
 
 Doc.from_format("json", text)   # generic: name the format by string
 ```
 
-All four produce the identical `Doc`. The XML wrapper element name (`root`
-above) is arbitrary — `from_xml` doesn't care what it's called, it just reads
-the outer element's children; use whatever name fits your data (e.g.
-`Doc.from_xml(text)` paired with `d.to_xml(root="profile")`, see
-[Serializing](#serializing)). That name isn't part of the `Doc` at all — it's
-discarded on import, so it doesn't survive a detour through another format
+JSON, YAML, and TOML produce the identical `Doc`. XML is different: an XML
+document has exactly one top-level element, so the document element's tag
+(`profile` above) becomes a real top-level key — `Doc.from_xml(text)` here
+gives you `{"profile": {"name": "Ann", ...}}`, not the bare `{"name": "Ann",
+...}` the other three produce. The name is part of the data (not a
+discardable wrapper), so it survives a detour through another format and back
 (see [XML](formats/xml.md#round-trip-behaviour)).
 
 `doc(value)` and `Doc.from_data(value)` are the same thing. Tuples are accepted
@@ -197,7 +197,8 @@ d = doc({"name": "Ann", "address": {"city": "London", "geo": {"lat": 51.5, "lon"
 d.to_json(indent=2)
 d.to_yaml()
 d.to_toml()
-d.to_xml(root="profile")         # root names the wrapper element (your choice)
+doc({"profile": d.to_data()}).to_xml()   # XML needs one top-level key (the
+                                          # document element's tag); see XML.md
 d.to_format("json")              # generic, for plugin formats
 d.to_data()                      # a detached deep copy as plain Python
 ```

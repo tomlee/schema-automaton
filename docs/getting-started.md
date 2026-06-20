@@ -56,6 +56,8 @@ Doc.from_json('{"name": "Ann", "age": 30}')
 Doc.from_yaml("name: Ann\nage: 30\n")
 Doc.from_toml('name = "Ann"\nage = 30\n')
 Doc.from_xml("<r><name>Ann</name><age>30</age></r>")
+# {'r': {'name': 'Ann', 'age': 30}} -- XML's document element name (here "r")
+# is a real top-level key, since an XML document always has exactly one.
 
 doc({"name": "Ann", "age": 30})              # from an in-memory structure
 ```

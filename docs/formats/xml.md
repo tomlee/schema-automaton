@@ -16,15 +16,55 @@ apply, e.g. `warnings.filterwarnings("ignore", category=UnsafeXMLWarning)`.
 ```python
 from dataspec import read_xml, write_xml
 
-read_xml("<r><name>Ann</name><age>30</age></r>")
-# {'name': 'Ann', 'age': 30}
+read_xml("<person><name>Ann</name><age>30</age></person>")
+# {'person': {'name': 'Ann', 'age': 30}}
 
-print(write_xml({"name": "Ann", "age": 30}, root="person"))
+print(write_xml({"person": {"name": "Ann", "age": 30}}))
 # <person>
 #   <name>Ann</name>
 #   <age>30</age>
 # </person>
 ```
+
+## XML is single-rooted
+
+An XML document has exactly **one** top-level (document) element. In the data
+tree, that document element is the single child of the tree's own (anonymous)
+root, connected by an edge labeled with its tag — so the tag is a real key,
+not a discardable wrapper.
+
+This means `read_xml`/`write_xml` work with a Document that has exactly **one
+top-level key**, whose value isn't itself a list: `{"person": {...}}` reads
+from and writes to `<person>...</person>` losslessly. A Document with more
+than one top-level key (`{"x": 1, "y": 2}`), or whose single key holds a list
+(`{"x": [1, 2]}`), has no representation as *one* XML document — it would need
+two `<x>` elements side by side, which isn't valid XML — so `write_xml` raises
+`WriteError` regardless of `strict`. (TOML's "wrap the leftover under a key"
+trick doesn't apply here: inventing a wrapper node the data never had would
+mean the round-tripped tree no longer matches the schema the original was
+written for.)
+
+For a Document that isn't single-rooted, use `write_xml_documents`/
+`read_xml_documents` instead — they treat the Document's anonymous root as a
+**forest**: one XML document per top-level key, with a list value producing
+one repeated-tag document per item.
+
+```python
+from dataspec import write_xml_documents, read_xml_documents
+
+write_xml_documents({"x": 1, "y": {"z": 2}})
+# ['<x>1</x>', '<y>\n  <z>2</z>\n</y>\n']
+
+write_xml_documents({"x": [1, 2, 3]})
+# ['<x>1</x>', '<x>2</x>', '<x>3</x>']
+
+read_xml_documents(['<x>1</x>', '<x>2</x>', '<x>3</x>'])
+# {'x': [1, 2, 3]}
+```
+
+`write_xml_documents` requires a top-level `dict` (it needs a tag for every
+document); a top-level scalar or list has no top-level key to use and raises
+`WriteError`.
 
 ## How it maps
 
@@ -33,34 +73,33 @@ print(write_xml({"name": "Ann", "age": 30}, root="person"))
 
   ```python
   read_xml("<r><item>1</item><item>2</item><other>x</other></r>")
-  # {'item': [1, 2], 'other': 'x'}
+  # {'r': {'item': [1, 2], 'other': 'x'}}
   ```
 
 - A **leaf element** is a scalar — its text content.
-- `write_xml` wraps the document in a root element; set its name with
-  `root="..."` (default `"root"`).
 
 ## What's supported
 
 - Objects and (named) arrays nested to any depth.
 - Scalars as element text.
 - The same `null` handling as TOML: a `null` field is omitted (`warning`); a
-  `null` array item is dropped (`error`); a top-level `null` becomes an empty
-  element (`error`). `strict=True` raises on any of these.
+  `null` array item is dropped (`error`). `strict=True` raises on either.
 
 ## Limitations
 
 Two kinds of limitation. **On read**, input outside the data-XML profile is
 rejected (or, for namespaces, normalized). **On write**, shapes XML can't hold
-natively are adjusted and reported — lenient by default, like the other formats;
-use `report=`, `check_xml(doc)`, or `strict=True` to see or forbid them.
+natively are adjusted and reported — lenient by default, like the other
+formats; use `report=`, `check_xml(doc)`, or `strict=True` to see or forbid
+them. One exception: a Document that isn't single-rooted has no fallback
+shape at all, so it always raises (see above), not just under `strict`.
 
 | Limitation | When | Behaviour |
 |---|---|---|
 | Attributes (`<a x="1">`) | read | `ParseError` |
 | Mixed content (text *and* elements together) | read | `ParseError` |
 | Namespaces | read | prefix **stripped** (`<n:a>` reads as `a`) |
-| Top-level array/scalar | write | wrapped under `wrap_key` (default `"value"`), reported |
+| Document isn't single-rooted (multiple top-level keys, or a top-level list/scalar) | write | `WriteError`, always — use `write_xml_documents` |
 | Nested / bare arrays (array of arrays) | write | wrapped in `<item>` elements, reported as `error` |
 | Object key that isn't a legal XML name | write | sanitized (e.g. `"a b"` → `<a_b>`), reported as a warning |
 | Two distinct keys that sanitize to the same name | write | merge into one list on read; reported as `key.collision`, **error** |
@@ -85,7 +124,7 @@ best-effort guessing on read:
 
 ```python
 read_xml("<r><n>30</n><ok>true</ok><s>x</s></r>")
-# {'n': 30, 'ok': True, 's': 'x'}
+# {'r': {'n': 30, 'ok': True, 's': 'x'}}
 ```
 
 This means a string that looks like a number (`"30"`) comes back as a number.
@@ -111,31 +150,27 @@ all four of the cases above.
 
 ## Round-trip behaviour
 
-A Document made of objects, named arrays, and scalars round-trips through XML:
+A single-rooted Document — objects, named arrays, and scalars under one
+top-level key — round-trips through XML exactly, **including the document
+element's name**:
 
 ```python
-data = {"name": "Ann", "age": 30, "tags": ["x", "y"], "addr": {"city": "London"}}
-read_xml(write_xml(data, root="rec")) == data      # True
+data = {"rec": {"name": "Ann", "age": 30, "tags": ["x", "y"],
+                "addr": {"city": "London"}}}
+read_xml(write_xml(data)) == data      # True
 ```
 
-The caveats above are the exceptions: numeric-looking strings are retyped as
-numbers, and dates return as strings.
-
-**The root element's name is never part of the round trip.** `read_xml`
-discards it — it's a wrapper, not data, so it isn't in the Document at all.
-This is fine for an XML → XML round trip *if* you pass the same `root=` again,
-but it means the name doesn't survive a detour through another format: reading
-`<k>...</k>`, converting to JSON (or any other format — none of them have a
-place to put a root name either) and back to XML gives you `<root>...</root>`
-(or whatever `root=` you pass, default `"root"`), not `<k>...</k>`, unless you
-explicitly remember and re-supply `"k"` yourself. dataspec has no way to do
-this for you — the name was never part of the data to begin with.
+This also means the name survives a detour through another format, since it's
+an ordinary key like any other:
 
 ```python
 from dataspec import read_xml, write_xml, read_json, write_json
 
 original = "<k><name>Ann</name></k>"
 roundtrip = write_xml(read_json(write_json(read_xml(original))))
-roundtrip                                    # '<root>\n  <name>Ann</name>\n</root>\n'
-roundtrip == original                        # False -- "k" became "root"
+roundtrip                              # '<k>\n  <name>Ann</name>\n</k>\n'
+read_xml(roundtrip) == read_xml(original)   # True -- same data, "k" preserved
 ```
+
+The caveats above are the exceptions: numeric-looking strings are retyped as
+numbers, and dates return as strings.

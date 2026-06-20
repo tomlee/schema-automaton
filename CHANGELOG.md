@@ -4,6 +4,38 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.1.0a8]
+
+A breaking fix to XML's document-root handling, grounded in the labeled-tree
+(OEM) data model the schema design is based on: the data tree's true root is
+anonymous, and an XML document element is the single *named* child of that
+root, not the root itself. The previous implementation conflated the two.
+
+- **Fixed (breaking):** `read_xml` used to discard the document element's
+  tag entirely (`<x><y>1</y></x>` read as `{"y": 1}`, not `{"x": {"y": 1}}`),
+  and `write_xml` always invented a meaningless `<root>` wrapper, even for
+  data that already had an obvious, lossless single-element XML shape. The
+  document element's tag is now a real, round-tripping top-level key:
+  `read_xml`/`write_xml` work with a Document that has exactly one top-level
+  key (a *single-rooted* Document) — `{"x": {"y": 1}}` <-> `<x><y>1</y></x>`,
+  exactly, including a detour through another format and back.
+- **New:** `read_xml_documents`/`write_xml_documents` for a Document that
+  *isn't* single-rooted (multiple top-level keys, or a top-level list) —
+  translates a Document <-> a *forest* of XML documents, one per top-level
+  key, with a list value producing one repeated-tag document per item.
+  `write_xml` itself now raises `WriteError` on a non-single-rooted Document,
+  unconditionally (not just under `strict`): unlike every other lossy
+  adjustment in the library, there's no value-preserving fallback shape to
+  wrap it in — inventing one would mean the round-tripped data no longer
+  matches the schema the original was written for.
+- **Removed (breaking):** `write_xml`/`check_xml`'s `root=` and `wrap_key=`
+  parameters — there's nothing left to invent a name for; the document
+  element's name now always comes from the data itself.
+- **Documentation:** the previously-documented "XML root-name lossiness"
+  (added in v0.1.0a5) is obsolete — it was a symptom of this bug, not an
+  accepted limitation — and has been rewritten across `docs/formats/xml.md`,
+  `docs/document.md`, `docs/formats/overview.md`, and `docs/faq.md`.
+
 ## [v0.1.0a7]
 
 No code changes — a packaging/release-readiness check ahead of

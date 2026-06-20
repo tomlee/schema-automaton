@@ -19,7 +19,10 @@ def main():
 
     print("-- YAML --");  print(d.to_yaml(), end="")
     print("-- TOML --");  print(d.to_toml())
-    print("-- XML  --");  print(d.to_xml(root="person"))
+    # XML needs exactly one top-level element, so a multi-key Document like
+    # this one is written under an explicit key naming the document element
+    # -- the key becomes <person>, not a discardable wrapper.
+    print("-- XML  --");  print(doc({"person": d.to_data()}).to_xml())
 
     print("\n-- lenient by default --")
     # TOML has no null: the null field is dropped, the null array item too.

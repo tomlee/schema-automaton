@@ -49,11 +49,13 @@ from .formats import (
     read_json,
     read_toml,
     read_xml,
+    read_xml_documents,
     read_yaml,
     register_format,
     write_json,
     write_toml,
     write_xml,
+    write_xml_documents,
     write_yaml,
 )
 from .infer import infer
@@ -103,6 +105,7 @@ __all__ = [
     "read_yaml", "write_yaml", "check_yaml",
     "read_toml", "write_toml", "check_toml",
     "read_xml", "write_xml", "check_xml",
+    "read_xml_documents", "write_xml_documents",
 ]
 
 __version__ = "0.1.0a1"

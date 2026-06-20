@@ -19,6 +19,7 @@ from dataspec import (
     DocumentError,
     ParseError,
     SchemaError,
+    WriteError,
     doc,
     parse_schema,
     read_json,
@@ -84,6 +85,12 @@ def test_lenient_round_trip_never_crashes(value):
             text = write(wrapped)
         except DocumentError:
             continue  # a legal rejection (e.g. nesting past the depth limit)
+        except WriteError:
+            # XML only: {"v": value} isn't single-rooted when value is
+            # itself a list, or becomes empty after null-stripping -- an
+            # intentional, always-raise rejection (no lossless fallback
+            # shape exists), not a crash.
+            continue
         read(text)  # lenient mode must never raise
 
 

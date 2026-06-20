@@ -22,14 +22,23 @@ Adjustment knobs:
 * ``null_style`` (TOML/XML) — ``"omit"`` (default) flags a dropped *array* item
   as an error-severity adjustment; ``"drop"`` treats it as an ordinary warning.
   Null *object fields* are always omitted (warning) either way.
-* ``wrap_key`` (TOML/XML) — the key a top-level array/scalar is wrapped under,
-  since these formats require a top-level object.
+* ``wrap_key`` (TOML) — the key a top-level array/scalar is wrapped under,
+  since TOML requires a top-level object.
 
 YAML is restricted to its JSON-compatible core (string keys, a tree, standard
 scalars); a standalone time-of-day is written as a string.  XML is restricted to
 data-XML: elements only — no attributes, mixed content, namespaces, or CDATA;
 repeated child names become lists.  XML scalars are untyped text, so they are
 read back with best-effort typing.
+
+XML is **single-rooted**: an XML document has exactly one top-level element, so
+``read_xml``/``write_xml`` work with a Document that has exactly one top-level
+key (e.g. ``{"x": {"y": 1}}``  <->  ``<x><y>1</y></x>``) -- the document
+element's tag *is* that key, not a discardable wrapper.  A Document that isn't
+single-rooted (multiple top-level keys, or a top-level list/scalar) has no
+single XML document representation; use ``read_xml_documents``/
+``write_xml_documents`` instead, which translate a Document <-> a *forest* of
+XML documents (one per top-level key, repeated for a list value).
 """
 
 from __future__ import annotations
@@ -40,7 +49,7 @@ import math as _math
 import re as _re
 from typing import Any, Optional, Tuple
 
-from .errors import DocumentError, ParseError, UnsafeXMLWarning
+from .errors import DocumentError, ParseError, UnsafeXMLWarning, WriteError
 from .report import WriteReport, finish_write
 
 # Bounds recursion depth well under Python's default recursion limit (1000),
@@ -390,52 +399,125 @@ _XML_ILLEGAL_CHAR = _re.compile(
 
 
 def read_xml(text: str) -> Any:
-    """Read data-XML into a Document.  The root element is a wrapper; its content
-    is returned.  Scalars are untyped text, read back with best-effort typing."""
+    """Read one XML document into a Document.  The document element's tag
+    becomes the single top-level key: ``<x><y>1</y></x>`` reads as
+    ``{"x": {"y": 1}}`` -- the document element is the one child of the data
+    tree's (anonymous) root, connected by an edge labeled with its tag, not
+    the root itself.  Scalars are untyped text, read back with best-effort
+    typing."""
     ET = _xml_parser()
     try:
         root = ET.fromstring(text)
     except Exception as exc:  # pragma: no cover
         raise ParseError(f"invalid XML: {exc}") from exc
-    return _xml_to_data(root, "$")
+    if root.attrib:
+        raise ParseError("attributes at $ are not supported (data-XML)")
+    tag = _local(root.tag)
+    return {tag: _xml_to_data(root, f"$.{tag}")}
 
 
-def write_xml(data: Any, *, root: str = "root", strict: bool = False,
+def read_xml_documents(texts: list) -> Any:
+    """Read a list of XML documents (a forest) into one Document: each
+    document's tag becomes a top-level key, with repeated tags merging into
+    a list -- the inverse of :func:`write_xml_documents`."""
+    grouped: dict = {}
+    order = []
+    for text in texts:
+        doc = read_xml(text)
+        (tag, value), = doc.items()
+        if tag not in grouped:
+            grouped[tag] = []
+            order.append(tag)
+        grouped[tag].append(value)
+    return {tag: (vs[0] if len(vs) == 1 else vs) for tag in order
+            for vs in [grouped[tag]]}
+
+
+# "Not single-rooted" has no lossless fallback shape at all (unlike, say,
+# TOML wrapping a top-level array under a key) -- it's a structural
+# impossibility, not a lossy adjustment -- so it always raises from
+# write_xml/write_xml_documents, regardless of strict.
+_ALWAYS_RAISE = "toplevel.not_rooted"
+
+
+def _raise_if_not_rooted(rep: WriteReport, report: Optional[WriteReport]) -> None:
+    if report is not None:
+        report.extend(rep)
+    if any(a.code == _ALWAYS_RAISE for a in rep):
+        raise WriteError(str(rep), report=rep)
+
+
+def write_xml(data: Any, *, strict: bool = False,
               report: Optional[WriteReport] = None,
-              null_style: str = "omit", wrap_key: str = "value") -> str:
-    text, rep = _serialize_xml(data, root=root, null_style=null_style,
-                               wrap_key=wrap_key)
-    return finish_write(text, rep, strict=strict, report=report)
+              null_style: str = "omit") -> str:
+    """Write a single-rooted Document as one XML document.  ``data`` must be
+    a dict with exactly one key (one child of the anonymous root) whose
+    value isn't itself a list -- anything else has no single XML document
+    representation and raises ``WriteError`` regardless of ``strict``; use
+    :func:`write_xml_documents` for a Document with multiple top-level keys
+    or a top-level list."""
+    text, rep = _serialize_xml(data, null_style=null_style)
+    _raise_if_not_rooted(rep, report)
+    return finish_write(text, rep, strict=strict, report=None)
 
 
-def check_xml(data: Any, *, root: str = "root", null_style: str = "omit",
-              wrap_key: str = "value") -> WriteReport:
+def check_xml(data: Any, *, null_style: str = "omit") -> WriteReport:
     """Simulate writing XML and return the report without producing output."""
-    _text, rep = _serialize_xml(data, root=root, null_style=null_style,
-                                wrap_key=wrap_key)
+    _text, rep = _serialize_xml(data, null_style=null_style)
     return rep
 
 
-def _serialize_xml(data: Any, *, root: str, null_style: str,
-                   wrap_key: str) -> Tuple[str, WriteReport]:
+def write_xml_documents(data: Any, *, strict: bool = False,
+                        report: Optional[WriteReport] = None,
+                        null_style: str = "omit") -> list:
+    """Write a Document as a forest of XML documents: one per top-level key,
+    with a list value producing one document per item (same tag, repeated)
+    -- the inverse of :func:`read_xml_documents`.  ``data`` must be a dict;
+    a top-level scalar or list has no top-level tag to use and raises
+    ``WriteError``."""
+    rep = WriteReport()
+    if not isinstance(data, dict):
+        rep.add("$", _ALWAYS_RAISE,
+                f"top-level {_name(data)} has no element name to write as "
+                "(XML documents must be single, named elements)", "error")
+        _raise_if_not_rooted(rep, report)
+    texts = []
+    for k, v in data.items():
+        items = v if isinstance(v, list) else [v]
+        for item in items:
+            text, item_rep = _serialize_xml({k: item}, null_style=null_style)
+            rep.extend(item_rep)
+            texts.append(text)
+    _raise_if_not_rooted(rep, None)
+    finish_write("", rep, strict=strict, report=report)
+    return texts
+
+
+def _serialize_xml(data: Any, *, null_style: str) -> Tuple[str, WriteReport]:
     rep = WriteReport()
     body = _strip_nulls(data, "$", rep, null_style, 0)
-    if body is None:
-        rep.add("$", "null.toplevel.empty",
-                "top-level null written as an empty element", "error")
-        body = {}
-    if not isinstance(body, dict):
-        rep.add("$", "toplevel.wrapped",
-                f"top-level {_name(body)} wrapped under {wrap_key!r} "
-                "(XML needs a top-level element)", "warning")
-        body = {wrap_key: body}
-    elif not body:
-        rep.add("$", "container.empty.ambiguous",
+    if not isinstance(body, dict) or len(body) != 1:
+        rep.add("$", _ALWAYS_RAISE,
+                f"top-level {_name(body)} is not single-rooted (XML needs "
+                "exactly one top-level element); use write_xml_documents() "
+                "for a Document with multiple top-level keys or a top-level "
+                "list", "error")
+        return "", rep
+    (tag, content), = body.items()
+    if isinstance(content, list):
+        rep.add(f"$.{tag}", _ALWAYS_RAISE,
+                f"key {tag!r} holds a list, which would be multiple XML "
+                "documents with the same tag; use write_xml_documents()",
+                "error")
+        return "", rep
+    import xml.etree.ElementTree as ET
+    root_tag = _xml_name(str(tag), "$", rep)
+    el = ET.Element(root_tag)
+    if isinstance(content, dict) and not content:
+        rep.add(f"$.{tag}", "container.empty.ambiguous",
                 "empty object written as an empty element; reads back as "
                 "an empty string, not an empty object", "warning")
-    import xml.etree.ElementTree as ET
-    el = ET.Element(root)
-    _data_to_xml(body, el, "$", rep, 0)
+    _data_to_xml(content, el, f"$.{tag}", rep, 0)
     _indent(el)
     return ET.tostring(el, encoding="unicode"), rep
 

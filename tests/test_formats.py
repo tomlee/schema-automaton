@@ -18,10 +18,12 @@ from dataspec import (
     read_json,
     read_toml,
     read_xml,
+    read_xml_documents,
     read_yaml,
     write_json,
     write_toml,
     write_xml,
+    write_xml_documents,
     write_yaml,
 )
 
@@ -161,13 +163,15 @@ class TestToml:
 # ---------------------------------------------------------------- XML
 class TestXml:
     def test_round_trip_with_typing(self):
-        data = {"name": "Ann", "age": 30, "active": True,
-                "tags": ["x", "y"], "addr": {"city": "HK"}}
-        assert read_xml(write_xml(data, root="rec")) == data
+        # the document element's tag is a real key, not a discardable
+        # wrapper -- a single-rooted Document round-trips exactly.
+        data = {"rec": {"name": "Ann", "age": 30, "active": True,
+                        "tags": ["x", "y"], "addr": {"city": "HK"}}}
+        assert read_xml(write_xml(data)) == data
 
     def test_repeated_names_become_list(self):
         xml = "<r><item>1</item><item>2</item><other>x</other></r>"
-        assert read_xml(xml) == {"item": [1, 2], "other": "x"}
+        assert read_xml(xml) == {"r": {"item": [1, 2], "other": "x"}}
 
     def test_rejects_attributes(self):
         with pytest.raises(ParseError):
@@ -178,23 +182,34 @@ class TestXml:
             read_xml("<r>text<a>1</a></r>")
 
     def test_namespaces_stripped(self):
-        assert read_xml('<r xmlns:n="urn:x"><n:a>1</n:a></r>') == {"a": 1}
+        assert read_xml('<r xmlns:n="urn:x"><n:a>1</n:a></r>') == {"r": {"a": 1}}
 
-    def test_root_element_name_is_arbitrary_on_read(self):
-        # read_xml never inspects the root tag itself, only its children --
-        # the name is a wrapper, not part of the data, on both write (the
-        # `root=` parameter) and read.
+    def test_document_element_name_is_a_real_key_on_read(self):
+        # unlike the old (buggy) behavior, the document element's tag is
+        # now part of the data, not an arbitrary, discardable wrapper.
         a = read_xml("<r><name>Ann</name></r>")
         b = read_xml("<totallydifferent><name>Ann</name></totallydifferent>")
-        assert a == b == {"name": "Ann"}
+        assert a == {"r": {"name": "Ann"}}
+        assert b == {"totallydifferent": {"name": "Ann"}}
+        assert a != b
 
-    def test_write_then_read_with_different_root_names(self):
-        data = {"name": "Ann"}
-        out = write_xml(data, root="person")
+    def test_write_then_read_round_trips_the_element_name(self):
+        data = {"person": {"name": "Ann"}}
+        out = write_xml(data)
         assert "<person>" in out
         assert read_xml(out) == data
-        # the reader doesn't care what the writer called it, either
-        assert read_xml(out.replace("person", "anything")) == data
+
+    def test_multi_key_document_has_no_single_xml_representation(self):
+        # {"x": 1, "y": 2} would need two document elements -- not valid XML
+        # -- so write_xml raises regardless of strict; use
+        # write_xml_documents for a Document that isn't single-rooted.
+        with pytest.raises(WriteError):
+            write_xml({"x": 1, "y": 2})
+
+    def test_top_level_list_value_has_no_single_xml_representation(self):
+        # {"x": [1, 2]} would need two <x> document elements.
+        with pytest.raises(WriteError):
+            write_xml({"x": [1, 2]})
 
     def test_warns_when_defusedxml_is_unavailable(self, monkeypatch):
         # read_xml() used to silently fall back to the standard library's
@@ -211,28 +226,35 @@ class TestXml:
 
         monkeypatch.setattr(builtins, "__import__", blocking_import)
         with pytest.warns(UnsafeXMLWarning):
-            assert read_xml("<r><a>1</a></r>") == {"a": 1}
+            assert read_xml("<r><a>1</a></r>") == {"r": {"a": 1}}
 
     def test_no_warning_when_defusedxml_is_available(self, recwarn):
         read_xml("<r><a>1</a></r>")
         assert not any(isinstance(w.message, UnsafeXMLWarning) for w in recwarn.list)
 
     def test_omits_null_field(self):
-        assert "<b>" not in write_xml({"a": 1, "b": None}, root="r")
+        assert "<b>" not in write_xml({"r": {"a": 1, "b": None}})
 
     def test_drops_null_in_array_lenient(self):
-        assert read_xml(write_xml({"xs": [1, None, 2]}, root="r")) == {"xs": [1, 2]}
+        assert read_xml(write_xml({"r": {"xs": [1, None, 2]}})) == {"r": {"xs": [1, 2]}}
 
     def test_strict_rejects_null_in_array(self):
         with pytest.raises(WriteError):
-            write_xml({"xs": [1, None]}, root="r", strict=True)
+            write_xml({"r": {"xs": [1, None]}}, strict=True)
 
-    def test_wraps_top_level_array_lenient(self):
-        assert read_xml(write_xml([1, 2, 3], wrap_key="items")) == {"items": [1, 2, 3]}
+    def test_write_xml_documents_handles_multi_root(self):
+        texts = write_xml_documents({"x": 1, "y": {"z": 2}})
+        assert texts == ["<x>1</x>", "<y>\n  <z>2</z>\n</y>\n"]
+        assert read_xml_documents(texts) == {"x": 1, "y": {"z": 2}}
 
-    def test_strict_rejects_top_level_array(self):
+    def test_write_xml_documents_handles_repeated_tag_from_a_list(self):
+        texts = write_xml_documents({"x": [1, 2, 3]})
+        assert texts == ["<x>1</x>", "<x>2</x>", "<x>3</x>"]
+        assert read_xml_documents(texts) == {"x": [1, 2, 3]}
+
+    def test_write_xml_documents_rejects_non_dict(self):
         with pytest.raises(WriteError):
-            write_xml([1, 2, 3], strict=True)
+            write_xml_documents([1, 2, 3])
 
 
 # ---------------------------------------------------- cross-format transcode
@@ -304,22 +326,22 @@ class TestReports:
 
     def test_xml_sanitizes_bad_key(self):
         rep = WriteReport()
-        out = write_xml({"a b": 1}, root="r", report=rep)
+        out = write_xml({"r": {"a b": 1}}, report=rep)
         assert [a.code for a in rep] == ["key.sanitized"]
         assert "<a_b>" in out
 
     def test_xml_nested_array_is_error(self):
-        rep = check_xml({"grid": [[1, 2], [3, 4]]}, root="r")
+        rep = check_xml({"r": {"grid": [[1, 2], [3, 4]]}})
         assert any(a.code == "array.nested.ambiguous" for a in rep.errors)
 
     def test_xml_string_that_looks_like_a_bool_is_reported(self):
         # write_xml({"a": "true"}) used to silently round-trip as a bool with
         # no adjustment at all -- this must be flagged so a caller can tell.
-        rep = check_xml({"a": "true", "b": "123", "c": "1.5"}, root="r")
+        rep = check_xml({"r": {"a": "true", "b": "123", "c": "1.5"}})
         assert [a.code for a in rep] == ["string.ambiguous"] * 3
 
     def test_xml_string_that_does_not_look_like_anything_else_is_silent(self):
-        rep = check_xml({"a": "Ann", "b": ""}, root="r")
+        rep = check_xml({"r": {"a": "Ann", "b": ""}})
         assert rep.adjustments == []
 
     def test_xml_string_with_crlf_is_reported(self):
@@ -327,16 +349,16 @@ class TestReports:
         # found by the edge-case sweep (tests/test_edge_cases.py), which
         # caught it via a string that doesn't look like a different type,
         # just one with different line endings.
-        rep = check_xml({"a": "line1\r\nline2"}, root="r")
+        rep = check_xml({"r": {"a": "line1\r\nline2"}})
         assert [a.code for a in rep] == ["string.line_ending_normalized"]
 
     def test_xml_string_with_plain_newline_is_silent(self):
-        rep = check_xml({"a": "line1\nline2"}, root="r")
+        rep = check_xml({"r": {"a": "line1\nline2"}})
         assert rep.adjustments == []
 
     def test_xml_strict_raises_on_crlf(self):
         with pytest.raises(WriteError):
-            write_xml({"a": "line1\r\nline2"}, root="r", strict=True)
+            write_xml({"r": {"a": "line1\r\nline2"}}, strict=True)
 
     def test_xml_illegal_char_is_stripped_and_reported(self):
         # write_xml used to embed control characters like NUL directly in
@@ -344,42 +366,42 @@ class TestReports:
         # it doesn't parse at all (verified: the old output raised ParseError
         # from dataspec's own read_xml, not just from other implementations).
         rep = WriteReport()
-        out = write_xml({"a": chr(0) + "hello"}, root="r", report=rep)
+        out = write_xml({"r": {"a": chr(0) + "hello"}}, report=rep)
         assert [a.code for a in rep] == ["string.illegal_xml_char"]
         assert rep.errors  # data is destroyed, not just reshaped -- an error
-        assert read_xml(out) == {"a": "hello"}
+        assert read_xml(out) == {"r": {"a": "hello"}}
 
     def test_xml_strict_raises_on_illegal_char(self):
         with pytest.raises(WriteError):
-            write_xml({"a": chr(0)}, root="r", strict=True)
+            write_xml({"r": {"a": chr(0)}}, strict=True)
 
     def test_xml_ordinary_control_chars_are_legal(self):
         # tab, LF, CR are explicitly legal XML Chars -- must not be stripped
-        rep = check_xml({"a": "a\tb\nc"}, root="r")
+        rep = check_xml({"r": {"a": "a\tb\nc"}})
         assert [a.code for a in rep if a.code == "string.illegal_xml_char"] == []
 
     def test_xml_strict_raises_on_ambiguous_string(self):
         with pytest.raises(WriteError):
-            write_xml({"a": "true"}, root="r", strict=True)
+            write_xml({"r": {"a": "true"}}, strict=True)
 
     def test_xml_empty_array_value_keeps_the_key_and_is_reported(self):
         # write_xml({"xs": []}) used to silently drop the key entirely --
         # no <xs> element was written at all.
         rep = WriteReport()
-        out = write_xml({"xs": []}, root="r", report=rep)
+        out = write_xml({"r": {"xs": []}}, report=rep)
         assert "<xs" in out
         assert [a.code for a in rep] == ["container.empty.ambiguous"]
 
     def test_xml_empty_object_value_is_reported(self):
-        rep = check_xml({"meta": {}}, root="r")
+        rep = check_xml({"r": {"meta": {}}})
         assert [a.code for a in rep] == ["container.empty.ambiguous"]
 
     def test_xml_empty_top_level_object_is_reported(self):
-        rep = check_xml({}, root="r")
+        rep = check_xml({"r": {}})
         assert [a.code for a in rep] == ["container.empty.ambiguous"]
 
     def test_xml_non_empty_object_value_is_silent(self):
-        rep = check_xml({"address": {"city": "London"}}, root="r")
+        rep = check_xml({"r": {"address": {"city": "London"}}})
         assert rep.adjustments == []
 
     def test_toml_integer_beyond_i64_is_a_warning(self):
@@ -628,36 +650,37 @@ class TestYamlReports:
 class TestXmlReports:
     def test_nested_array_single_report_per_item(self):
         # regression: the double-report bug produced two entries per item
-        rep = check_xml({"grid": [[1, 2], [3, 4]]}, root="r")
+        rep = check_xml({"r": {"grid": [[1, 2], [3, 4]]}})
         nested = [a for a in rep if a.code == "array.nested.ambiguous"]
         # two rows -> two entries, not four
         assert len(nested) == 2
 
-    def test_top_level_scalar_wrapped(self):
-        rep = WriteReport()
-        out = write_xml(42, report=rep)
-        assert [a.code for a in rep] == ["toplevel.wrapped"]
-        assert rep.warnings  # wrapping is a warning, not an error
-        assert "<value>42</value>" in out
+    def test_top_level_scalar_has_no_xml_representation(self):
+        # a bare scalar has no element name to write as -- there is no
+        # lossless fallback (unlike TOML's wrap-under-a-key), so this always
+        # raises, not just under strict.
+        rep = check_xml(42)
+        assert [a.code for a in rep] == ["toplevel.not_rooted"]
+        assert rep.errors
 
     def test_top_level_null_is_error(self):
         rep = check_xml(None)
-        assert any(a.code == "null.toplevel.empty" for a in rep.errors)
+        assert any(a.code == "toplevel.not_rooted" for a in rep.errors)
         assert bool(rep) is False
 
     def test_temporal_in_xml_is_warning(self):
-        rep = check_xml({"d": datetime.date(2024, 1, 1)}, root="r")
+        rep = check_xml({"r": {"d": datetime.date(2024, 1, 1)}})
         assert rep.adjustments[0].code == "temporal.stringified"
         assert rep.adjustments[0].severity == "warning"
 
     def test_null_style_drop_in_xml(self):
-        rep = check_xml({"xs": [1, None, 2]}, root="r", null_style="drop")
+        rep = check_xml({"r": {"xs": [1, None, 2]}}, null_style="drop")
         assert rep.errors == []
         assert [a.code for a in rep.warnings] == ["null.item.dropped"]
 
     def test_strict_raises_on_temporal(self):
         with pytest.raises(WriteError):
-            write_xml({"d": datetime.date(2024, 1, 1)}, root="r", strict=True)
+            write_xml({"r": {"d": datetime.date(2024, 1, 1)}}, strict=True)
 
     def test_report_str_lists_adjustments(self):
         rep = check_toml({"a": None, "xs": [1, None]})
@@ -669,7 +692,7 @@ class TestXmlReports:
 
     def test_write_error_carries_report(self):
         with pytest.raises(WriteError) as ei:
-            write_xml({"d": datetime.date(2024, 1, 1)}, root="r", strict=True)
+            write_xml({"r": {"d": datetime.date(2024, 1, 1)}}, strict=True)
         assert ei.value.report is not None
         assert ei.value.report.adjustments
 
@@ -677,7 +700,7 @@ class TestXmlReports:
         # "my key" and "my_key" are distinct dict keys but sanitize to the
         # same XML element name, merging into one list on read-back -- this
         # must be an error, not a soft warning, since it corrupts the data.
-        rep = check_xml({"my key": 1, "my_key": 2}, root="r")
+        rep = check_xml({"r": {"my key": 1, "my_key": 2}})
         collisions = [a for a in rep if a.code == "key.collision"]
         assert len(collisions) == 1
         assert collisions[0].severity == "error"
@@ -685,12 +708,12 @@ class TestXmlReports:
 
     def test_strict_raises_on_key_collision(self):
         with pytest.raises(WriteError):
-            write_xml({"my key": 1, "my_key": 2}, root="r", strict=True)
+            write_xml({"r": {"my key": 1, "my_key": 2}}, strict=True)
 
     def test_repeated_element_from_a_single_key_is_not_a_collision(self):
         # A list value legitimately repeats its own tag -- that's the normal
         # array representation, not a collision between two different keys.
-        rep = check_xml({"tags": ["a", "b"]}, root="r")
+        rep = check_xml({"r": {"tags": ["a", "b"]}})
         assert [a.code for a in rep if a.code == "key.collision"] == []
 
 
@@ -733,9 +756,9 @@ class TestCrossFormatKeyCompatibility:
 
         # XML: not a legal element name, so it's sanitized into one --
         # reported, and the key changes shape, but the value is never lost.
-        rep = check_xml(data, root="r")
+        rep = check_xml(data)
         assert [a.code for a in rep] == ["key.sanitized"]
-        back = read_xml(write_xml(data, root="r"))
+        back = read_xml(write_xml(data))
         assert back != data                 # the key did not survive unchanged
         assert list(back.values()) == [1]   # but the value did
 
@@ -748,8 +771,8 @@ class TestCrossFormatKeyCompatibility:
         # Unlike every other case above, this key IS already a legal XML
         # name (TOML and XML don't agree on what "special" means), so XML
         # needs no adjustment either -- it round-trips exactly everywhere.
-        assert check_xml(data, root="r").adjustments == []
-        assert read_xml(write_xml(data, root="r")) == data
+        assert check_xml(data).adjustments == []
+        assert read_xml(write_xml(data)) == data
 
     @staticmethod
     def _assert_clean_in_json_yaml_toml(data):

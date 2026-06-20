@@ -43,10 +43,16 @@ FORMATS = {
 
 
 def _wrapped(case):
-    # Wrap under one key so every case exercises the *value's* own behavior,
-    # without also triggering top-level wrapping (a separate, already-tested
-    # concern -- see TestReports/TestXmlReports in test_formats.py).
-    return {"v": case.value}
+    # Wrap two levels deep so every case exercises the *value's* own
+    # behavior, without also triggering top-level handling (a separate,
+    # already-tested concern -- see TestReports/TestXmlReports in
+    # test_formats.py). Two levels, not one, because XML additionally
+    # requires its single top-level key's content to be an object/scalar,
+    # not a list -- a case whose value is itself a list (e.g.
+    # array_of_mixed_scalars) would make {"v": case.value} structurally
+    # un-representable as a single XML document (it would need repeated
+    # <v> elements), even though that's not what the case is testing.
+    return {"root": {"v": case.value}}
 
 
 @pytest.mark.parametrize("case", CASES, ids=lambda c: c.id)

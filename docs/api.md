@@ -54,9 +54,11 @@ Document and returns a **string**.
 | `read_toml(text)` | stdlib `tomllib` |
 | `write_toml(doc, *, strict=False, report=None, null_style="omit", wrap_key="value")` | needs `tomli_w` |
 | `check_toml(doc, *, null_style="omit", wrap_key="value")` | needs `tomli_w` |
-| `read_xml(text)` | `defusedxml` recommended |
-| `write_xml(doc, *, root="root", strict=False, report=None, null_style="omit", wrap_key="value")` | `root` names the wrapper element |
-| `check_xml(doc, *, root="root", null_style="omit", wrap_key="value")` | — |
+| `read_xml(text)` | `defusedxml` recommended; reads `<k>...</k>` as `{"k": ...}` |
+| `write_xml(doc, *, strict=False, report=None, null_style="omit")` | `doc` must have exactly one top-level key (single-rooted); else raises `WriteError` |
+| `check_xml(doc, *, null_style="omit")` | — |
+| `read_xml_documents(texts)` | reads a list of XML documents (a forest) into one Document |
+| `write_xml_documents(doc, *, strict=False, report=None, null_style="omit")` | writes a Document that isn't single-rooted as a list of XML documents, one per top-level key |
 
 All writers are **lenient by default**: an unrepresentable value is adjusted and
 recorded. `report=` collects the adjustments, `strict=True` raises a `WriteError`

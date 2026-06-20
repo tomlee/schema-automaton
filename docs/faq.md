@@ -49,10 +49,13 @@ details). See [Formats](formats/overview.md).
 ### What happens to `null` when I write TOML or XML?
 
 A `null` **object field** is **omitted** (a `warning`). A `null` **array item**
-is **dropped** (an `error`, because it shifts later positions). A **top-level**
-`null` becomes an empty document (an `error`). Nothing raises by default — use
-`check_*`/`report=` to see these, `null_style="drop"` to treat a dropped array
-item as an ordinary warning, or `strict=True` to refuse them.
+is **dropped** (an `error`, because it shifts later positions). For TOML, a
+**top-level** `null` becomes an empty document (an `error`). For XML, a bare
+top-level `null` isn't single-rooted, so `write_xml` raises unconditionally
+(see [XML](formats/xml.md#xml-is-single-rooted)) — everything else here is
+lenient by default; use `check_*`/`report=` to see these, `null_style="drop"`
+to treat a dropped array item as an ordinary warning, or `strict=True` to
+refuse them.
 
 ### Why does my numeric string come back as a number from XML?
 
