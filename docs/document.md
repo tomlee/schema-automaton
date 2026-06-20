@@ -217,6 +217,11 @@ a = {}; a["x"] = a
 doc(a)                   # DocumentError: cycle detected
 ```
 
+Nesting past a depth limit (200 levels) is rejected the same way, so a
+maliciously or accidentally deep structure — say, from parsing untrusted
+JSON — raises a clean `DocumentError` instead of crashing the process with
+an uncatchable `RecursionError`.
+
 Errors carry the path to the offender (`"$.a.b[1]: ..."`). Copy-in also means
 outside references can't corrupt the document after the fact:
 

@@ -359,6 +359,12 @@ can also navigate with uniform getters: `obj_type.field("name")`,
   object with named fields when each position has a distinct meaning.
 - **Map keys are always strings.** That matches JSON/YAML/TOML/XML, where object
   keys are strings.
+- **DSL text nesting is capped at 100 levels.** A schema that deeply nested
+  (`[[[...string...]]]` or similar) would risk an uncatchable
+  `RecursionError` in the parser; past the limit, `parse_schema` raises a
+  clean `SchemaError` instead. Ordinary schemas are nowhere near this —
+  it exists for malformed or adversarial input, not as a practical
+  authoring constraint.
 
 ## See also
 

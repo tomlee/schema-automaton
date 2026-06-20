@@ -139,7 +139,9 @@ change before a stable release. It is not yet on PyPI — install from a checkou
 
 Feedback and bug reports are welcome:
 <https://github.com/tomlee/dataspec/issues>. See
-[CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow.
+[CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, and
+[SECURITY.md](SECURITY.md) for the trust model if you're parsing
+untrusted input, and how to report a vulnerability.
 
 ## License
 

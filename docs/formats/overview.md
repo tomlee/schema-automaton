@@ -104,6 +104,7 @@ truthiness of "no errors". The stable `code` values:
 | `string.ambiguous` | warning | a string that looks like a number/bool/null written to XML; reads back as that type, not as a string |
 | `string.line_ending_normalized` | warning | a string containing `\r` written to XML; the XML spec normalizes it to `\n` on read |
 | `container.empty.ambiguous` | warning | an empty object/array written to XML; reads back as an empty string, not as an empty object/array |
+| `string.illegal_xml_char` | error | string contains a character with no legal XML representation at all; removed |
 | `integer.out_of_range` | warning | integer outside TOML's signed 64-bit range; round-trips here, but may not in another TOML implementation |
 
 \* `warning` under `null_style="drop"`.
@@ -146,6 +147,12 @@ Notes on the caveats:
   read — all three come back as `""`. Writing an empty object/array is
   reported (`container.empty.ambiguous`) rather than silently losing the
   distinction.
+- **A handful of code points (most C0 controls, surrogates) have no legal
+  representation in XML 1.0 at all**, not even a character reference. A
+  string containing one is stripped of those characters before writing,
+  reported as `string.illegal_xml_char` — the only `error`-severity string
+  adjustment, since the alternative is writing output that doesn't parse as
+  XML at all.
 - **TOML integers are signed 64-bit** per the spec; dataspec's own
   read/write round-trips a larger Python `int` fine (reported as
   `integer.out_of_range`), but another TOML implementation may reject it.
