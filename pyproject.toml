@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dataspec"
-version = "0.1.0a5"
+version = "0.1.0a6"
 description = "One data model, many formats: read, validate, and write JSON, YAML, TOML, and XML."
 readme = "README.md"
 requires-python = ">=3.11"

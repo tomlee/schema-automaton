@@ -4,6 +4,27 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.1.0a6]
+
+Performance only — no behavior changes (verified: every existing test
+passed unmodified, plus the `hypothesis` property suite at 3000
+examples/property, before and after each change).
+
+- `write_toml`/`check_toml` merged three separate full-tree passes
+  (int-range scan, offset-time fix, null strip) into one. Measured
+  **45% faster** on a 2000-section document (52.2ms → 28.5ms) — the
+  three old passes cost almost as much as `tomli_w`'s own
+  serialization.
+- `Doc.to_data()` and the `get()`/`at()` snapshot helper replaced
+  `copy.deepcopy` with a small Document-shape-aware copy. Measured
+  **~3.5x faster** on a 2000-section document (12.9ms → 3.6ms) —
+  `_snapshot()` backs every `get()`/`at()` call on a container field,
+  so this is the more frequently-hit fix in practice.
+- `Schema.peel()` no longer allocates an empty `set()` for the common
+  case (a type that isn't a named-type reference). Measured ~11%
+  faster `validate()` on a 2000-field schema with no named types
+  (2.99ms → 2.67ms).
+
 ## [v0.1.0a5]
 
 - Fixed: `write_toml`/`check_toml` crashed with a raw `ValueError` on a
