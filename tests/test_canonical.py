@@ -68,6 +68,40 @@ class TestDocument:
         with pytest.raises(DocumentError):
             doc({1: "a"})
 
+    def test_editing(self):
+        d = doc({"name": "Ann"})
+        d.add("tag", "x").add("tag", "y")            # repeated label = array
+        assert d.count("tag") == 2
+        d.set("name", "Bob")
+        assert d.get_one("name").value == "Bob"
+        d.remove("tag")
+        assert d.count("tag") == 0
+        # nested editing through a cursor shares the underlying structure
+        d2 = doc({"addr": {"city": "X"}})
+        d2.child("addr").set("city", "Y")
+        assert d2.to_grouped() == {"addr": {"city": "Y"}}
+
+
+class TestInfer:
+    def test_flat(self):
+        from dataspec.canonical import infer
+        s = infer([doc({"name": "Ann", "age": 30}), doc({"name": "Bob"})])
+        assert s.validate(doc({"name": "Cy"})).ok           # age optional
+        assert not s.validate(doc({"age": 1})).ok           # name required
+
+    def test_array_and_nested(self):
+        from dataspec.canonical import infer
+        s = infer([doc({"id": 1, "tags": ["a", "b"], "addr": {"city": "X"}})])
+        assert s.validate(doc({"id": 9, "tags": ["c"], "addr": {"city": "Y"}})).ok
+        assert not s.validate(doc({"id": 9, "tags": [1], "addr": {"city": "Y"}})).ok
+
+    def test_accepts_its_own_samples(self):
+        from dataspec.canonical import infer
+        samples = [doc({"v": 1}), doc({"v": 2.5})]          # int + float -> number
+        s = infer(samples)
+        for sm in samples:
+            assert s.validate(sm).ok
+
 
 # ----------------------------------------------------------- DSL + validation
 def valid(dsl, data):

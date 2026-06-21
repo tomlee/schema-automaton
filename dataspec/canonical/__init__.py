@@ -26,6 +26,7 @@ from .formats import (
     write_xml,
     write_yaml,
 )
+from .infer import infer
 from .operations import compatible_with, equivalent, normalize
 from .schema import (
     BOOLEAN,
@@ -54,7 +55,7 @@ __all__ = [
     "record", "union", "ref", "field", "schema",
     "STRING", "INTEGER", "NUMBER", "BOOLEAN", "DATE", "TIME", "DATETIME",
     "parse_schema", "to_dsl",
-    "compatible_with", "equivalent", "normalize",
+    "compatible_with", "equivalent", "normalize", "infer",
     "read_json", "read_yaml", "read_toml", "read_xml",
     "write_json", "write_yaml", "write_toml", "write_xml",
 ]

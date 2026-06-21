@@ -177,6 +177,39 @@ class Doc:
         if isinstance(self._node, list):
             yield from self._node
 
+    def child(self, label: str) -> "Doc":
+        """A cursor to the single child under ``label`` (editable if internal)."""
+        return self.get_one(label)
+
+    # -- editing (mutates the underlying edge list) ---------------------
+    def add(self, label: str, value: Any) -> "Doc":
+        """Append an edge ``(label, value)``.  A repeated label is how an array
+        grows.  Returns ``self`` for chaining."""
+        self._require_internal("add")
+        self._node.append((label, build_node(value, f"{self.path}.{label}")))
+        return self
+
+    def remove(self, label: str) -> "Doc":
+        """Remove every edge under ``label``."""
+        self._require_internal("remove")
+        self._node[:] = [(lbl, c) for lbl, c in self._node if lbl != label]
+        return self
+
+    def set(self, label: str, value: Any) -> "Doc":
+        """Replace the (single) child under ``label``, or add it if absent."""
+        self._require_internal("set")
+        new = build_node(value, f"{self.path}.{label}")
+        for i, (lbl, _) in enumerate(self._node):
+            if lbl == label:
+                self._node[i] = (label, new)
+                return self
+        self._node.append((label, new))
+        return self
+
+    def _require_internal(self, op: str) -> None:
+        if not isinstance(self._node, list):
+            raise DocumentError(f"{self.path}: cannot {op} on a leaf")
+
     # -- export ---------------------------------------------------------
     def to_data(self) -> Any:
         return _copy(self._node)
