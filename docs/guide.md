@@ -229,6 +229,9 @@ print(s.validate(bad))
 #   at $: field 'items' occurs 0 time(s), expected at least 1
 ```
 
-See [`examples/canonical_model.py`](../examples/canonical_model.py) for a
-runnable end-to-end version, and [the model spec](design/model.md) for the
-formal definitions of the Document and Schema models.
+For a fuller version — the same order validated against documents in **all four
+formats**, plus a compatibility check — see [a real-life example](example.md).
+[`examples/canonical_model.py`](../examples/canonical_model.py) is a runnable
+end-to-end version; [the model spec](design/model.md) has the formal
+definitions; and [Formats](formats/overview.md) covers each format's mapping
+and caveats.
