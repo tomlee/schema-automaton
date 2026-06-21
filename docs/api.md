@@ -7,7 +7,7 @@ Everything importable from `import dataspec`. Types: a **Document** is held by a
 
 ```python
 import dataspec
-dataspec.__version__        # "0.1.1a3"
+dataspec.__version__        # "0.1.1a4"
 ```
 
 ---

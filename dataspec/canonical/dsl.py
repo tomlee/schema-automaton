@@ -32,7 +32,6 @@ from .schema import (
 )
 
 _KINDS = {"string", "integer", "number", "boolean", "date", "time", "datetime"}
-_MAX_DEPTH = 100
 
 _TOKEN = re.compile(r"""
       (?P<ws>\s+)
@@ -112,6 +111,12 @@ class _Parser:
         return Schema(Ref(root), env)
 
     def _define(self, env: dict, name: str, d: Any) -> None:
+        if name in _KINDS:
+            raise SchemaError(
+                f"{name!r} is a reserved scalar name; a record or union "
+                "cannot be defined with this name, or it could never be "
+                "referenced (a bare 'name' in a type position always means "
+                "the builtin scalar)")
         if name in env:
             raise SchemaError(f"duplicate definition {name!r}")
         env[name] = d
@@ -147,12 +152,12 @@ class _Parser:
         self._expect("punct", "[")
         first = None
         if self._peek().kind == "number":
-            first = int(self._next().text)
+            first = self._cardinality_int()
         if self._peek().text == ",":
             self._next()
             second: Optional[int] = None
             if self._peek().kind == "number":
-                second = int(self._next().text)
+                second = self._cardinality_int()
             lo = first if first is not None else 0
             hi = second
         else:
@@ -161,6 +166,13 @@ class _Parser:
             lo = hi = first
         self._expect("punct", "]")
         return lo, hi
+
+    def _cardinality_int(self) -> int:
+        t = self._next()
+        if "." in t.text:
+            raise SchemaError(f"cardinality must be a whole number, got {t.text!r} "
+                              f"at {t.pos}")
+        return int(t.text)
 
     def _type(self) -> Any:
         atoms: List[_Tok] = [self._type_atom()]
@@ -227,8 +239,6 @@ class _Parser:
 
 def parse_schema(text: str) -> Schema:
     """Parse DSL text into a :class:`~dataspec.canonical.schema.Schema`."""
-    if text.count("{") > _MAX_DEPTH:
-        raise SchemaError("schema nesting exceeds the maximum depth")
     return _Parser(_tokenize(text)).parse()
 
 

@@ -52,7 +52,7 @@ class TestPublicApi:
         import dataspec as ds
 
         s = ds.parse_schema('record R { "n": integer, "s": string? }\nroot R')
-        assert ds.__version__ == "0.1.1a3"
+        assert ds.__version__ == "0.1.1a4"
         # operations are Schema methods
         assert s.validate(ds.doc({"n": 1, "s": None})).ok
         assert s.equivalent(ds.parse_schema(ds.to_dsl(s)))
@@ -206,6 +206,41 @@ class TestValidation:
         assert valid(s, {"license": "auto"}).ok
         assert valid(s, {"license": None}).ok
         assert not valid(s, {"license": "other"}).ok
+
+
+# ----------------------------------------------------- DSL parser robustness
+class TestDslRobustness:
+    """Regressions for three real defects found by probing the parser
+    against its own grammar: a crash, a broken depth guard, and a silent
+    name-shadowing footgun."""
+
+    def test_float_cardinality_raises_cleanly(self):
+        # used to crash with an uncaught ValueError instead of SchemaError
+        with pytest.raises(SchemaError):
+            parse_schema('record R { "a" [1.5,3]: integer }\nroot R')
+
+    def test_many_flat_definitions_are_not_rejected(self):
+        # the old "depth guard" counted total '{' across the whole file, so
+        # 150 unrelated, non-nested records were falsely rejected even
+        # though nothing here recurses at all
+        flat = "".join(f'record R{i} {{ "a": integer }}\n' for i in range(150))
+        s = parse_schema(flat + "root R0")
+        assert s.root.name == "R0"
+
+    def test_record_named_a_scalar_keyword_is_rejected(self):
+        # used to silently succeed, but the record could never be
+        # referenced -- "string" in a type position always meant the
+        # builtin scalar, never a Ref to this record
+        with pytest.raises(SchemaError):
+            parse_schema('record string { "x": integer }\nrecord R { "a": string }\nroot R')
+
+    def test_union_named_a_scalar_keyword_is_rejected(self):
+        with pytest.raises(SchemaError):
+            parse_schema('union integer { "a", "b" }\nrecord R { "a": string }\nroot R')
+
+    def test_record_named_a_non_scalar_word_is_fine(self):
+        s = parse_schema('record Address { "city": string }\nrecord R { "a": Address }\nroot R')
+        assert s.validate(doc({"a": {"city": "X"}})).ok
 
 
 # ----------------------------------------------------------- DSL round-trip

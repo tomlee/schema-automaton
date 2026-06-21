@@ -4,6 +4,26 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.1.1a4]
+
+Three robustness fixes for the schema DSL parser, found by probing it
+against its own grammar rather than just reading it (PR 2 of the model
+replan):
+
+- **Fixed:** a non-integer cardinality bound (e.g. `[1.5,3]`) crashed with
+  an uncaught `ValueError` instead of a clean `SchemaError`.
+- **Fixed:** the "depth guard" counted total `{` characters across the
+  *whole* schema text as a proxy for nesting depth, so a large but
+  perfectly flat schema (hundreds of unrelated top-level records, no
+  nesting at all) was falsely rejected. The grammar has no inline
+  nesting to guard against in the first place (records are never
+  anonymous), so the check is removed rather than recalibrated.
+- **Fixed:** a `record` or `union` could be defined with the same name
+  as a builtin scalar keyword (`record string { ... }`) with no error —
+  but it could never actually be referenced, since a bare name in a type
+  position always means the builtin scalar. Now raises `SchemaError` at
+  definition time.
+
 ## [v0.1.1a3]
 
 `Doc` gains `check_json` / `check_yaml` / `check_toml` / `check_xml` / a
