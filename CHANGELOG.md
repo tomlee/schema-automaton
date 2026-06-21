@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.1.2]
+
+Version bump only, no code or behavior changes since v0.1.1a10.
+
 ## [v0.1.1a10]
 
 Documentation only, no code changes. Added two formal sections to
