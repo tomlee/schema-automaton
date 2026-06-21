@@ -11,7 +11,8 @@ described in ``docs/design/model.md``:
 * :mod:`~dataspec.canonical.operations` — ``compatible_with`` / ``equivalent``
   / ``normalize`` on the new model.
 
-This lives alongside the current (v0.1) package; it does not replace it yet.
+This package is the implementation of the model; ``import dataspec`` is its
+public surface.
 """
 
 from .document import Doc, doc

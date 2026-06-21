@@ -7,12 +7,9 @@ This exercises ``dataspec.canonical`` — the implementation of the design in
 
 Run: python3 examples/canonical_model.py
 """
-from dataspec.canonical import (
+from dataspec import (
     Doc,
-    compatible_with,
     doc,
-    equivalent,
-    normalize,
     parse_schema,
     read_json,
     read_toml,
@@ -39,7 +36,7 @@ def main():
     s = parse_schema(SCHEMA)
 
     print("== schema round-trips through to_dsl ==")
-    print("equivalent:", equivalent(s, parse_schema(to_dsl(s))))
+    print("equivalent:", s.equivalent(parse_schema(to_dsl(s))))
 
     print("\n== the same Team, read from every format -> identical Document ==")
     j = read_json('{"name":"Platform","members":[{"name":"Ann","role":"dev"},'
@@ -65,15 +62,15 @@ def main():
     v1 = parse_schema('record Team { "name": string, "members" [1,]: string }\nroot Team')
     v2 = parse_schema('record Team { "name": string, "members" [1,]: string, '
                       '"lead" [0,1]: string }\nroot Team')
-    print("v1.compatible_with(v2):", compatible_with(v1, v2))
-    print("v2.compatible_with(v1):", compatible_with(v2, v1))
+    print("v1.compatible_with(v2):", v1.compatible_with(v2))
+    print("v2.compatible_with(v1):", v2.compatible_with(v1))
 
     print("\n== normalize merges structurally identical named records ==")
     dup = parse_schema('record A { "x": integer }\nrecord B { "x": integer }\n'
                        'record R { "a": A, "b": B }\nroot R')
-    n = normalize(dup)
+    n = dup.normalize()
     print("definitions before:", sorted(dup.env), "after:", sorted(n.env))
-    print("equivalent:", equivalent(dup, n))
+    print("equivalent:", dup.equivalent(n))
 
 
 if __name__ == "__main__":

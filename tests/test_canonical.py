@@ -32,6 +32,35 @@ from dataspec.errors import DocumentError, SchemaError, WriteError
 yaml = pytest.importorskip("yaml")
 
 
+# ----------------------------------------------------------- public API
+class TestPublicApi:
+    """The `import dataspec` surface: schema operations as methods, the `t`
+    builder namespace, validation, codecs."""
+
+    def test_methods_and_t_namespace(self):
+        import dataspec as ds
+
+        s = ds.parse_schema('record R { "n": integer, "s": string? }\nroot R')
+        assert ds.__version__ == "0.1.1a1"
+        # operations are Schema methods
+        assert s.validate(ds.doc({"n": 1, "s": None})).ok
+        assert s.equivalent(ds.parse_schema(ds.to_dsl(s)))
+        wide = ds.parse_schema('record R { "n": integer | string, "s": string? }\nroot R')
+        assert s.compatible_with(wide)
+        assert s.normalize().equivalent(s)
+        # the t namespace builds unions
+        u = ds.union(ds.t.integer, "unknown")
+        b = ds.schema(ds.ref("R"), R=ds.record(ds.field("v", u)))
+        assert b.validate(ds.doc({"v": 7})).ok
+        assert b.validate(ds.doc({"v": "unknown"})).ok
+        assert not b.validate(ds.doc({"v": "other"})).ok
+
+    def test_old_names_are_gone(self):
+        import dataspec as ds
+        for name in ("obj", "arr", "ObjectType", "ArrayType", "ScalarType", "mapping"):
+            assert not hasattr(ds, name), f"{name} should be removed (clean break)"
+
+
 # ----------------------------------------------------------- Document
 class TestDocument:
     def test_build_and_navigate(self):

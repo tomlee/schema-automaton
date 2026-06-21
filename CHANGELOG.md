@@ -4,6 +4,30 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.1.1a1]
+
+**A breaking redesign of the core models** around the formal Data Tree /
+Schema Automaton (Lee & Cheung, CIKM 2010). The v0.1.0 API (`ObjectType`,
+`ArrayType`, `obj`, `arr`, `t.*`, the `root { … }` DSL) is **removed** — this
+is a clean break. See [docs/design/model.md](docs/design/model.md).
+
+- **Document** is now an ordered list of labeled edges (a Data Tree), not a
+  dict-with-arrays. "Many" is a repeated label; object and array unify; XML
+  interleaving is representable. The same Document represents all four formats.
+- **Schema** has two named definition kinds — **`record`** (closed fields,
+  each with a cardinality) and **`union`** (a value domain of kinds, literals,
+  and/or null) — referenced by name (`Ref`) for reuse and recursion. There is
+  no separate array type (an array is a field with `max > 1`), no `Any`, and
+  no open maps (deliberately deferred); records are closed.
+- **DSL**: `record` / `union` definitions, always-quoted field labels,
+  `[min,max]` cardinality, `?` for value-domain null. Operations
+  (`compatible_with` / `equivalent` / `normalize`) are **methods on `Schema`**.
+- The earlier `compatible_with` soundness bugs cannot recur — the open-map
+  `rest` construct that caused them is gone.
+- Implementation lives in `dataspec.canonical`; `import dataspec` is its
+  public surface. Docs rewritten: a new [user guide](docs/guide.md) and the
+  formal [model spec](docs/design/model.md).
+
 ## [v0.1.0a9]
 
 Three schema-compatibility/validation soundness bugs, found by comparing

@@ -1,8 +1,8 @@
 # Design: Canonical Document & Schema Model
 
-**Status:** Draft / proposal — for review, not yet implemented
+**Status:** Implemented (v0.1.1a1) — `import dataspec`, with the implementation in `dataspec.canonical`
 **Date:** 2026-06-21
-**Supersedes:** the current `Doc` (dict/list/scalar) and `Type` tree (`ObjectType`/`ArrayType`/`ScalarType`/`RefType`/`AnyType`)
+**Superseded:** the former `Doc` (dict/list/scalar) and `Type` tree (`ObjectType`/`ArrayType`/`ScalarType`/`RefType`/`AnyType`), removed in v0.1.1a1
 
 ---
 

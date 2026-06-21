@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dataspec"
-version = "0.1.0a9"
+version = "0.1.1a1"
 description = "One data model, many formats: read, validate, and write JSON, YAML, TOML, and XML."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -37,7 +37,7 @@ Issues = "https://github.com/tomlee/dataspec/issues"
 Changelog = "https://github.com/tomlee/dataspec/blob/master/CHANGELOG.md"
 
 [tool.setuptools]
-packages = ["dataspec"]
+packages = ["dataspec", "dataspec.canonical"]
 
 [tool.setuptools.package-data]
 dataspec = ["py.typed"]

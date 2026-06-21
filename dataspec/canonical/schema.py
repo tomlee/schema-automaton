@@ -52,6 +52,28 @@ SCALAR_KINDS = {STRING, INTEGER, NUMBER, BOOLEAN, DATE, TIME, DATETIME}
 _KIND_BY_NAME = {k.name: k for k in SCALAR_KINDS}
 
 
+class _Types:
+    """Scalar kind atoms under one namespace: ``t.string``, ``t.integer``, …
+
+    Namespaced so they never shadow builtins or the stdlib ``datetime`` names.
+    Use them in the Python builder, e.g. ``union(t.string, null=True)``.
+    """
+    string = STRING
+    integer = INTEGER
+    number = NUMBER
+    boolean = BOOLEAN
+    date = DATE
+    time = TIME
+    datetime = DATETIME
+
+    def __repr__(self) -> str:
+        return ("dataspec.t — scalar kinds: string, integer, number, boolean, "
+                "date, time, datetime")
+
+
+t = _Types()
+
+
 def kind_by_name(name: str) -> Kind:
     try:
         return _KIND_BY_NAME[name]
@@ -287,6 +309,24 @@ class Schema:
             if c < f.min or (f.max is not None and c > f.max):
                 res.add(doc.path,
                         f"field {f.label!r} occurs {c} time(s), expected {f.cardinality_str()}")
+
+    # -- comparison (delegate to operations) ----------------------------
+    def compatible_with(self, other: "Schema") -> bool:
+        """True if every document this schema accepts is also accepted by
+        ``other`` (this is a subschema; ``other`` is backward-compatible)."""
+        from .operations import compatible_with
+        return compatible_with(self, other)
+
+    def equivalent(self, other: "Schema") -> bool:
+        """True if both schemas accept exactly the same documents."""
+        from .operations import equivalent
+        return equivalent(self, other)
+
+    def normalize(self) -> "Schema":
+        """An equivalent schema with structurally-identical named definitions
+        merged."""
+        from .operations import normalize
+        return normalize(self)
 
     # -- serialization --------------------------------------------------
     def to_dsl(self) -> str:
