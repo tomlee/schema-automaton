@@ -4,6 +4,34 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.1.1a9]
+
+A pre-publish review pass: no new features, but a real bug fix and a
+substantial test-coverage push (89% -> 96% line coverage on `omnist/`).
+
+- **Fixed:** `Schema(root, env)` / the `schema()` builder didn't validate
+  that every environment entry is a `Record` — handing in a bare `Scalar`
+  (e.g. `schema(ref("R"), R=t.string)`) crashed with a raw `AttributeError`
+  from deep inside `check_refs()` instead of a clean `SchemaError`. Now
+  validated up front with a clear message. (This also made a defensive
+  "root must resolve to a record" check at the end of `check_refs()`
+  provably unreachable dead code; removed it.)
+- Closed real test gaps found while reviewing: every distinct DSL parser
+  error path (missing colon, garbage top-level token, no `root`, duplicate
+  definition, unquoted field label, empty cardinality, unknown reference,
+  and — found while writing these — the old enum-rejection test was
+  actually hitting the *tokenizer's* `|` rejection, not the parser's
+  literal-type rejection, so that path was untested until now); the
+  recursion-depth and cycle-detection guards `SECURITY.md` describes;
+  `Doc.from_yaml`/`from_toml`/`from_xml`, `to_json`/`to_yaml`/`to_xml`,
+  and `Doc == Doc`/`Doc.validate()`; malformed-input `ParseError`s for all
+  four formats; the `string.ambiguous`/`null.omitted` XML adjustment codes;
+  TOML's top-level-table requirement; several `compatible_with` edge cases
+  (cardinality `[0,0]`, unbounded vs. bounded, a field one side doesn't
+  know about); `infer()`'s zero-sample, non-object-root, mixed-type, and
+  generated-name-collision cases. `dsl.py`, `document.py`, `infer.py`,
+  `operations.py`, and `deserialize.py` are now at 100% line coverage.
+
 ## [v0.1.1a8]
 
 **Breaking:** the project is renamed from `dataspec` to `omnist` ("omni-structure"),

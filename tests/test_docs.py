@@ -26,7 +26,7 @@ def test_readme_at_a_glance():
                      'record Team { "name": string, "members" [1,]: Member }\nroot Team')
     assert s.validate(doc({"name": "X",
                            "members": [{"name": "Ann", "role": "dev"}]})).ok
-    assert ds.__version__ == "0.1.1a8"
+    assert ds.__version__ == "0.1.1a9"
 
 
 def test_guide_documents():

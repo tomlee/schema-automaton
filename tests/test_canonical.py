@@ -10,7 +10,10 @@ import pytest
 
 from omnist.canonical import (
     Doc,
+    Field,
     Format,
+    Record,
+    Schema,
     WriteReport,
     check_json,
     check_toml,
@@ -22,6 +25,7 @@ from omnist.canonical import (
     field,
     formats,
     get_format,
+    infer,
     materialize,
     normalize,
     parse_schema,
@@ -33,6 +37,7 @@ from omnist.canonical import (
     ref,
     register_format,
     schema,
+    t,
     to_dsl,
     write_json,
     write_toml,
@@ -53,7 +58,7 @@ class TestPublicApi:
         import omnist as ds
 
         s = ds.parse_schema('record R { "n": integer, "s": string? }\nroot R')
-        assert ds.__version__ == "0.1.1a8"
+        assert ds.__version__ == "0.1.1a9"
         # operations are Schema methods
         assert s.validate(ds.doc({"n": 1, "s": None})).ok
         assert s.equivalent(ds.parse_schema(ds.to_dsl(s)))
@@ -115,6 +120,8 @@ class TestDocument:
         assert d.count("tag") == 2
         d.set("name", "Bob")
         assert d.get_one("name").value == "Bob"
+        d.set("age", 30)                             # set() on an absent label adds it
+        assert d.get_one("age").value == 30
         d.remove("tag")
         assert d.count("tag") == 0
         # nested editing through a cursor shares the underlying structure
@@ -218,9 +225,19 @@ class TestValidation:
             parse_schema('record A { "x": integer }\nrecord R { "a": A? }\nroot R')
 
     def test_enum_syntax_is_rejected(self):
-        # value-domain composition (enums/literals) is no longer parseable
-        with pytest.raises(SchemaError):
+        # the '|' character itself isn't in the grammar at all anymore, so
+        # this is rejected by the tokenizer, before the parser ever gets to
+        # look at what's in type position
+        with pytest.raises(SchemaError, match="unexpected character '\\|'"):
             parse_schema('record R { "status": "open" | "closed" }\nroot R')
+
+    def test_literal_valued_field_is_rejected(self):
+        # a single literal (no '|') reaches the parser and is rejected by
+        # _type() itself, with a more specific message than a bad character
+        with pytest.raises(SchemaError, match="enums and literal-valued fields"):
+            parse_schema('record R { "status": "open" }\nroot R')
+        with pytest.raises(SchemaError, match="enums and literal-valued fields"):
+            parse_schema('record R { "n": 5 }\nroot R')
 
     def test_union_keyword_is_rejected(self):
         with pytest.raises(SchemaError):
@@ -310,6 +327,7 @@ DSL_CASES = [
     'record R { "v": number }\nroot R',
     'record R { "xs" [0,]: integer }\nroot R',
     'record R { "xs" [1,5]: string }\nroot R',
+    'record R { "xs" [2]: integer }\nroot R',
     'record R { "first name": string }\nroot R',
     'record M { "name": string }\nrecord R { "m" [0,]: M }\nroot R',
     'record Node { "v": integer, "kids" [0,]: Node }\nroot Node',
@@ -375,6 +393,24 @@ class TestOperations:
 
 
 # ----------------------------------------------------------- codecs
+class TestMalformedInput:
+    def test_invalid_json_raises_parse_error(self):
+        with pytest.raises(ParseError, match="invalid JSON"):
+            read_json("{not json")
+
+    def test_invalid_yaml_raises_parse_error(self):
+        with pytest.raises(ParseError, match="invalid YAML"):
+            read_yaml("a: [1, 2\n")
+
+    def test_invalid_toml_raises_parse_error(self):
+        with pytest.raises(ParseError, match="invalid TOML"):
+            read_toml("not [ valid toml")
+
+    def test_invalid_xml_raises_parse_error(self):
+        with pytest.raises(ParseError, match="invalid XML"):
+            read_xml("<unclosed>")
+
+
 class TestCodecs:
     SCHEMA = ('record Member { "name": string, "role": string }\n'
               'record Team { "name": string, "members" [0,]: Member }\nroot Team')
@@ -474,11 +510,48 @@ class TestDeserialize:
         assert ("b", "extra") in node
         assert read_json('{"a": 1}') == [("a", 1)]      # no schema -> unchanged
 
+    def test_shape_mismatches_pass_through(self):
+        # a record expected but the node holds a scalar, or vice versa --
+        # validate()'s job, not raised here
+        s = parse_schema('record R { "a": R2 }\nrecord R2 { "x": integer }\nroot R')
+        assert materialize([("a", 5)], s) == [("a", 5)]
+        s2 = parse_schema('record R { "a": integer }\nroot R')
+        assert materialize([("a", [("x", 1)])], s2) == [("a", [("x", 1)])]
+
+    def test_bool_never_satisfies_integer_or_number(self):
+        # bool is an int subclass, but a Scalar("integer")/Scalar("number")
+        # must reject it explicitly -- "True" is not a value-exact 1
+        s = parse_schema('record R { "i": integer, "n": number }\nroot R')
+        with pytest.raises(ParseError):
+            materialize([("i", True)], s)
+        with pytest.raises(ParseError):
+            materialize([("n", True)], s)
+
+    def test_a_real_datetime_object_never_satisfies_date(self):
+        s = parse_schema('record R { "d": date }\nroot R')
+        with pytest.raises(ParseError):
+            materialize([("d", datetime.datetime(2024, 1, 1, 9, 0))], s)
+
+    def test_bare_date_string_never_satisfies_datetime(self):
+        s = parse_schema('record R { "dt": datetime }\nroot R')
+        with pytest.raises(ParseError):
+            materialize([("dt", "2024-01-01")], s)
+
     def test_schema_directed_via_doc_from_json(self):
         from omnist.canonical import Doc
         s = parse_schema('record R { "d": date }\nroot R')
         d = Doc.from_json('{"d": "2024-01-01"}', schema=s)
         assert d.get_one("d").value == datetime.date(2024, 1, 1)
+
+    def test_schema_directed_via_doc_from_yaml_toml_xml(self):
+        s = parse_schema('record R { "d": date }\nroot R')
+        assert Doc.from_yaml('d: "2024-01-01"\n', schema=s).get_one("d").value == \
+            datetime.date(2024, 1, 1)
+        assert Doc.from_toml('d = "2024-01-01"\n', schema=s).get_one("d").value == \
+            datetime.date(2024, 1, 1)
+        sx = parse_schema('record Root { "d": date }\nroot Root')
+        assert Doc.from_xml("<d>2024-01-01</d>", schema=sx).get_one("d").value == \
+            datetime.date(2024, 1, 1)
 
     def test_xml_temporal_round_trip(self):
         # the XML document element's tag is the schema's single top-level
@@ -513,10 +586,16 @@ class TestReports:
         node = doc({"d": datetime.date(2024, 1, 1)}).to_data()
         rep = check_json(node)
         assert [a.code for a in rep] == ["temporal.stringified"]
+        assert write_json(node) == '{"d": "2024-01-01"}'   # actually adjusted, not just reported
         node2 = [("x", float("nan"))]
         rep2 = check_json(node2)
         assert [a.code for a in rep2] == ["float.special"]
         assert rep2.errors
+
+    def test_xml_null_omitted(self):
+        node = doc({"a": None}).to_data()
+        rep = check_xml(node)
+        assert [a.code for a in rep] == ["null.omitted"]
 
     def test_yaml_time_is_stringified(self):
         node = doc({"t": datetime.time(9, 30)}).to_data()
@@ -592,3 +671,212 @@ class TestDocCheckParity:
     def test_check_format_matches_named_method(self):
         d = doc({"a": 1, "b": None})
         assert [a.code for a in d.check_format("toml")] == [a.code for a in d.check_toml()]
+
+
+# ----------------------------------------------------------- DSL error paths
+class TestDslErrors:
+    """Every distinct error the parser can raise, found by reading the
+    grammar against the implementation -- not just the happy path."""
+
+    def test_missing_colon(self):
+        with pytest.raises(SchemaError, match="expected ':'"):
+            parse_schema('record R { "a" integer }\nroot R')
+
+    def test_garbage_top_level_token(self):
+        with pytest.raises(SchemaError, match="expected 'record' or 'root'"):
+            parse_schema('bogus X\nroot R')
+
+    def test_missing_root_declaration(self):
+        with pytest.raises(SchemaError, match="must declare a root"):
+            parse_schema('record R { "a": integer }')
+
+    def test_duplicate_definition(self):
+        with pytest.raises(SchemaError, match="duplicate definition 'A'"):
+            parse_schema('record A { "x": integer }\nrecord A { "y": string }\nroot A')
+
+    def test_unquoted_field_label(self):
+        with pytest.raises(SchemaError, match="expected a quoted field name"):
+            parse_schema('record R { x: integer }\nroot R')
+
+    def test_empty_cardinality(self):
+        with pytest.raises(SchemaError, match="empty cardinality"):
+            parse_schema('record R { "a" []: integer }\nroot R')
+
+    def test_missing_closing_brace(self):
+        with pytest.raises(SchemaError):
+            parse_schema('record R { "a": integer\nroot R')
+
+    def test_unknown_referenced_name(self):
+        with pytest.raises(SchemaError, match="unknown type 'Missing'"):
+            parse_schema('record R { "a": Missing }\nroot R')
+
+
+# --------------------------------------------------- Document robustness
+class TestDocumentRobustness:
+    """The recursion/cycle guards SECURITY.md describes -- verified, not
+    just asserted."""
+
+    def test_deeply_nested_input_raises_cleanly(self):
+        value = "leaf"
+        for _ in range(250):
+            value = {"x": value}
+        with pytest.raises(DocumentError, match="nesting exceeds the maximum depth"):
+            doc(value)
+
+    def test_self_referential_dict_raises_cleanly(self):
+        d = {}
+        d["self"] = d
+        with pytest.raises(DocumentError, match="cycle detected"):
+            doc(d)
+
+    def test_unsupported_python_type_raises(self):
+        with pytest.raises(DocumentError, match="is not a Document value"):
+            doc({"a": {1, 2, 3}})
+
+    def test_value_on_internal_node_raises(self):
+        d = doc({"a": 1})
+        with pytest.raises(DocumentError, match="not a leaf"):
+            d.value
+
+    def test_edges_on_leaf_raises(self):
+        d = doc({"a": 1}).get_one("a")
+        with pytest.raises(DocumentError, match="a leaf has no edges"):
+            d.edges()
+
+    def test_get_one_wrong_count_raises(self):
+        d = doc({"a": 1, "b": 2})
+        with pytest.raises(DocumentError, match="found 0"):
+            d.get_one("missing")
+        d2 = doc({"a": 1, "a2": 2})
+        d2._node.append(("a", 3))  # force a second "a" via direct node access
+        with pytest.raises(DocumentError, match="found 2"):
+            d2.get_one("a")
+
+    def test_editing_a_leaf_raises(self):
+        leaf = doc({"a": 1}).get_one("a")
+        with pytest.raises(DocumentError, match="cannot add on a leaf"):
+            leaf.add("x", 1)
+        with pytest.raises(DocumentError, match="cannot set on a leaf"):
+            leaf.set("x", 1)
+        with pytest.raises(DocumentError, match="cannot remove on a leaf"):
+            leaf.remove("x")
+
+    def test_eq_against_non_document_value(self):
+        assert doc({"a": 1}) != {1, 2, 3}    # a set has no Document form
+
+    def test_repr(self):
+        assert repr(doc(1)) == "Doc(leaf: 1)"
+        assert "node:" in repr(doc({"a": 1}))
+
+    def test_doc_to_json_yaml_xml_methods(self):
+        d = doc({"a": 1})
+        assert d.to_json() == '{"a": 1}'
+        assert d.to_yaml() == "a: 1\n"
+        assert d.to_xml() == "<a>1</a>"
+
+    def test_doc_equals_doc(self):
+        assert doc({"a": 1}) == doc({"a": 1})
+        assert doc({"a": 1}) != doc({"a": 2})
+
+    def test_doc_validate_delegates_to_schema(self):
+        s = parse_schema('record R { "a": integer }\nroot R')
+        assert doc({"a": 1}).validate(s).ok
+
+
+# --------------------------------------------------------- Schema/builder misuse
+class TestSchemaConstructionErrors:
+    """Defensive validation in the model classes themselves, not just the
+    DSL -- the Python builder is just as much a public surface."""
+
+    def test_field_type_must_be_ref_or_scalar(self):
+        with pytest.raises(SchemaError, match="must be a Ref or Scalar"):
+            Field("x", "not-a-type")
+
+    def test_field_invalid_cardinality(self):
+        with pytest.raises(SchemaError, match="invalid cardinality"):
+            Field("x", t.string, min=2, max=1)
+
+    def test_record_duplicate_label(self):
+        with pytest.raises(SchemaError, match="duplicate field label"):
+            Record([Field("a", t.string), Field("a", t.integer)])
+
+    def test_schema_root_must_be_a_ref(self):
+        with pytest.raises(SchemaError, match="root must be a Ref"):
+            Schema("R", {})
+
+    def test_schema_env_value_must_be_a_record(self):
+        # a loosely-typed caller (the schema()/Schema() constructors don't
+        # enforce this at the type level) handing in a bare Scalar used to
+        # crash with AttributeError instead of raising SchemaError
+        with pytest.raises(SchemaError, match="must be a Record"):
+            schema(ref("R"), R=t.string)
+
+
+# ----------------------------------------------------------- infer() errors
+class TestInferErrors:
+    def test_zero_samples_raises(self):
+        with pytest.raises(SchemaError, match="zero samples"):
+            infer([])
+
+    def test_non_object_root_raises(self):
+        with pytest.raises(SchemaError, match="object .record. samples"):
+            infer([doc(5)])
+
+    def test_mixed_object_and_scalar_for_one_label_raises(self):
+        with pytest.raises(SchemaError, match="mixes objects and values"):
+            infer([doc({"a": {"x": 1}}), doc({"a": 5})])
+
+    def test_generated_record_names_dont_collide(self):
+        # "item" and "Item" both capitalize to the generated name "Item"
+        s = infer([doc({"item": {"a": 1}, "Item": {"b": 2}})])
+        assert {"Item", "Item2"} <= set(s.env)
+
+
+# --------------------------------------------------- operations edge cases
+class TestOperationsEdgeCases:
+    def test_scalar_vs_record_never_compatible(self):
+        a = parse_schema('record R { "v": integer }\nroot R')
+        b = parse_schema('record R { "v": V }\nrecord V { "x": integer }\nroot R')
+        assert not compatible_with(a, b)
+        assert not compatible_with(b, a)
+
+    def test_a_must_guarantee_every_field_b_requires(self):
+        a = parse_schema('record R { "v": integer }\nroot R')
+        b = parse_schema('record R { "v": integer, "w": string }\nroot R')
+        # b requires "w"; a has no "w" at all (not just insufficient cardinality)
+        assert not compatible_with(a, b)
+
+    def test_unbounded_max_not_compatible_with_a_bounded_one(self):
+        a = parse_schema('record R { "xs" [1,]: integer }\nroot R')    # unbounded
+        b = parse_schema('record R { "xs" [1,5]: integer }\nroot R')   # bounded
+        assert not compatible_with(a, b)
+        assert compatible_with(b, a)
+
+    def test_extra_field_b_doesnt_know_about_is_not_compatible(self):
+        a = parse_schema('record R { "v": integer, "extra": string }\nroot R')
+        b = parse_schema('record R { "v": integer }\nroot R')          # closed, no "extra"
+        assert not compatible_with(a, b)
+
+    def test_a_field_with_max_zero_is_skipped_even_if_b_lacks_it(self):
+        # cardinality [0,0] means the field is declared but never actually
+        # emitted -- B doesn't need to know about it at all
+        a = parse_schema('record R { "never" [0,0]: integer, "v": integer }\nroot R')
+        b = parse_schema('record R { "v": integer }\nroot R')
+        assert compatible_with(a, b)
+
+
+# --------------------------------------------------------- XML adjustment codes
+class TestXmlAdjustmentCodes:
+    def test_string_ambiguous_code(self):
+        # a string that looks like a number/bool reads back as that type from
+        # XML text, since XML has no native type tagging -- check_xml flags it
+        node = doc({"a": "123"}).to_data()
+        rep = check_xml(node)
+        assert [a.code for a in rep] == ["string.ambiguous"]
+
+
+# ----------------------------------------------------------- TOML write errors
+class TestTomlWriteErrors:
+    def test_non_object_root_raises(self):
+        with pytest.raises(WriteError, match="top-level table"):
+            write_toml("bare leaf")

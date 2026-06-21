@@ -98,7 +98,7 @@ def read_yaml(text: str, *, schema: Optional["Schema"] = None) -> Any:
     yaml = _need("yaml", "pip install pyyaml")
     try:
         node = build_node(yaml.safe_load(text))
-    except yaml.YAMLError as exc:  # pragma: no cover
+    except yaml.YAMLError as exc:
         raise ParseError(f"invalid YAML: {exc}") from exc
     return _materialize(node, schema)
 
@@ -184,7 +184,7 @@ def read_xml(text: str, *, schema: Optional["Schema"] = None) -> Any:
     ET = _xml_parser()
     try:
         root = ET.fromstring(text)
-    except Exception as exc:  # pragma: no cover
+    except Exception as exc:
         raise ParseError(f"invalid XML: {exc}") from exc
     node = [(_local(root.tag), _xml_to_node(root))]
     return _materialize(node, schema)

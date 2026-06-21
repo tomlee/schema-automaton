@@ -102,7 +102,7 @@ Full index: **[docs/](docs/README.md)**.
 
 ## Status
 
-omnist is **alpha** (v0.1.1a8). The model was redesigned around a small,
+omnist is **alpha** (v0.1.1a9). The model was redesigned around a small,
 self-contained formalism; the public API may still change before a stable
 release. Not yet on PyPI — install from a checkout.
 

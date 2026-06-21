@@ -234,6 +234,11 @@ class Schema:
         return t
 
     def check_refs(self) -> None:
+        for name, rec in self.env.items():
+            if not isinstance(rec, Record):
+                raise SchemaError(
+                    f"environment entry {name!r} must be a Record, got {rec!r}")
+
         def walk(t: Type) -> None:
             if isinstance(t, Ref) and t.name not in self.env:
                 raise SchemaError(f"unknown type {t.name!r}")
@@ -241,8 +246,9 @@ class Schema:
         for rec in self.env.values():
             for f in rec.fields:
                 walk(f.type)
-        if not isinstance(self.resolve(self.root), Record):
-            raise SchemaError("the schema root must resolve to a record")
+        # every env value is now known to be a Record (checked above), and
+        # root is always a Ref (checked in __init__), so resolve(root) always
+        # lands on a Record once the walk above confirms root.name is known.
 
     # -- validation -----------------------------------------------------
     def validate(self, doc) -> ValidationResult:

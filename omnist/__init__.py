@@ -74,7 +74,7 @@ from .errors import (
     WriteError,
 )
 
-__version__ = "0.1.1a8"
+__version__ = "0.1.1a9"
 
 __all__ = [
     # errors
