@@ -82,8 +82,11 @@ pip install pyyaml tomli_w defusedxml   # YAML / writing TOML / hardened XML
 
 ## Documentation
 
+Full index: **[docs/](docs/README.md)**.
+
 - **[User guide](docs/guide.md)** — the practical tour: documents, the DSL, the
   Python builder, validation, operations, codecs, inference.
+- **[API reference](docs/api.md)** — every public name, with signatures.
 - **[A real-life example](docs/example.md)** — one order schema validated against
   documents in JSON, YAML, TOML, and XML, plus a compatibility check.
 - **[Formats](docs/formats/overview.md)** — how each format maps to the model and
