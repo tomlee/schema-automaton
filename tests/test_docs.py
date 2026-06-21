@@ -29,6 +29,11 @@ def test_readme_at_a_glance():
     assert ds.__version__ == "0.1.2"
 
 
+def test_readme_60_second_tour_infer():
+    assert infer([doc({"id": 1, "tags": ["a"]})]).to_dsl() == (
+        'record Root {\n    "id": integer,\n    "tags": string,\n}\nroot Root\n')
+
+
 def test_guide_documents():
     d = doc({"name": "Ann", "tag": ["x", "y"]})
     assert d.labels() == ["name", "tag"]

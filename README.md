@@ -5,9 +5,9 @@
 [![license](https://img.shields.io/badge/license-Apache--2.0-lightgrey)](LICENSE)
 [![status](https://img.shields.io/badge/status-alpha-orange)](#status)
 
-**One canonical data model for JSON, YAML, TOML, and XML** — read any of them
-into a single tree, validate it against a schema, compare schema versions,
-and write it back out to any of the others.
+**omnist** ("omni-structure") is **one canonical data model for JSON, YAML,
+TOML, and XML** — read any of them into a single tree, validate it against a
+schema, compare schema versions, and write it back out to any of the others.
 
 ```python
 from omnist import parse_schema, doc
@@ -59,6 +59,11 @@ print(s.validate(doc({"id": "x", "tags": ["a"]})))
 
 # learn a schema from examples
 print(infer([doc({"id": 1, "tags": ["a"]})]).to_dsl())
+#   record Root {
+#       "id": integer,
+#       "tags": string,
+#   }
+#   root Root
 
 # is a schema change backward-compatible? (operations are Schema methods)
 v1 = parse_schema('record R { "host": string }\nroot R')
