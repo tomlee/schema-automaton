@@ -16,6 +16,7 @@ This package is the implementation of the model; ``import dataspec`` is its
 public surface.
 """
 
+from .deserialize import materialize
 from .document import Doc, doc
 from .dsl import parse_schema, to_dsl
 from .formats import (
@@ -69,7 +70,7 @@ __all__ = [
     "record", "ref", "field", "schema", "nullable", "t",
     "STRING", "INTEGER", "NUMBER", "BOOLEAN", "DATE", "TIME", "DATETIME",
     "parse_schema", "to_dsl",
-    "compatible_with", "equivalent", "normalize", "infer",
+    "compatible_with", "equivalent", "normalize", "infer", "materialize",
     "read_json", "read_yaml", "read_toml", "read_xml",
     "write_json", "write_yaml", "write_toml", "write_xml",
     "check_json", "check_yaml", "check_toml", "check_xml",

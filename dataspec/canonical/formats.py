@@ -19,16 +19,27 @@ import json as _json
 import math as _math
 import re as _re
 import warnings
-from typing import Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from ..errors import ParseError, UnsafeXMLWarning, WriteError
 from .document import _grouped, build_node
 from .report import WriteReport, finish_write
 
+if TYPE_CHECKING:
+    from .schema import Schema
+
 
 def get_reader(name: str) -> Callable[[str], Any]:
     return {"json": read_json, "yaml": read_yaml, "toml": read_toml,
             "xml": read_xml}[name]
+
+
+def _materialize(node: Any, schema: Optional["Schema"]) -> Any:
+    """Apply schema-directed deserialization if a schema was given."""
+    if schema is None:
+        return node
+    from .deserialize import materialize
+    return materialize(node, schema)
 
 
 def _leaves(node: Any, path: str = "$"):
@@ -45,11 +56,12 @@ def _leaves(node: Any, path: str = "$"):
 
 
 # --------------------------------------------------------------- JSON
-def read_json(text: str) -> Any:
+def read_json(text: str, *, schema: Optional["Schema"] = None) -> Any:
     try:
-        return build_node(_json.loads(text))
+        node = build_node(_json.loads(text))
     except _json.JSONDecodeError as exc:
         raise ParseError(f"invalid JSON: {exc}") from exc
+    return _materialize(node, schema)
 
 
 def write_json(node: Any, *, indent: Optional[int] = None, strict: bool = False,
@@ -82,12 +94,13 @@ def _iso(o: Any) -> str:
 
 
 # --------------------------------------------------------------- YAML
-def read_yaml(text: str) -> Any:
+def read_yaml(text: str, *, schema: Optional["Schema"] = None) -> Any:
     yaml = _need("yaml", "pip install pyyaml")
     try:
-        return build_node(yaml.safe_load(text))
+        node = build_node(yaml.safe_load(text))
     except yaml.YAMLError as exc:  # pragma: no cover
         raise ParseError(f"invalid YAML: {exc}") from exc
+    return _materialize(node, schema)
 
 
 def write_yaml(node: Any, *, strict: bool = False,
@@ -119,12 +132,13 @@ def _prepare_yaml(node: Any) -> Any:
 
 
 # --------------------------------------------------------------- TOML
-def read_toml(text: str) -> Any:
+def read_toml(text: str, *, schema: Optional["Schema"] = None) -> Any:
     import tomllib
     try:
-        return build_node(tomllib.loads(text))
+        node = build_node(tomllib.loads(text))
     except tomllib.TOMLDecodeError as exc:
         raise ParseError(f"invalid TOML: {exc}") from exc
+    return _materialize(node, schema)
 
 
 def write_toml(node: Any, *, strict: bool = False,
@@ -166,13 +180,14 @@ def _strip_nulls(node: Any, path: str, rep: WriteReport) -> Any:
 _XML_NAME = _re.compile(r"^[A-Za-z_][A-Za-z0-9_.\-]*$")
 
 
-def read_xml(text: str) -> Any:
+def read_xml(text: str, *, schema: Optional["Schema"] = None) -> Any:
     ET = _xml_parser()
     try:
         root = ET.fromstring(text)
     except Exception as exc:  # pragma: no cover
         raise ParseError(f"invalid XML: {exc}") from exc
-    return [(_local(root.tag), _xml_to_node(root))]
+    node = [(_local(root.tag), _xml_to_node(root))]
+    return _materialize(node, schema)
 
 
 def _xml_to_node(elem) -> Any:

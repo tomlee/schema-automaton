@@ -22,6 +22,7 @@ from dataspec.canonical import (
     field,
     formats,
     get_format,
+    materialize,
     normalize,
     parse_schema,
     read_json,
@@ -38,7 +39,7 @@ from dataspec.canonical import (
     write_xml,
     write_yaml,
 )
-from dataspec.errors import DocumentError, SchemaError, WriteError
+from dataspec.errors import DocumentError, ParseError, SchemaError, WriteError
 
 yaml = pytest.importorskip("yaml")
 
@@ -52,7 +53,7 @@ class TestPublicApi:
         import dataspec as ds
 
         s = ds.parse_schema('record R { "n": integer, "s": string? }\nroot R')
-        assert ds.__version__ == "0.1.1a6"
+        assert ds.__version__ == "0.1.1a7"
         # operations are Schema methods
         assert s.validate(ds.doc({"n": 1, "s": None})).ok
         assert s.equivalent(ds.parse_schema(ds.to_dsl(s)))
@@ -416,6 +417,75 @@ class TestCodecs:
     def test_xml_write_needs_single_root(self):
         with pytest.raises(WriteError):
             write_xml([("a", 1), ("b", 2)])      # two top-level edges
+
+
+# ----------------------------------------------------- schema-directed deserialization
+class TestDeserialize:
+    """``materialize`` (and the ``schema=`` kwarg on read_*) upgrades leaf
+    values to match what the schema declares, when the conversion is
+    value-exact, and raises otherwise."""
+
+    SCHEMA = ('record R { "d": date, "t": time, "dt": datetime, "n": number, '
+              '"i": integer, "s": string, "b": boolean }\nroot R')
+
+    def test_iso_strings_become_real_temporal_objects(self):
+        s = parse_schema(self.SCHEMA)
+        node = read_json(
+            '{"d":"2024-01-01","t":"12:00:00","dt":"2024-01-01T10:00:00",'
+            '"n":1,"i":1,"s":"x","b":true}', schema=s)
+        values = dict(node)
+        assert values["d"] == datetime.date(2024, 1, 1)
+        assert values["t"] == datetime.time(12, 0)
+        assert values["dt"] == datetime.datetime(2024, 1, 1, 10, 0)
+
+    def test_numeric_exactness_both_directions(self):
+        s = parse_schema('record R { "n": number, "i": integer }\nroot R')
+        node = read_json('{"n": 3, "i": 4.0}', schema=s)
+        values = dict(node)
+        assert values["n"] == 3.0 and isinstance(values["n"], float)
+        assert values["i"] == 4 and isinstance(values["i"], int)
+
+    def test_inexact_numeric_conversion_raises(self):
+        s = parse_schema('record R { "i": integer }\nroot R')
+        with pytest.raises(ParseError):
+            read_json('{"i": 4.5}', schema=s)
+
+    def test_unparseable_value_raises(self):
+        s = parse_schema(self.SCHEMA)
+        with pytest.raises(ParseError):
+            read_json('{"d":1,"t":"12:00:00","dt":"x","n":1,"i":1,"s":"x","b":true}',
+                      schema=s)
+        with pytest.raises(ParseError):
+            read_json('{"d":"2024-01-01","t":"12:00:00","dt":"x","n":1,"i":1,'
+                      '"s":"x","b":true}', schema=s)
+
+    def test_already_typed_values_pass_through(self):
+        s = parse_schema(self.SCHEMA)
+        node = read_json(
+            '{"d":"2024-01-01","t":"12:00:00","dt":"2024-01-01T10:00:00",'
+            '"n":1,"i":1,"s":"x","b":true}', schema=s)
+        again = materialize(node, s)
+        assert again == node
+
+    def test_unknown_field_and_missing_schema_passthrough(self):
+        # shape problems (unexpected field) are validate()'s job, not raised here
+        s = parse_schema('record R { "a": integer }\nroot R')
+        node = read_json('{"a": 1, "b": "extra"}', schema=s)
+        assert ("b", "extra") in node
+        assert read_json('{"a": 1}') == [("a", 1)]      # no schema -> unchanged
+
+    def test_schema_directed_via_doc_from_json(self):
+        from dataspec.canonical import Doc
+        s = parse_schema('record R { "d": date }\nroot R')
+        d = Doc.from_json('{"d": "2024-01-01"}', schema=s)
+        assert d.get_one("d").value == datetime.date(2024, 1, 1)
+
+    def test_xml_temporal_round_trip(self):
+        # the XML document element's tag is the schema's single top-level
+        # field label (here "t"), per the single-rooted Document model
+        s = parse_schema('record Item { "d": date }\nrecord Root { "t": Item }\nroot Root')
+        node = read_xml("<t><d>2024-01-01</d></t>", schema=s)
+        assert dict(dict(node)["t"])["d"] == datetime.date(2024, 1, 1)
 
 
 # ----------------------------------------------------------- adjustment reports
