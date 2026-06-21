@@ -83,7 +83,12 @@ pip install pyyaml tomli_w defusedxml   # YAML / writing TOML / hardened XML
 ## Documentation
 
 - **[User guide](docs/guide.md)** — the practical tour: documents, the DSL, the
-  Python builder, validation, operations, codecs, inference, a real-life example.
+  Python builder, validation, operations, codecs, inference.
+- **[A real-life example](docs/example.md)** — one order schema validated against
+  documents in JSON, YAML, TOML, and XML, plus a compatibility check.
+- **[Formats](docs/formats/overview.md)** — how each format maps to the model and
+  its caveats ([JSON](docs/formats/json.md) · [YAML](docs/formats/yaml.md) ·
+  [TOML](docs/formats/toml.md) · [XML](docs/formats/xml.md)).
 - **[Model spec](docs/design/model.md)** — the formal Document and Schema models,
   self-contained and plain (no paper required).
 
