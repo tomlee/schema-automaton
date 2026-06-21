@@ -5,7 +5,8 @@
 * ``equivalent(a, b)`` — both accept exactly the same documents.
 * ``normalize(s)`` — merge structurally-identical named definitions.
 
-All checks are structural and order-free, and handle recursion co-inductively.
+All checks are structural and order-free, and handle recursion by assuming
+compatibility when a cycle repeats.
 """
 
 from __future__ import annotations
@@ -42,7 +43,7 @@ def _sub(sa: Schema, ta, sb: Schema, tb, seen: Set[Tuple[int, int]]) -> bool:
     db = sb.resolve(tb)
     key = (id(da), id(db))
     if key in seen:
-        return True                       # co-inductive: assume on a cycle
+        return True                       # assume compatible when a cycle repeats
     seen = seen | {key}
     if isinstance(da, Union) and isinstance(db, Union):
         return _union_sub(da, db)

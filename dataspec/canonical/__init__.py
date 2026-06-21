@@ -4,9 +4,9 @@ A self-contained implementation of the redesigned Document and Schema models
 described in ``docs/design/model.md``:
 
 * :mod:`~dataspec.canonical.document` — the Document as an ordered list of
-  labeled edges (a Data Tree), not a dict-with-arrays.
-* :mod:`~dataspec.canonical.schema` — the Schema as ``Record`` (HLang) /
-  ``Union`` (VDom) / ``Ref``, with field cardinality, plus conformance.
+  labeled edges, not a dict-with-arrays.
+* :mod:`~dataspec.canonical.schema` — the Schema as ``Record`` (labels) /
+  ``Union`` (values) / ``Ref``, with field cardinality, plus conformance.
 * :mod:`~dataspec.canonical.dsl` — the ``record`` / ``union`` text syntax.
 * :mod:`~dataspec.canonical.operations` — ``compatible_with`` / ``equivalent``
   / ``normalize`` on the new model.

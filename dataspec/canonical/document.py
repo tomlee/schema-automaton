@@ -1,6 +1,6 @@
-"""The Document — a canonical Data Tree of ordered, labeled edges.
+"""The Document — a canonical tree of ordered, labeled edges.
 
-A Document is the formal Data Tree of Lee & Cheung (CIKM 2010): a node is either
+A Document is a node, which is either
 
 * a **leaf** holding a scalar value (``str``/``int``/``float``/``bool``/
   ``datetime`` values, or ``None``), or

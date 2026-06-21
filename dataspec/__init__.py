@@ -1,6 +1,6 @@
 """dataspec — one canonical data model, many formats.
 
-A **Document** is a *Data Tree*: an ordered list of labeled edges (repeated
+A **Document** is a *tree*: an ordered list of labeled edges (repeated
 labels are how arrays appear), held by a :class:`Doc`.  A **Schema** describes
 the shape a Document may have, as ``record`` / ``union`` definitions referenced
 by name.  Read a format into a ``Doc``, validate it against a ``Schema``, and

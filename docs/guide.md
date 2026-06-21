@@ -17,7 +17,7 @@ practical tour.
 
 ## The two ideas
 
-- A **Document** is a *Data Tree*: a node is either a scalar value or an
+- A **Document** is a *tree*: a node is either a scalar value or an
   **ordered list of labeled edges**. "Many" is a label that repeats — an array
   of members is the label `member` appearing several times, *not* a field
   pointing to an array. This is what lets the same Document represent JSON,
