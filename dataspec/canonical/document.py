@@ -28,6 +28,7 @@ from ..errors import DocumentError
 
 if TYPE_CHECKING:
     from .report import WriteReport
+    from .schema import Schema
 
 _MAX_DEPTH = 200
 
@@ -114,24 +115,24 @@ class Doc:
         return cls(get_format(name).read(text))
 
     @classmethod
-    def from_json(cls, text: str) -> "Doc":
+    def from_json(cls, text: str, *, schema: Optional["Schema"] = None) -> "Doc":
         from .formats import read_json
-        return cls(read_json(text))
+        return cls(read_json(text, schema=schema))
 
     @classmethod
-    def from_yaml(cls, text: str) -> "Doc":
+    def from_yaml(cls, text: str, *, schema: Optional["Schema"] = None) -> "Doc":
         from .formats import read_yaml
-        return cls(read_yaml(text))
+        return cls(read_yaml(text, schema=schema))
 
     @classmethod
-    def from_toml(cls, text: str) -> "Doc":
+    def from_toml(cls, text: str, *, schema: Optional["Schema"] = None) -> "Doc":
         from .formats import read_toml
-        return cls(read_toml(text))
+        return cls(read_toml(text, schema=schema))
 
     @classmethod
-    def from_xml(cls, text: str) -> "Doc":
+    def from_xml(cls, text: str, *, schema: Optional["Schema"] = None) -> "Doc":
         from .formats import read_xml
-        return cls(read_xml(text))
+        return cls(read_xml(text, schema=schema))
 
     # -- shape ----------------------------------------------------------
     @property

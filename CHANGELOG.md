@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.1.1a7]
+
+Schema-directed deserialization: pass `schema=` to `read_json`/`read_yaml`/
+`read_toml`/`read_xml` (and `Doc.from_json`/`from_yaml`/`from_toml`/`from_xml`)
+to upgrade each leaf to match what the schema declares, when the conversion
+is value-exact (`"2024-01-01" -> date`, `1.0 -> int 1`), and raise
+`ParseError` when it isn't (`1.5 -> integer`, `"abc" -> integer`). Exposed
+directly as `materialize(node, schema)` for already-parsed nodes. This was
+the deserialization feature blocked by the value-domain ambiguity fixed in
+v0.1.1a6 — every field now has exactly one candidate scalar, so there's never
+a choice between candidate representations.
+
 ## [v0.1.1a6]
 
 **Breaking:** removed value-domain composition (enums/unions) from the schema

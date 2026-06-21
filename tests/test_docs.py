@@ -26,7 +26,7 @@ def test_readme_at_a_glance():
                      'record Team { "name": string, "members" [1,]: Member }\nroot Team')
     assert s.validate(doc({"name": "X",
                            "members": [{"name": "Ann", "role": "dev"}]})).ok
-    assert ds.__version__ == "0.1.1a6"
+    assert ds.__version__ == "0.1.1a7"
 
 
 def test_guide_documents():
@@ -133,6 +133,13 @@ def test_formats_docs_snippets():
     assert write_json([("tag", "x")]) == '{"tag": "x"}'
     assert read_xml("<t><m>a</m><x>1</x><m>b</m></t>") == \
         [("t", [("m", "a"), ("x", 1), ("m", "b")])]      # interleaving preserved
+
+
+def test_api_docs_schema_directed_deserialization():
+    import datetime
+    s = parse_schema('record R { "d": date, "n": number }\nroot R')
+    node = read_json('{"d": "2024-01-01", "n": 3}', schema=s)
+    assert node == [("d", datetime.date(2024, 1, 1)), ("n", 3.0)]
 
 
 def test_api_docs_adjustment_reports():

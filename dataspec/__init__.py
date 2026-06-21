@@ -22,6 +22,7 @@ The model is defined formally in ``docs/design/model.md``.  The implementation
 lives in :mod:`dataspec.canonical`; this module is its public surface.
 """
 
+from .canonical.deserialize import materialize
 from .canonical.document import Doc, doc
 from .canonical.dsl import parse_schema, to_dsl
 from .canonical.formats import (
@@ -73,7 +74,7 @@ from .errors import (
     WriteError,
 )
 
-__version__ = "0.1.1a6"
+__version__ = "0.1.1a7"
 
 __all__ = [
     # errors
@@ -89,7 +90,7 @@ __all__ = [
     # dsl
     "parse_schema", "to_dsl",
     # operations (compatible_with / equivalent / normalize are Schema methods)
-    "infer",
+    "infer", "materialize",
     # codecs
     "read_json", "write_json", "read_yaml", "write_yaml",
     "read_toml", "write_toml", "read_xml", "write_xml",
