@@ -191,9 +191,16 @@ d.to_toml(strict=True)               # raises WriteError instead of adjusting
 ```
 
 `check_json` / `check_yaml` / `check_toml` / `check_xml` simulate a write and
-return the report without producing output. See
-[the API reference](api.md#adjustment-reports-lossy-writes) for the full list
-of adjustment codes.
+return the report without producing output — and so do the matching `Doc`
+methods, `d.check_toml()` etc., so you don't need to drop down to `to_data()`
+just to ask "would this be lossy":
+
+```python
+d.check_toml()                       # same report d.to_toml(report=...) would fill
+```
+
+See [the API reference](api.md#adjustment-reports-lossy-writes) for the full
+list of adjustment codes.
 
 ### Custom formats
 

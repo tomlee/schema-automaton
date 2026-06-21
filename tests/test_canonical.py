@@ -52,7 +52,7 @@ class TestPublicApi:
         import dataspec as ds
 
         s = ds.parse_schema('record R { "n": integer, "s": string? }\nroot R')
-        assert ds.__version__ == "0.1.1a2"
+        assert ds.__version__ == "0.1.1a3"
         # operations are Schema methods
         assert s.validate(ds.doc({"n": 1, "s": None})).ok
         assert s.equivalent(ds.parse_schema(ds.to_dsl(s)))
@@ -402,3 +402,31 @@ class TestRegistry:
         assert "lines" in formats()
         d = Doc.from_format("lines", "1 2 3")
         assert d.to_format("lines") == "1 2 3"
+
+    def test_plugin_without_check_raises_on_check_format(self):
+        register_format(Format(
+            "nocheck",
+            read=lambda text: [("n", int(x)) for x in text.split()],
+            write=lambda node, **o: " ".join(str(c) for _, c in node),
+        ))
+        with pytest.raises(DocumentError):
+            Doc.from_format("nocheck", "1 2 3").check_format("nocheck")
+
+
+# ----------------------------------------------------- Doc.check_* parity
+class TestDocCheckParity:
+    def test_check_methods_match_module_functions(self):
+        node = doc({"a": 1, "b": None}).to_data()
+        d = Doc(node)
+        assert [a.code for a in d.check_toml()] == [a.code for a in check_toml(node)]
+        assert [a.code for a in d.check_json()] == [a.code for a in check_json(node)]
+        assert [a.code for a in d.check_yaml()] == [a.code for a in check_yaml(node)]
+
+    def test_check_xml_matches(self):
+        node = doc({"r": {"a b": 1}}).to_data()
+        d = Doc(node)
+        assert [a.code for a in d.check_xml()] == [a.code for a in check_xml(node)]
+
+    def test_check_format_matches_named_method(self):
+        d = doc({"a": 1, "b": None})
+        assert [a.code for a in d.check_format("toml")] == [a.code for a in d.check_toml()]

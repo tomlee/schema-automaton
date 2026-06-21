@@ -97,7 +97,7 @@ Full index: **[docs/](docs/README.md)**.
 
 ## Status
 
-dataspec is **alpha** (v0.1.1a2). The model was redesigned around a small,
+dataspec is **alpha** (v0.1.1a3). The model was redesigned around a small,
 self-contained formalism; the public API may still change before a stable
 release. Not yet on PyPI — install from a checkout.
 

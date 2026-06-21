@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.1.1a3]
+
+`Doc` gains `check_json` / `check_yaml` / `check_toml` / `check_xml` / a
+generic `check_format`, completing the `from_*`/`to_*` symmetry the v0.1.1a2
+report machinery left out — every format had a `Doc.to_*` writer, but
+"simulate that write and inspect the report" required dropping down to the
+module-level `check_*` function on `d.to_data()`. `Format` gains an optional
+fourth field, `check`, so a plugin can support `Doc.check_format` too; the
+four built-ins all provide it.
+
 ## [v0.1.1a2]
 
 Two features deferred from the v0.1.1a1 redesign, now implemented on the

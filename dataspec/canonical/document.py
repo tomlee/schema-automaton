@@ -22,9 +22,12 @@ XML's interleaved repeated elements, which a dict-with-array-values cannot.
 from __future__ import annotations
 
 import datetime as _dt
-from typing import Any, Iterator, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Iterator, List, Optional, Tuple
 
 from ..errors import DocumentError
+
+if TYPE_CHECKING:
+    from .report import WriteReport
 
 _MAX_DEPTH = 200
 
@@ -241,6 +244,34 @@ class Doc:
     def to_format(self, name: str, **o: Any) -> str:
         from .registry import get_format
         return get_format(name).write(self._node, **o)
+
+    def check_json(self) -> "WriteReport":
+        from .formats import check_json
+        return check_json(self._node)
+
+    def check_yaml(self) -> "WriteReport":
+        from .formats import check_yaml
+        return check_yaml(self._node)
+
+    def check_toml(self) -> "WriteReport":
+        from .formats import check_toml
+        return check_toml(self._node)
+
+    def check_xml(self) -> "WriteReport":
+        from .formats import check_xml
+        return check_xml(self._node)
+
+    def check_format(self, name: str) -> "WriteReport":
+        """Simulate writing to format ``name`` and return the adjustment
+        report, without producing output. Requires the registered
+        :class:`~dataspec.canonical.registry.Format` to provide a ``check``
+        callable (the four built-ins do; a custom plugin may not)."""
+        from .registry import get_format
+        fmt = get_format(name)
+        if fmt.check is None:
+            raise DocumentError(
+                f"format {name!r} has no check() -- cannot simulate a write")
+        return fmt.check(self._node)
 
     def validate(self, schema):
         return schema.validate(self)

@@ -1,0 +1,22 @@
+feat: Doc.check_* parity with the from_*/to_* surface
+
+PR 1 of the replanned 5-PR sequence (the rest: DSL robustness fixes,
+datetime ISO-string leniency fix, Union->Domain + kind->base-domain
+rename, schema-directed deserialization).
+
+Every format has Doc.from_*/to_*, but "simulate that write and inspect
+the report" required dropping to the module-level check_*(d.to_data())
+function -- there was no Doc.check_*. Adds:
+
+- Doc.check_json/check_yaml/check_toml/check_xml -- each check_*(self._node).
+- Doc.check_format(name) -- same, by format name; raises DocumentError if
+  the registered Format has no check() to call.
+- Format gains a fourth, optional field check (defaults to None, so
+  existing 3-arg Format(name, read, write) construction is unaffected);
+  the four built-ins now register it.
+
+Tests: 4 new (TestDocCheckParity, plus a no-check-plugin regression in
+TestRegistry) -- 74 passing total, ruff clean.
+
+Docs: docs/api.md's Doc method table and Format/registry section;
+docs/guide.md's adjustment-reports section. Bump to v0.1.1a3.

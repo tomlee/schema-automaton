@@ -7,7 +7,7 @@ Everything importable from `import dataspec`. Types: a **Document** is held by a
 
 ```python
 import dataspec
-dataspec.__version__        # "0.1.1a2"
+dataspec.__version__        # "0.1.1a3"
 ```
 
 ---
@@ -60,6 +60,9 @@ A guarded handle on a Document node — either a **leaf** (a scalar value) or an
 | `.to_data()` | the canonical Python form — a scalar, or a list of `(label, …)` tuples |
 | `.to_grouped()` | a JSON-shaped projection: same-label edges grouped into a list |
 | `.to_json(**opts)` / `.to_yaml()` / `.to_toml()` / `.to_xml()` | serialize to a format |
+| `.to_format(name, **opts)` | serialize by format name |
+| `.check_json()` / `.check_yaml()` / `.check_toml()` / `.check_xml() -> WriteReport` | simulate the matching `to_*`, no output |
+| `.check_format(name) -> WriteReport` | simulate `to_format(name)`, no output (needs the format's `check`) |
 | `.validate(schema) -> ValidationResult` | shorthand for `schema.validate(self)` |
 
 `Doc` also supports `==` (compares the underlying data, against a `Doc` or a
@@ -220,7 +223,7 @@ Formats are plugins. The four built-ins register themselves on import.
 
 | | |
 |---|---|
-| `register_format(Format(name, read, write))` | add a format, usable via `Doc.from_format` / `Doc.to_format` |
+| `register_format(Format(name, read, write, check=None))` | add a format, usable via `Doc.from_format` / `Doc.to_format` / `Doc.check_format` |
 | `get_format(name) -> Format` | look one up by name (raises `DataspecError` if unknown) |
 | `formats() -> list[str]` | every registered name, sorted |
 
@@ -236,8 +239,11 @@ Doc.from_format("lines", "1 2 3").to_format("lines")    # '1 2 3'
 ```
 
 ### `class Format`
-A named tuple `Format(name, read, write)` — `read(text) -> node`,
-`write(node, **opts) -> str`.
+A named tuple `Format(name, read, write, check=None)` — `read(text) -> node`,
+`write(node, **opts) -> str`, and an optional `check(node) -> WriteReport` for
+simulating a write without producing output. The four built-ins all provide
+`check`; a plugin that omits it can still be used with `from_format`/
+`to_format`, but `Doc.check_format` raises `DocumentError` for it.
 
 ---
 

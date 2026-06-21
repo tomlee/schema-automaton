@@ -70,7 +70,7 @@ from .errors import (
     WriteError,
 )
 
-__version__ = "0.1.1a2"
+__version__ = "0.1.1a3"
 
 __all__ = [
     # errors
