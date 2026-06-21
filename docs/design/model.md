@@ -6,30 +6,35 @@
 
 ---
 
+> The model is **inspired by** Lee & Cheung, *"XML Schema Computations"*
+> (CIKM 2010) — but you don't need the paper to read this. The definitions
+> below are self-contained and use plain terms (node, edge, label, value,
+> field, cardinality, value domain).
+
 ## 1. Summary
 
-This proposes a redesign of dataspec's two core models — the **Document** (the data) and the **Schema** (the constraint) — so that both are faithful to the Data Tree / Schema Automaton (SA) formalism dataspec already cites (Lee & Cheung, CIKM 2010), simplified deliberately for the JSON-family of formats.
+This defines dataspec's two core models — the **Document** (the data) and the
+**Schema** (the constraint) — as one small, format-independent formalism,
+deliberately restrictive for the JSON family of formats.
 
-The headline changes:
+The headline ideas:
 
-1. A **Document is an ordered list of labeled edges** (a Data Tree), not a map whose values may be arrays.
-2. A **Schema has exactly two state kinds** — `record` (constrained by child labels) and `union` (constrained by values) — plus `Ref` for naming/recursion.
+1. A **Document is an ordered list of labeled edges**, not a map whose values may be arrays.
+2. A **Schema has exactly two kinds of definition** — `record` (constrained by its child labels) and `union` (constrained by its value) — plus `Ref` for naming and recursion.
 3. **Field cardinality `[min,max]`** is the single mechanism for optional / required / array. There is no separate array type.
 4. The model is **restrictive by default**: records are closed, and the structureless escape hatches (`Any`, open objects, maps) are removed.
-
-This is a breaking redesign of the core; §9 covers impact.
 
 ---
 
 ## 2. Motivation
 
-The current model accreted three problems, each surfaced while reconciling it against the SA formalism:
+The previous model accreted three problems:
 
-- **The Document can't faithfully represent all inputs.** XML may interleave repeated elements (`<member/><other/><member/>`); a dict-with-array-values (`{"member": […], "other": …}`) has already reordered reality and cannot express the interleaving. The Document is supposed to be *canonical regardless of format*, but it is JSON-shaped.
+- **The Document couldn't faithfully represent all inputs.** XML may interleave repeated elements (`<member/><other/><member/>`); a dict-with-array-values (`{"member": […], "other": …}`) has already reordered reality and cannot express the interleaving. The Document is supposed to be *canonical regardless of format*, but it was JSON-shaped.
 
-- **The type system fragments one SA concept across three places.** The SA gives an object-state a single child-language (`HLang`). dataspec splits it into a per-field `required` flag, `ArrayType` length bounds, and an open-map `rest` attribute. They are three shards of one idea, which is why each felt ad hoc and why `rest` was the source of a real soundness bug in `compatible_with`.
+- **One idea was fragmented across three mechanisms.** "How many times may this label appear, and what shape?" was split into a per-field `required` flag, array length bounds, and an open-map `rest` attribute — three shards of one idea, which is why each felt ad hoc and why `rest` was the source of a real soundness bug in `compatible_with`.
 
-- **Structureless escape hatches undercut the tool's purpose.** `Any`, open objects, and the `[string]: T` map all let a schema declare "no structure here," which is the opposite of what a schema is for. They also have no clean SA analogue (the paper explicitly excludes the `xs:any` content model).
+- **Structureless escape hatches undercut the tool's purpose.** `Any`, open objects, and the `[string]: T` map all let a schema declare "no structure here," which is the opposite of what a schema is for.
 
 The redesign collapses the three shards into one (`cardinality`), gives the Document a canonical form that represents every input faithfully, and removes the escape hatches.
 
@@ -39,8 +44,7 @@ The redesign collapses the three shards into one (`cardinality`), gives the Docu
 
 **Goals**
 - One canonical Document model, format-independent, faithful to every supported input (including XML interleaving).
-- A schema model that is a faithful, simplified Schema Automaton — every construct maps to an SA concept.
-- Restrictive by default: a schema guarantees structure.
+- A small, self-contained schema model that's restrictive by default — a schema guarantees structure.
 - A clean formal definition both models can be specified and reasoned about from.
 
 **Non-goals (deliberately deferred)**
@@ -48,13 +52,13 @@ The redesign collapses the three shards into one (`cardinality`), gives the Docu
 - **Wildcard / open records** and **`Any`** — removed; they abandon structure.
 - **Structural unions** (`{a}|{b}`) and **positional tuples** (`[string, integer]`) — not expressible; deferred.
 - **Constrained scalars** (e.g. `Email = string matching …`) — no value refinements yet.
-- **Ordered content models** (XSD `xs:sequence` ordering) — validation is order-free (see §4, §7).
+- **Order-sensitive fields** — validation is order-free (see §4, §7).
 
 ---
 
-## 4. Document model (Data Tree)
+## 4. Document model
 
-A Document is a **node**, defined as an ordered list of labeled edges — Lee & Cheung's `CEdges(n) = e₁…eₖ`.
+A Document is a **node**: either a scalar value, or an ordered list of labeled edges.
 
 ```
 value   = scalar  (string · integer · number · boolean · date · time · datetime)  |  null
@@ -83,17 +87,17 @@ Document = node                              -- (or a bare value at a leaf)
 
 ## 5. Schema model
 
-A **Schema** is `(root, env)`, where `root` is a `Ref` and `env` maps names to **definitions**. There are exactly two definition kinds, split along the SA's two axes.
+A **Schema** is `(root, env)`, where `root` is a `Ref` and `env` maps names to **definitions**. There are exactly two definition kinds: a **record** constrains a node by its child labels; a **union** constrains a leaf by its value.
 
 ```
 Schema      = root: Ref ;  env: Name ⇀ Definition
 Definition  = Record | Union
 
-Record  = { Field… }                         -- CLOSED; constrained by HLang
+Record  = { Field… }                         -- CLOSED: only these labels
 Field   = (label: String, type: Type, cardinality: [min, max])
 Type    = Ref(Name) | Union                  -- a field points to a named def, or an inline union
 
-Union   = a value domain (a VDom)            -- a set of members, each one of:
+Union   = a value domain                     -- a set of members, each one of:
             kind     (string · integer · number · boolean · date · time · datetime)
             literal  (a quoted string, or a bare non-string literal: null, true, 42)
             null
@@ -103,9 +107,9 @@ Union   = a value domain (a VDom)            -- a set of members, each one of:
 **Rules**
 
 - **Records are closed.** Any label not named by a field is invalid. (No wildcard.)
-- **Cardinality is the unordered HLang** and the *only* mechanism for multiplicity: `[1,1]` required (default), `[0,1]` optional, `[0,∞]` array, `[1,∞]` non-empty array, `[2,5]` bounded. **There is no separate Array type** — array-of-record is `cardinality > 1` with a `Ref` item.
-- **`?` is value-domain-only.** `string?` ≡ `Union{ string, null }`. It adds `null` to a Union; it **cannot** apply to a `Ref`. "This record may be absent" is `cardinality [0,1]`, never `?`.
-- **Records are always named and reached by `Ref`.** No inline/anonymous records — this keeps the schema a graph of named states (the automaton), not a nested tree, and makes recursion/reuse uniform. Unions may be inline or named.
+- **Cardinality is the *only* mechanism for multiplicity** — how many times a label may appear, order ignored: `[1,1]` required (default), `[0,1]` optional, `[0,∞]` array, `[1,∞]` non-empty array, `[2,5]` bounded. **There is no separate Array type** — array-of-record is `cardinality > 1` with a `Ref` item.
+- **`?` applies to values only.** `string?` ≡ `Union{ string, null }`. It adds `null` to a Union; it **cannot** apply to a `Ref`. "This record may be absent" is `cardinality [0,1]`, never `?` (see §6).
+- **Records are always named and reached by `Ref`.** No inline/anonymous records — this makes the schema a graph of named definitions (so reuse and recursion are uniform), not a nested tree. Unions may be inline or named.
 - **Members of a Union are value domains only** — kinds, literals, null — never a record.
 
 **Surface syntax** (shorthands desugar to the model)
@@ -126,26 +130,16 @@ root Team
 
 - **Quoting rule:** `"quoted"` = a **data string** (a field label or a string literal); an **unquoted identifier** = a **schema name** (a kind or a `Ref`); a **bare keyword** = a non-string literal (`null`, `true`, `42`).
 - `enum` = a `Union` of only-literals. `"a" | "b"`, `string?`, `integer | "x"` are inline-`Union` shorthands.
-- `record` / `union` are the two naming keywords. ("type" is *not* a keyword — it was overloaded between the category, the binding, and `Record`.)
+- `record` / `union` are the two naming keywords. ("type" is *not* a keyword — it would be ambiguous between "a definition", "the thing being named", and a record.)
 
 ---
 
-## 6. SA grounding
+## 6. Two deliberate exclusions
 
-| Construct | Schema Automaton |
-|---|---|
-| **Record** | a state constrained by **HLang** (its child labels) |
-| **Union** | a state constrained by **VDom** (its values) |
-| **Field cardinality `[m,n]`** | HLang multiplicity of a symbol — *unordered* (commutative) |
-| **Closed record** | δ total over a **finite** label alphabet; unlisted labels → dead state |
-| **Ref** | a named, reusable state — enables recursion |
-| **`null` in a Union / `?`** | `ε ∈ VDom(q)` (the paper's null value is a VDom member) |
-| **Repeated label (array)** | `δ(q, member)=qMember`, HLang `member*` — finite alphabet, unboundedness in the Kleene star |
+Two things the model intentionally cannot express, and why:
 
-Two exclusions, in SA terms:
-
-- **`?` on a record** would accept a record *or* a null leaf = `({ε}×{name}) ∪ ({null}×{ε})` — a union of two VDom×HLang rectangles, which no single SA state can express. So `?` is scalar-only and absence is cardinality.
-- **Maps / open keys** are the `xs:any` content model the paper explicitly leaves outside the SA.
+- **A record-or-null field.** A definition is *either* a value rule (a union) *or* a structure rule (a record) — never both at once. "This value is a string or null" is one union; "this subtree is a Manager record or a bare null" would need a single definition that is half value-rule and half structure-rule, which the model doesn't allow. So `?` (which adds null to a *value*) applies only to unions, and "this record might not be here" is expressed by **cardinality `[0,1]`** (the field may be absent) — not by a nullable reference.
+- **Maps / open key sets.** A record names every label it allows. An open-ended key set ("any string key, all of type T") would be a structureless hole, so it's deferred (§3). Use a named record when the keys are known; for genuinely open data, this is a future, opt-in feature.
 
 ---
 
@@ -158,13 +152,13 @@ A node `n` conforms to a `Record R` iff:
 
 A value conforms to a `Union` iff it lies in the Union's value domain. A target conforms to `Ref(N)` iff it conforms to `env[N]`.
 
-**Order is ignored.** Cardinality counts edges; it never constrains their sequence. A JSON document and an interleaved XML document with the same edge multiset conform identically.
+**Order is ignored.** Cardinality counts edges; it never constrains their sequence. A JSON document and an interleaved XML document with the same edges (in any order) conform identically.
 
 ---
 
 ## 8. Serialization (Document → format)
 
-Group all edges sharing a label into one key, regardless of position: `[(m,A),(x,X),(m,B)]` → `{"m":[A,B], "x":X}`. Within-label order (`A` before `B`) is preserved; cross-label interleaving is dropped (no JSON-family format can express it). See open question (1) for the count-1 ambiguity.
+Group all edges sharing a label into one key, regardless of position: `[(m,A),(x,X),(m,B)]` → `{"m":[A,B], "x":X}`. Within-label order (`A` before `B`) is preserved; cross-label interleaving is dropped (no JSON-family format can express it). See §10 (1) for the count-1 rule.
 
 ---
 
@@ -176,20 +170,20 @@ This is a **breaking redesign of the core**, not an incremental change:
 - **Type tree** is replaced: `ObjectType`+`ArrayType` collapse into `Record` (fields with cardinality); `ScalarType` becomes `Union`; `AnyType` is removed; `RefType` stays.
 - **Codecs** change: readers build edge lists; writers group by label and consult cardinality (or a fallback) to choose array-vs-bare.
 - **DSL** changes: quoted-label rule, `record`/`union` keywords, `[m,n]` cardinality, `?` scalar-only.
-- **Operations** (`validate`/`compatible_with`/`equivalent`/`normalize`) re-expressed on the new model — and several get *simpler* (no `rest` special-casing; scalar checks become VDom subset).
+- **Operations** (`validate`/`compatible_with`/`equivalent`/`normalize`) re-expressed on the new model — and several get *simpler* (no `rest` special-casing; a scalar check becomes "is this value's set a subset of the other's").
 
 A phased path is possible (introduce the edge-list Document behind the existing API first, then the schema model), but the end state is incompatible with today's public types.
 
 ---
 
-## 10. Resolved decisions (recommended — pending confirmation)
+## 10. Resolved decisions
 
-These were the open questions; here are the recommended resolutions, consistent with the restrictive-by-default philosophy. Confirm or override before the code that depends on them is written.
+The corner cases, and how they're settled (all implemented):
 
 1. **Count-1 serialization → schema-driven, with an always-list fallback.** When a schema is available, cardinality decides array-vs-bare (`max > 1` → list, else bare) — faithful, idiomatic output. With no schema, fall back to always-list (every grouped label becomes an array). This keeps the Document format-independent (no format-derived bits) and puts the array/bare decision where the cardinality actually lives.
 2. **Array-of-scalar → a repeated label**, uniform with array-of-record (`"tags"[0,]: string`). One mechanism (cardinality) for all "many," matching XML's repeated elements.
-3. **Bare nested arrays (`[[1,2],[3,4]]`) → forbidden for now.** They have no Data-Tree form (no label for inner elements) and XML can't express them either; reading one raises a clear error. Revisit only if a concrete need appears.
-4. **Root → a `Ref` to a single record (single-rooted).** Guarantees a lossless XML round-trip (one document element) and keeps the entry point uniform with every other state.
+3. **Bare nested arrays (`[[1,2],[3,4]]`) → forbidden for now.** Inner elements have no label, so there's no edge to give them (and XML can't express them either); reading one raises a clear error. Revisit only if a concrete need appears.
+4. **Root → a `Ref` to a single record (single-rooted).** Guarantees a lossless XML round-trip (one document element) and keeps the entry point uniform with every other definition.
 
 ---
 

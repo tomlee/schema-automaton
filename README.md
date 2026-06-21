@@ -6,7 +6,7 @@
 [![status](https://img.shields.io/badge/status-alpha-orange)](#status)
 
 **One canonical data model for JSON, YAML, TOML, and XML** — read any of them
-into a single Data Tree, validate it against a schema, compare schema versions,
+into a single tree, validate it against a schema, compare schema versions,
 and write it back out to any of the others.
 
 ```python
@@ -26,10 +26,10 @@ s.validate(doc({"name": "Platform",
 
 If your service handles config or payloads in more than one format, you usually
 get a different library — and a different mental model — for each. dataspec
-gives you **one** model and **one** schema language over it, grounded in a formal
-data model (Lee & Cheung's Data Tree / Schema Automaton):
+gives you **one** model and **one** schema language over it, grounded in a small,
+self-contained formal model (inspired by Lee & Cheung, CIKM 2010):
 
-- A **Document** is a *Data Tree* — an ordered list of labeled edges. Arrays are
+- A **Document** is a *tree* — an ordered list of labeled edges. Arrays are
   just repeated labels, so the *same* Document represents JSON, YAML, TOML, and
   XML, including XML's interleaved repeated elements.
 - A **Schema** is `record` (closed named fields, each with a cardinality) and
@@ -84,13 +84,13 @@ pip install pyyaml tomli_w defusedxml   # YAML / writing TOML / hardened XML
 
 - **[User guide](docs/guide.md)** — the practical tour: documents, the DSL, the
   Python builder, validation, operations, codecs, inference, a real-life example.
-- **[Model spec](docs/design/model.md)** — the formal Document and Schema models
-  and their grounding in the Schema Automaton.
+- **[Model spec](docs/design/model.md)** — the formal Document and Schema models,
+  self-contained and plain (no paper required).
 
 ## Status
 
-dataspec is **alpha** (v0.1.1a1). The model was redesigned around the formal
-Data Tree / Schema Automaton; the public API may still change before a stable
+dataspec is **alpha** (v0.1.1a1). The model was redesigned around a small,
+self-contained formalism; the public API may still change before a stable
 release. Not yet on PyPI — install from a checkout.
 
 Feedback and bug reports welcome:
@@ -103,8 +103,8 @@ Apache-2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
 ## Background
 
-The model follows Lee & Cheung,
+The model is **inspired by** Lee & Cheung,
 [*"XML Schema Computations: Schema Compatibility Testing and Subschema
 Extraction"*](docs/paper/Lee-Cheung-2010-XML-Schema-Computations-CIKM.pdf)
-(CIKM 2010) — adopting its Data Tree and Schema Automaton, simplified for the
-JSON family of formats.
+(CIKM 2010), simplified for the JSON family of formats. You don't need the
+paper to use dataspec — the [model spec](docs/design/model.md) is self-contained.

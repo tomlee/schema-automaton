@@ -1,10 +1,10 @@
 """The Schema model — two state kinds plus naming, per ``docs/design/model.md``.
 
-* **Record** — a closed set of fields, each ``(label, type, cardinality)``.
-  Constrained by its child labels (the SA's HLang); cardinality is the
-  *unordered* multiplicity of a label.
+* **Record** — a closed set of fields, each ``(label, type, cardinality)``;
+  constrained by its child labels.  Cardinality is the *unordered* number of
+  times a label may appear.
 * **Union** — a value domain: a set of members, each a *kind* (string, integer,
-  …), a *literal*, or ``null``.  Constrained by values (the SA's VDom).
+  …), a *literal*, or ``null``; constrained by the value.
 * **Ref** — a pointer into the schema's named environment; enables reuse and
   recursion.
 
