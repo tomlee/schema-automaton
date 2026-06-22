@@ -64,7 +64,9 @@ def _register_builtins() -> None:
         write_xml,
         write_yaml,
     )
+    from .oml import check_oml, read_oml, write_oml
     register_format(Format("json", read_json, write_json, check_json))
     register_format(Format("yaml", read_yaml, write_yaml, check_yaml))
     register_format(Format("toml", read_toml, write_toml, check_toml))
+    register_format(Format("oml", read_oml, write_oml, check_oml))
     register_format(Format("xml", read_xml, write_xml, check_xml))

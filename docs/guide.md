@@ -1,7 +1,8 @@
 # omnist — user guide
 
-omnist gives you **one canonical data model** for JSON, YAML, TOML, and XML,
-and a **schema language** to validate and compare shapes over it. The model is
+omnist gives you **one canonical data model** for JSON, YAML, TOML, XML, and
+its own native OML, and a **schema language** to validate and compare shapes
+over it. The model is
 defined formally in [the model spec](design/model.md); this guide is the
 practical tour; the [API reference](api.md) lists every name with signatures.
 

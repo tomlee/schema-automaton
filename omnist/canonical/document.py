@@ -134,6 +134,11 @@ class Doc:
         from .formats import read_xml
         return cls(read_xml(text, schema=schema))
 
+    @classmethod
+    def from_oml(cls, text: str, *, schema: Optional["Schema"] = None) -> "Doc":
+        from .oml import read_oml
+        return cls(read_oml(text, schema=schema))
+
     # -- shape ----------------------------------------------------------
     @property
     def is_leaf(self) -> bool:
@@ -242,6 +247,10 @@ class Doc:
         from .formats import write_xml
         return write_xml(self._node, **o)
 
+    def to_oml(self, **o: Any) -> str:
+        from .oml import write_oml
+        return write_oml(self._node, **o)
+
     def to_format(self, name: str, **o: Any) -> str:
         from .registry import get_format
         return get_format(name).write(self._node, **o)
@@ -261,6 +270,10 @@ class Doc:
     def check_xml(self) -> "WriteReport":
         from .formats import check_xml
         return check_xml(self._node)
+
+    def check_oml(self) -> "WriteReport":
+        from .oml import check_oml
+        return check_oml(self._node)
 
     def check_format(self, name: str) -> "WriteReport":
         """Simulate writing to format ``name`` and return the adjustment

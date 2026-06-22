@@ -40,6 +40,7 @@ from .canonical.formats import (
     write_yaml,
 )
 from .canonical.infer import infer
+from .canonical.oml import check_oml, read_oml, write_oml
 from .canonical.registry import Format, formats, get_format, register_format
 from .canonical.report import Adjustment, WriteReport, finish_write
 from .canonical.schema import (
@@ -94,7 +95,8 @@ __all__ = [
     # codecs
     "read_json", "write_json", "read_yaml", "write_yaml",
     "read_toml", "write_toml", "read_xml", "write_xml",
-    "check_json", "check_yaml", "check_toml", "check_xml",
+    "read_oml", "write_oml",
+    "check_json", "check_yaml", "check_toml", "check_xml", "check_oml",
     # adjustment reports
     "WriteReport", "Adjustment", "finish_write",
     # format registry

@@ -6,8 +6,9 @@
 [![status](https://img.shields.io/badge/status-alpha-orange)](#status)
 
 **omnist** ("omni-structure") is **one canonical data model for JSON, YAML,
-TOML, and XML** — read any of them into a single tree, validate it against a
-schema, compare schema versions, and write it back out to any of the others.
+TOML, XML, and its own native OML** — read any of them into a single tree,
+validate it against a schema, compare schema versions, and write it back out
+to any of the others.
 
 ```python
 from omnist import parse_schema, doc
@@ -30,8 +31,9 @@ gives you **one** model and **one** schema language over it, grounded in a small
 self-contained formal model (inspired by Lee & Cheung, CIKM 2010):
 
 - A **Document** is a *tree* — an ordered list of labeled edges. Arrays are
-  just repeated labels, so the *same* Document represents JSON, YAML, TOML, and
-  XML, including XML's interleaved repeated elements.
+  just repeated labels, so the *same* Document represents JSON, YAML, TOML,
+  XML (including its interleaved repeated elements), and OML — omnist's own
+  format, the only one with zero loss in either direction.
 - A **Schema** is named `record` definitions (closed named fields, each with a
   cardinality), where every field's type is always exactly one fixed scalar
   (optionally nullable) or one `Ref` to a named record — referenced by name for
