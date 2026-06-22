@@ -83,15 +83,9 @@ Document = node                              -- (or a bare value at a leaf)
 - **Object and array unify.** A node is just an ordered edge list; the object-vs-array distinction vanishes.
 - **Order is preserved in the Document** (it is the canonical, faithful record) but is **data, never a schema constraint** (§7). A reordered round-trip remains schema-valid.
 
-**Format mapping**
-
-| Source | Document |
-|---|---|
-| JSON object `{"a":1,"b":2}` | `[(a,1),(b,2)]` |
-| JSON keyed array `{"m":[A,B]}` | `[(m,A),(m,B)]` |
-| YAML mapping / sequence | as JSON |
-| TOML table / array-of-tables | as JSON |
-| XML elements (incl. interleaved) | `[(tag,…),…]`, order preserved |
+**Format mapping.** See [Formats](../formats/overview.md#how-a-format-becomes-a-document)
+for the full table of how each supported format's constructs map onto this
+Document shape.
 
 ---
 
