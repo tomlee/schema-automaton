@@ -4,6 +4,37 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.1.3]
+
+- New: **OML** (Omnist Markup Language) — a native, lossless codec for the
+  Document model. `read_oml` / `write_oml` / `check_oml`,
+  `Doc.from_oml` / `to_oml` / `check_oml`, and the `"oml"` format-registry
+  entry. Every Document shape (all seven scalars, `null`, repeated and
+  interleaved labels, arbitrary nesting, multiple top-level edges)
+  round-trips through OML exactly — `check_oml` is always an empty
+  `WriteReport`, unlike the other four formats. Supports the raw-string
+  (`'…'`) and triple-quoted multiline-string (`"""…"""`) OML-Extended
+  spellings on read; the canonical writer always emits OML-Core. Hardened
+  against the CPython big-int-to-str DoS class (a 4300-digit limit on bare
+  integers, matching `sys.get_int_max_str_digits()`'s default) and bounded
+  to the Document model's own 200-level nesting depth.
+- New docs: [docs/formats/oml.md](docs/formats/oml.md) (including a section
+  mapping OML scalars/records onto the Python Document and builder) and
+  [docs/schema.md](docs/schema.md), a standalone introduction to the Schema
+  model and DSL parallel to the OML page. OML and the schema DSL are now
+  promoted to first-class billing in the README, the docs index, and the
+  guide, instead of being buried in format lists; the flagship examples
+  (`docs/example.md`, `docs/guide.md`'s real-life example,
+  `examples/canonical_model.py`) now illustrate the Document primarily in
+  OML, with the other four formats shown as lossless translations.
+- Fix: `infer()`'s optional-vs-required field detection was silently
+  **order-dependent** — a field absent from an early sample but first seen
+  in a later one could be misclassified as required (`[1,1]`) instead of
+  optional (`[0,1]`), depending only on sample order. Fixed by computing
+  per-sample presence in two passes (which labels exist at all, then one
+  count per sample for each) instead of backfilling incrementally as
+  labels were discovered.
+
 ## [v0.1.2]
 
 Version bump only, no code or behavior changes since v0.1.1a10.

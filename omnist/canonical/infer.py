@@ -60,21 +60,30 @@ def _identifier(s: str) -> str:
 def _infer_record(nodes: List[Any], name: str, env: Dict[str, Any],
                   used: set) -> None:
     used.add(name)
-    # collect, per label, the children across all samples and per-sample counts
+    # Pass 1: which labels exist at all, in first-seen order. Pass 2: one
+    # count per sample for *every* label, defaulting to 0 for samples that
+    # don't have it -- regardless of which sample first introduced the
+    # label. Doing this in two passes (rather than backfilling as labels
+    # are discovered) keeps the result independent of sample order: a label
+    # missing from an early sample but present in a later one must still
+    # come out optional, not required.
     order: List[str] = []
-    children: Dict[str, List[Any]] = {}
-    per_sample_counts: Dict[str, List[int]] = {}
+    seen_labels: set = set()
     for node in nodes:
-        seen_here: Dict[str, int] = {}
-        for label, child in node:
-            if label not in children:
-                children[label] = []
-                per_sample_counts[label] = []
+        for label, _ in node:
+            if label not in seen_labels:
+                seen_labels.add(label)
                 order.append(label)
+
+    children: Dict[str, List[Any]] = {label: [] for label in order}
+    per_sample_counts: Dict[str, List[int]] = {label: [] for label in order}
+    for node in nodes:
+        counts_here: Dict[str, int] = {}
+        for label, child in node:
             children[label].append(child)
-            seen_here[label] = seen_here.get(label, 0) + 1
-        for label in children:
-            per_sample_counts[label].append(seen_here.get(label, 0))
+            counts_here[label] = counts_here.get(label, 0) + 1
+        for label in order:
+            per_sample_counts[label].append(counts_here.get(label, 0))
 
     fields: List[Field] = []
     for label in order:

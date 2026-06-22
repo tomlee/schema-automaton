@@ -58,7 +58,7 @@ class TestPublicApi:
         import omnist as ds
 
         s = ds.parse_schema('record R { "n": integer, "s": string? }\nroot R')
-        assert ds.__version__ == "0.1.2"
+        assert ds.__version__ == "0.1.3"
         # operations are Schema methods
         assert s.validate(ds.doc({"n": 1, "s": None})).ok
         assert s.equivalent(ds.parse_schema(ds.to_dsl(s)))
@@ -167,6 +167,22 @@ class TestInfer:
         assert s.validate(doc({"v": 7})).ok
         assert s.validate(doc({"v": None})).ok
         assert not s.validate(doc({"v": "x"})).ok
+
+    def test_optional_field_detection_is_order_independent(self):
+        # a field absent from an early sample but present in a later one
+        # must still infer as optional, regardless of which sample order
+        # it's passed in
+        from omnist.canonical import infer
+        absent_first = infer([doc({"host": "a"}), doc({"host": "b", "port": 80})])
+        absent_last = infer([doc({"host": "b", "port": 80}), doc({"host": "a"})])
+        assert absent_first.equivalent(absent_last)
+
+        port = absent_first.env["Root"].fields[1]
+        assert port.label == "port"
+        assert (port.min, port.max) == (0, 1)
+
+        assert absent_first.validate(doc({"host": "x"})).ok
+        assert absent_first.validate(doc({"host": "x", "port": 1})).ok
 
 
 # ----------------------------------------------------------- DSL + validation

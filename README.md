@@ -121,7 +121,7 @@ Full index: **[docs/](docs/README.md)**.
 
 ## Status
 
-Omnist is **alpha** (v0.1.2), built around a small, self-contained
+Omnist is **alpha** (v0.1.3), built around a small, self-contained
 formalism; the public API may still change before a stable release. Not yet
 on PyPI — install from a checkout.
 
