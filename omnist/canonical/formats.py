@@ -19,7 +19,7 @@ import json as _json
 import math as _math
 import re as _re
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from ..errors import ParseError, UnsafeXMLWarning, WriteError
 from .document import _grouped, build_node
@@ -27,11 +27,6 @@ from .report import WriteReport, finish_write
 
 if TYPE_CHECKING:
     from .schema import Schema
-
-
-def get_reader(name: str) -> Callable[[str], Any]:
-    return {"json": read_json, "yaml": read_yaml, "toml": read_toml,
-            "xml": read_xml}[name]
 
 
 def _materialize(node: Any, schema: Optional["Schema"]) -> Any:

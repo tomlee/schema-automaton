@@ -1,4 +1,6 @@
 """Execute the key snippets shown in the docs, so they can't silently rot."""
+import pytest
+
 import omnist as ds
 from omnist import (
     Doc,
@@ -338,11 +340,8 @@ def test_api_docs_adjustment_reports():
     assert [(a.code, a.severity) for a in rep] == [("null.omitted", "warning")]
     assert [(a.code, a.severity) for a in d.check_toml()] == \
         [(a.code, a.severity) for a in rep]
-    try:
+    with pytest.raises(WriteError):
         d.to_toml(strict=True)
-        assert False, "expected WriteError"
-    except WriteError:
-        pass
 
 
 def test_api_docs_format_registry():

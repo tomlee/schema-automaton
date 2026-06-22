@@ -13,7 +13,10 @@ from omnist.canonical import (
     Field,
     Format,
     Record,
+    Ref,
+    Scalar,
     Schema,
+    ValidationResult,
     WriteReport,
     check_json,
     check_toml,
@@ -44,6 +47,8 @@ from omnist.canonical import (
     write_xml,
     write_yaml,
 )
+from omnist.canonical.oml import check_oml
+from omnist.canonical.schema import matches_kind, value_kind
 from omnist.errors import DocumentError, ParseError, SchemaError, WriteError
 
 yaml = pytest.importorskip("yaml")
@@ -445,6 +450,15 @@ class TestCodecs:
         d = read_json('{"members":[{"name":"Ann"}]}')
         assert write_json(d) == '{"members": {"name": "Ann"}}'
 
+    def test_write_json_rejects_unsupported_scalar(self):
+        # A node built by hand (bypassing build_node's type check) can carry
+        # a leaf value that's neither a JSON-native type nor date/time/
+        # datetime -- json.dumps' default= hook then raises TypeError.
+        class Unsupported:
+            pass
+        with pytest.raises(TypeError, match="cannot serialize"):
+            write_json([("a", Unsupported())])
+
     def test_all_formats_same_document(self):
         j = read_json('{"name":"P","members":[{"name":"Ann","role":"dev"},'
                       '{"name":"Bob","role":"pm"}]}')
@@ -469,6 +483,51 @@ class TestCodecs:
     def test_xml_write_needs_single_root(self):
         with pytest.raises(WriteError):
             write_xml([("a", 1), ("b", 2)])      # two top-level edges
+
+    def test_xml_label_sanitized_when_not_a_valid_xml_name(self):
+        # a label with spaces/punctuation isn't a valid XML name -- write_xml
+        # sanitizes it (and prefixes "_" if sanitizing leaves nothing usable).
+        out = write_xml([("a b", "1")])
+        assert "<a_b>" in out
+
+    def test_xml_label_starting_with_digit_gets_underscore_prefix(self):
+        out = write_xml([("1tag", "x")])
+        assert "<_1tag>" in out
+
+    def test_xml_leaf_types_round_trip_as_text(self):
+        # bool/None/date leaves all go through _xml_text's special-casing.
+        d = [("r", [("flag", True), ("nothing", None),
+                    ("d", datetime.date(2024, 1, 1))])]
+        out = write_xml(d)
+        assert "<flag>true</flag>" in out
+        assert "<nothing />" in out or "<nothing/>" in out or "<nothing></nothing>" in out
+        assert "<d>2024-01-01</d>" in out
+
+    def test_xml_text_coerces_empty_and_boolish_strings(self):
+        d = read_xml("<r><a></a><b>true</b><c>false</c></r>")
+        assert d == [("r", [("a", ""), ("b", True), ("c", False)])]
+
+    def test_xml_parser_falls_back_to_stdlib_without_defusedxml(self):
+        # When defusedxml isn't installed, read_xml() must still work, via the
+        # standard library parser, with a warning about the XXE risk.
+        import builtins
+
+        from omnist.canonical.formats import _xml_parser
+        from omnist.errors import UnsafeXMLWarning
+
+        real_import = builtins.__import__
+
+        def fake_import(name, *args, **kwargs):
+            if name.startswith("defusedxml"):
+                raise ImportError("simulated: defusedxml not installed")
+            return real_import(name, *args, **kwargs)
+
+        import unittest.mock
+        with unittest.mock.patch("builtins.__import__", side_effect=fake_import):
+            with pytest.warns(UnsafeXMLWarning):
+                ET = _xml_parser()
+        import xml.etree.ElementTree as stdlib_ET
+        assert ET is stdlib_ET
 
 
 # ----------------------------------------------------- schema-directed deserialization
@@ -684,9 +743,27 @@ class TestDocCheckParity:
         d = Doc(node)
         assert [a.code for a in d.check_xml()] == [a.code for a in check_xml(node)]
 
+    def test_check_oml_matches(self):
+        node = doc({"a": 1, "b": None}).to_data()
+        d = Doc(node)
+        assert [a.code for a in d.check_oml()] == [a.code for a in check_oml(node)]
+
     def test_check_format_matches_named_method(self):
         d = doc({"a": 1, "b": None})
         assert [a.code for a in d.check_format("toml")] == [a.code for a in d.check_toml()]
+
+
+# ----------------------------------------------------------------- WriteReport
+class TestWriteReportStr:
+    def test_str_with_no_adjustments(self):
+        assert str(WriteReport()) == "no adjustments"
+
+    def test_str_with_adjustments(self):
+        node = doc({"a": 1, "b": None}).to_data()
+        rep = check_toml(node)
+        assert str(rep) == "\n".join(
+            f"{a.severity}: {a.path}: {a.message}" for a in rep)
+        assert "null value dropped" in str(rep)
 
 
 # ----------------------------------------------------------- DSL error paths
@@ -826,6 +903,132 @@ class TestSchemaConstructionErrors:
         # crash with AttributeError instead of raising SchemaError
         with pytest.raises(SchemaError, match="must be a Record"):
             schema(ref("R"), R=t.string)
+
+
+# ----------------------------------------------------------------- dunders
+class TestSchemaModelDunders:
+    """__repr__/__eq__/__hash__/__str__/__bool__ on the small model classes
+    -- not exercised by the DSL/validation-focused tests elsewhere."""
+
+    def test_scalar_unknown_name_raises(self):
+        with pytest.raises(SchemaError, match="unknown scalar"):
+            Scalar("not-a-real-scalar")
+
+    def test_scalar_eq_and_hash(self):
+        assert Scalar("string") == Scalar("string")
+        assert Scalar("string") != Scalar("integer")
+        assert Scalar("string") != "string"          # not a Scalar at all
+        assert hash(Scalar("string")) == hash(Scalar("string"))
+
+    def test_ref_repr_eq_and_hash(self):
+        assert repr(Ref("R")) == "ref(R)"
+        assert Ref("R") == Ref("R")
+        assert Ref("R") != Ref("S")
+        assert Ref("R") != "R"
+        assert hash(Ref("R")) == hash(Ref("R"))
+
+    def test_types_namespace_repr(self):
+        assert "seven scalars" in repr(t)
+
+    def test_field_cardinality_str_zero_or_one(self):
+        f = Field("x", t.string, min=0, max=1)
+        assert f.cardinality_str() == "0 or 1"
+
+    def test_field_repr(self):
+        f = Field("x", t.string, min=0, max=2)
+        assert repr(f) == "Field('x'[0,2]: string)"
+
+    def test_record_repr(self):
+        rec = Record([Field("a", t.string)])
+        assert repr(rec) == "record{Field('a'[1,1]: string)}"
+
+    def test_validation_result_bool_str_repr(self):
+        ok = ValidationResult()
+        assert bool(ok) is True
+        assert str(ok) == "valid"
+        assert repr(ok) == "ValidationResult(ok=True, errors=0)"
+
+        bad = ValidationResult()
+        bad.add("$.a", "boom")
+        assert bool(bad) is False
+        assert str(bad) == "invalid:\n  at $.a: boom"
+        assert repr(bad) == "ValidationResult(ok=False, errors=1)"
+
+    def test_schema_repr(self):
+        s = parse_schema('record R { "a": integer }\nroot R')
+        assert repr(s) == "Schema(root=ref(R), env=['R'])"
+
+    def test_resolve_cyclic_reference_raises(self):
+        # check_refs() (run at construction) requires every env value to be
+        # a Record, so resolve()'s while-loop can never naturally see the
+        # same Ref name twice through the public API -- env[name] always
+        # becomes a Record after one hop. The cycle guard is defense in
+        # depth for a caller who mutates .env directly after construction
+        # (env is a plain public dict, not enforced immutable).
+        s = schema(ref("A"), A=record(field("x", ref("A"), min=0, max=1)))
+        s.env["A"] = ref("A")
+        with pytest.raises(SchemaError, match="cyclic reference chain"):
+            s.resolve(ref("A"))
+
+    def test_resolve_unknown_type_raises(self):
+        s = parse_schema('record R { "a": integer }\nroot R')
+        with pytest.raises(SchemaError, match="unknown type 'Ghost'"):
+            s.resolve(ref("Ghost"))
+
+    def test_validate_requires_a_doc(self):
+        s = parse_schema('record R { "a": integer }\nroot R')
+        with pytest.raises(TypeError, match=r"validate\(\) expects a Doc"):
+            s.validate({"a": 1})
+
+    def test_accepts_delegates_to_validate(self):
+        s = parse_schema('record R { "a": integer }\nroot R')
+        assert s.accepts(doc({"a": 1})) is True
+        assert s.accepts(doc({"a": "x"})) is False
+
+    def test_conform_scalar_leaf_required_got_object(self):
+        s = parse_schema('record R { "a": integer }\nroot R')
+        bad = doc({"a": {"nested": 1}})
+        res = s.validate(bad)
+        assert not res.ok
+        assert any("got an object" in e.message for e in res.errors)
+
+    def test_conform_scalar_null_not_allowed(self):
+        s = parse_schema('record R { "a": integer }\nroot R')
+        bad = doc({"a": None})
+        res = s.validate(bad)
+        assert not res.ok
+        assert any("null not allowed here" in e.message for e in res.errors)
+
+    def test_conform_record_leaf_required_object(self):
+        s = parse_schema('record Inner { "x": integer }\nrecord R { "a": Inner }\nroot R')
+        bad = doc({"a": 1})
+        res = s.validate(bad)
+        assert not res.ok
+        assert any("expected an object, got a value" in e.message for e in res.errors)
+
+
+# ------------------------------------------------------- matches_kind / value_kind
+class TestMatchesKindAndValueKind:
+    def test_matches_kind_time_object(self):
+        assert matches_kind(datetime.time(12, 0), "time")
+
+    def test_matches_kind_datetime_not_a_date(self):
+        assert not matches_kind(datetime.datetime(2024, 1, 1), "date")
+
+    def test_value_kind_temporal_types(self):
+        assert value_kind(datetime.datetime(2024, 1, 1)) == "datetime"
+        assert value_kind(datetime.date(2024, 1, 1)) == "date"
+        assert value_kind(datetime.time(12, 0)) == "time"
+
+    def test_value_kind_boolean(self):
+        assert value_kind(True) == "boolean"
+
+    def test_matches_kind_unknown_name_never_matches(self):
+        # matches_kind is only ever called by _conform_scalar with a name
+        # taken from a Scalar, and Scalar.__init__ already restricts names
+        # to SCALAR_NAMES -- so an unrecognized name can't arrive through
+        # the public API. This guards the function's own contract directly.
+        assert matches_kind("anything", "not-a-real-scalar-name") is False
 
 
 # ----------------------------------------------------------- infer() errors

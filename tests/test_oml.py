@@ -59,9 +59,29 @@ def test_empty_document_is_empty_node():
     assert read_oml("   \n  \n") == []
 
 
+def test_crlf_line_endings_act_as_separators():
+    # \r\n (not just bare \n) is recognized as a separator.
+    assert read_oml("a: 1\r\nb: 2\r\n") == [("a", 1), ("b", 2)]
+
+
 def test_bare_leaf_document():
     assert read_oml("42") == 42
     assert read_oml('"just a string"') == "just a string"
+
+
+def test_stray_character_is_a_parse_error():
+    with pytest.raises(ParseError, match="stray character"):
+        read_oml("a: `")
+
+
+@pytest.mark.parametrize("src,match", [
+    ("a: 2024-13-01", "invalid date"),
+    ("a: 25:00:00", "invalid time"),
+    ("a: 2024-13-01T00:00:00", "invalid datetime"),
+])
+def test_invalid_temporal_literals_are_parse_errors(src, match):
+    with pytest.raises(ParseError, match=match):
+        read_oml(src)
 
 
 def test_repeated_labels_and_interleaving():
@@ -110,6 +130,43 @@ def test_unpaired_surrogate_rejected():
         read_oml(r'a: "\uDE00"')
 
 
+def test_surrogate_pair_via_u_escapes():
+    # a valid \uD800-\uDBFF high surrogate immediately followed by a valid
+    # \uDC00-\uDFFF low surrogate \u escape combines into one astral code
+    # point (as opposed to the literal-UTF-8 path tested above).
+    src = 'a: "' + chr(92) + 'uD83D' + chr(92) + 'uDE00"'
+    assert read_oml(src) == [("a", "\U0001F600")]
+
+
+def test_non_surrogate_unicode_escape_is_returned_as_is():
+    src = 'a: "' + chr(92) + 'u0041"'
+    assert read_oml(src) == [("a", "A")]
+
+
+def test_unterminated_escape_sequence_rejected():
+    with pytest.raises(ParseError, match="unterminated escape sequence"):
+        read_oml('a: "' + chr(92))
+
+
+def test_high_surrogate_followed_by_non_low_surrogate_rejected():
+    # a high surrogate followed by something that isn't a valid \u-escaped
+    # low surrogate (wrong escape, or a non-surrogate \u value) is rejected.
+    with pytest.raises(ParseError, match="unpaired high surrogate"):
+        read_oml(r'a: "\uD83DA"')   # followed by A ('A'), not a low surrogate
+    with pytest.raises(ParseError, match="unpaired high surrogate"):
+        read_oml(r'a: "\uD83Dx"')        # not followed by a \u escape at all
+
+
+def test_invalid_unicode_escape_needs_four_hex_digits():
+    with pytest.raises(ParseError, match=r"invalid \\u escape"):
+        read_oml(r'a: "\u12"')
+
+
+def test_invalid_escape_character_rejected():
+    with pytest.raises(ParseError, match=r"invalid escape"):
+        read_oml(r'a: "\z"')
+
+
 def test_control_character_must_be_escaped():
     with pytest.raises(ParseError):
         read_oml('a: "tab\there"')  # literal tab byte, not escaped
@@ -137,6 +194,11 @@ def test_raw_string_cannot_contain_apostrophe():
         read_oml("a: 'it''s broken'")  # terminates at the first '
 
 
+def test_unterminated_raw_string_is_a_parse_error():
+    with pytest.raises(ParseError, match="unterminated raw string"):
+        read_oml("a: 'never closed")
+
+
 def test_raw_string_canonical_writer_never_emits_it():
     node = read_oml(r"a: 'C:\x'")
     text = write_oml(node)
@@ -161,6 +223,28 @@ def test_multiline_leading_newline_stripped_but_internal_kept():
 def test_multiline_no_leading_newline_needed():
     node = read_oml('a: """same line start"""')
     assert node == [("a", "same line start")]
+
+
+def test_multiline_leading_crlf_stripped():
+    # a \r\n right after the opening """ is stripped just like a bare \n.
+    # (a bare \r elsewhere in the body is a control character and must be
+    # escaped, so this only exercises the opening-CRLF special case.)
+    node = read_oml('a: """\r\nx\n"""')
+    assert node[0][1] == "x\n"
+
+
+def test_unterminated_multiline_string_is_a_parse_error():
+    with pytest.raises(ParseError, match="unterminated multiline string"):
+        read_oml('a: """never closed')
+
+
+def test_control_character_in_multiline_string_must_be_escaped():
+    # \t and \n are allowed unescaped in a multiline string; any other
+    # control character (e.g. a literal \r not part of the opening CRLF) is
+    # rejected just like in an ordinary string.
+    src = 'a: """x' + chr(13) + 'y"""'
+    with pytest.raises(ParseError, match="control character"):
+        read_oml(src)
 
 
 def test_multiline_internal_newlines_never_act_as_sep():
@@ -246,12 +330,44 @@ def test_two_edges_with_newline_separator_is_fine():
 
 
 # ---------------------------------------------------------------------------
+# Structural parse errors inside braces
+# ---------------------------------------------------------------------------
+
+def test_missing_colon_after_label_is_a_parse_error():
+    with pytest.raises(ParseError, match="expected ':'"):
+        read_oml("{a 1}")
+
+
+def test_non_label_token_where_label_expected_is_a_parse_error():
+    with pytest.raises(ParseError, match="expected a label"):
+        read_oml("{1: 2}")
+
+
+def test_missing_closing_brace_is_a_parse_error():
+    with pytest.raises(ParseError, match=r"expected '\}'"):
+        read_oml("{a: 1")
+
+
+def test_missing_value_after_colon_is_a_parse_error():
+    with pytest.raises(ParseError, match="expected a value"):
+        read_oml("{a: }")
+
+
+# ---------------------------------------------------------------------------
 # Reserved words and labels
 # ---------------------------------------------------------------------------
 
 def test_reserved_word_as_bare_label_is_error():
     with pytest.raises(ParseError):
         read_oml("true: 1")
+
+
+def test_reserved_word_as_bare_label_inside_braces_is_error():
+    # at the top level "true: 1" fails the _looks_like_edge() lookahead and
+    # is parsed as a bare scalar instead (caught elsewhere); inside braces,
+    # a non-first edge's label always goes through parse_label() directly.
+    with pytest.raises(ParseError, match="reserved word"):
+        read_oml("{a: 1\ntrue: 2}")
 
 
 def test_quoted_reserved_word_label_is_fine():
@@ -470,3 +586,35 @@ def test_real_life_document_validates_against_a_schema():
     d = Doc.from_oml(REAL_LIFE_OML)
     result = s.validate(d)
     assert result.ok, result.errors
+
+
+# ---------------------------------------------------------------------------
+# write_oml edge cases
+# ---------------------------------------------------------------------------
+
+def test_write_oml_bare_scalar_document():
+    assert write_oml(42) == "42"
+
+
+def test_write_oml_empty_nested_node():
+    assert write_oml([("a", [])]) == "a: {}"
+
+
+def test_write_oml_label_needing_quotes():
+    # a label that isn't a bare-identifier shape gets written as a quoted
+    # string label instead.
+    assert write_oml([("a b", 1)]) == '"a b": 1'
+
+
+def test_write_oml_nan():
+    assert write_oml([("a", float("nan"))]) == "a: nan"
+
+
+def test_write_oml_rejects_unsupported_scalar_type():
+    with pytest.raises(TypeError, match="has no OML scalar form"):
+        write_oml([("a", object())])
+
+
+def test_write_oml_escapes_cr_tab_and_other_control_chars():
+    text = write_oml([("a", "x\ry\tz\x01")])
+    assert text == 'a: "x\\ry\\tz\\u0001"'
