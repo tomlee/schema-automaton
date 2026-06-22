@@ -1,6 +1,6 @@
 # Contributing
 
-omnist is **alpha** and the API can still change, but the workflow below is
+Omnist is **alpha** and the API can still change, but the workflow below is
 the real one this project uses — not a placeholder.
 
 ## Setup

@@ -303,7 +303,7 @@ examples/property, before and after each change).
   at all, only `date-time` does); now stringified and reported as
   `temporal.stringified`.
 - New: `integer.precision_risk` — a JSON integer beyond JavaScript's
-  safe-integer range (`±2**53`) round-trips exactly through omnist's
+  safe-integer range (`±2**53`) round-trips exactly through Omnist's
   own `read_json`, but silently loses precision in a JS-based parser
   (a browser, Node.js); now reported (the same class of interop risk
   as TOML's existing `integer.out_of_range` check).
@@ -335,7 +335,7 @@ bugs, none caught by the edge-case sweep in v0.1.0a3:
   structure (not a cycle, just YAML's normal way of avoiding
   duplication) took time **exponential** in nesting depth to validate
   — a 469-byte, 9-level payload that `yaml.safe_load` parses instantly
-  didn't finish validating in 15 seconds. The cause was omnist's own
+  didn't finish validating in 15 seconds. The cause was Omnist's own
   post-parse cycle/depth check re-walking a shared subtree once per
   alias reference instead of once per unique object; PyYAML itself
   shares the constructed objects and was never the problem. Now linear

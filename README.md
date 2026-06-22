@@ -1,11 +1,11 @@
-# omnist
+# Omnist
 
 [![tests](https://github.com/tomlee/omnist/actions/workflows/test.yml/badge.svg)](https://github.com/tomlee/omnist/actions/workflows/test.yml)
 [![python](https://img.shields.io/badge/python-3.11%2B-blue)](#installation)
 [![license](https://img.shields.io/badge/license-Apache--2.0-lightgrey)](LICENSE)
 [![status](https://img.shields.io/badge/status-alpha-orange)](#status)
 
-**omnist** ("omni-structure") is **one canonical data model for JSON, YAML,
+**Omnist** ("omni-structure") is **one canonical data model for JSON, YAML,
 TOML, XML, and its own native OML (Omnist Markup Language)** — read any of
 them into a single tree, validate it against a schema, compare schema
 versions, and write it back out to any of the others.
@@ -23,16 +23,16 @@ s.validate(doc({"name": "Platform",
                 "members": [{"name": "Ann", "role": "dev"}]})).ok    # True
 ```
 
-## Why omnist
+## Why Omnist
 
 If your service handles config or payloads in more than one format, you usually
-get a different library — and a different mental model — for each. omnist
+get a different library — and a different mental model — for each. Omnist
 gives you **one** model and **one** schema language over it, grounded in a small,
 self-contained formal model (inspired by Lee & Cheung, CIKM 2010):
 
 - A **Document** is a *tree* — an ordered list of labeled edges. Arrays are
   just repeated labels, so the *same* Document represents JSON, YAML, TOML,
-  XML (including its interleaved repeated elements), and OML — omnist's own
+  XML (including its interleaved repeated elements), and OML — Omnist's own
   format, the only one with zero loss in either direction.
 - A **Schema** is named `record` definitions (closed named fields, each with a
   cardinality), where every field's type is always exactly one fixed scalar
@@ -103,7 +103,7 @@ Full index: **[docs/](docs/README.md)**.
   [**OML**](docs/guide.md#oml--the-native-format) (the native format),
   [**the schema DSL**](docs/guide.md#schemas--the-dsl), the Python builder,
   validation, operations, other codecs, inference.
-- **[OML](docs/formats/oml.md)** — omnist's own format, designed alongside the
+- **[OML](docs/formats/oml.md)** — Omnist's own format, designed alongside the
   model so every Document round-trips with zero adjustments.
 - **[API reference](docs/api.md)** — every public name, with signatures.
 - **[A real-life example](docs/example.md)** — one order schema validated against
@@ -117,7 +117,7 @@ Full index: **[docs/](docs/README.md)**.
 
 ## Status
 
-omnist is **alpha** (v0.1.2), built around a small, self-contained
+Omnist is **alpha** (v0.1.2), built around a small, self-contained
 formalism; the public API may still change before a stable release. Not yet
 on PyPI — install from a checkout.
 
@@ -135,4 +135,4 @@ The model is **inspired by** Lee & Cheung,
 [*"XML Schema Computations: Schema Compatibility Testing and Subschema
 Extraction"*](docs/paper/Lee-Cheung-2010-XML-Schema-Computations-CIKM.pdf)
 (CIKM 2010), simplified for the JSON family of formats. You don't need the
-paper to use omnist — the [model spec](docs/design/model.md) is self-contained.
+paper to use Omnist — the [model spec](docs/design/model.md) is self-contained.

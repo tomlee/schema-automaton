@@ -1,4 +1,4 @@
-# omnist documentation
+# Omnist documentation
 
 Start here, in roughly this order:
 
@@ -14,7 +14,7 @@ Start here, in roughly this order:
 
 - A **Document** is a *tree*: a node is either a scalar value or an **ordered
   list of labeled edges**. An array is just a label that repeats — so the same
-  Document represents JSON, YAML, TOML, XML, and OML (omnist's own format).
+  Document represents JSON, YAML, TOML, XML, and OML (Omnist's own format).
 - A **Schema** is named **`record`** definitions (closed named fields, each
   with a cardinality `[min,max]`), where each field's type is always exactly
   one fixed scalar (optionally nullable) or one `Ref` to a named record —

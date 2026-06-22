@@ -1,6 +1,6 @@
 # Formats
 
-omnist reads JSON, YAML, TOML, XML, and its own native **OML** (Omnist
+Omnist reads JSON, YAML, TOML, XML, and its own native **OML** (Omnist
 Markup Language) into **one** canonical Document, and writes that Document
 back out to any of them. Because they share one model, converting is just
 *read one, write another*:
@@ -50,7 +50,7 @@ d.to_json()
 
 | Format | Notes |
 |---|---|
-| **[OML](oml.md)** | omnist's own format; the only one with zero adjustments — every Document shape round-trips exactly |
+| **[OML](oml.md)** | Omnist's own format; the only one with zero adjustments — every Document shape round-trips exactly |
 | **[JSON](json.md)** | the baseline; no dependencies |
 | **[YAML](yaml.md)** | the JSON-compatible core; needs `pyyaml` |
 | **[TOML](toml.md)** | native dates, no `null`, top-level must be a table |

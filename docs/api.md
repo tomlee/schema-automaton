@@ -30,7 +30,7 @@ A guarded handle on a Document node — either a **leaf** (a scalar value) or an
 | | |
 |---|---|
 | `Doc.of(value)` | same as `doc(value)` |
-| `Doc.from_oml(text)` | read **OML**, omnist's own format (see [the guide](guide.md#oml--the-native-format)) |
+| `Doc.from_oml(text)` | read **OML**, Omnist's own format (see [the guide](guide.md#oml--the-native-format)) |
 | `Doc.from_json(text)` / `from_yaml` / `from_toml` / `from_xml` | read a format string |
 | `Doc.from_format(name, text)` | read by format name (`"json"`, `"oml"`, …) |
 
@@ -312,7 +312,7 @@ simulating a write without producing output. The four built-ins all provide
 
 | | Raised when |
 |---|---|
-| `OmnistError` | base class for all omnist errors |
+| `OmnistError` | base class for all Omnist errors |
 | `SchemaError` | invalid schema text or structure (bad DSL, undefined `Ref`, bad cardinality) |
 | `ParseError` | a document couldn't be read from its format |
 | `DocumentError` | a value isn't a legal Document, or an invalid `Doc` operation |

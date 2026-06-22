@@ -1,7 +1,7 @@
 # A real-life example
 
 One schema, one Document, validated against orders read from **all five
-formats** (including OML, omnist's own — see [the guide](guide.md#oml--the-native-format))
+formats** (including OML, Omnist's own — see [the guide](guide.md#oml--the-native-format))
 — and the schema operations used the way you would in practice. Every
 snippet here is verified against the library.
 
@@ -157,7 +157,7 @@ v2.compatible_with(v1)        # False -- a v2 order with a port doesn't
 ## See also
 
 - [User guide](guide.md) — the full reference for documents, OML, schemas, and operations.
-- [OML](formats/oml.md) — omnist's own format, with zero loss either way.
+- [OML](formats/oml.md) — Omnist's own format, with zero loss either way.
 - [Formats](formats/overview.md) — how each format maps to the model, and its caveats.
 - [Model spec](design/model.md) — the formal definitions.
 - [`examples/canonical_model.py`](../examples/canonical_model.py) — a runnable version.

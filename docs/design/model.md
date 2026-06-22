@@ -7,7 +7,7 @@
 
 ## 1. Summary
 
-This defines omnist's two core models — the **Document** (the data) and the
+This defines Omnist's two core models — the **Document** (the data) and the
 **Schema** (the constraint) — as one small, format-independent formalism,
 deliberately restrictive for the JSON family of formats.
 

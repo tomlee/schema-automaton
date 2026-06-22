@@ -1,6 +1,6 @@
 # OML
 
-OML (Omnist Markup Language) is omnist's **own** format — the only one
+OML (Omnist Markup Language) is Omnist's **own** format — the only one
 designed to hold a Document exactly, with no adjustments. Where JSON/YAML/
 TOML/XML each give up something (TOML has no `null`, JSON has no native
 dates, XML forces a single root), OML maps onto the Document model 1:1: all

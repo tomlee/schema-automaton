@@ -1,6 +1,6 @@
 # Security Policy
 
-omnist is **alpha** (see [CONTRIBUTING.md](CONTRIBUTING.md)). There is one
+Omnist is **alpha** (see [CONTRIBUTING.md](CONTRIBUTING.md)). There is one
 supported line: `master` / the latest tagged pre-release. Fixes land there;
 older tags don't get backports.
 
@@ -15,7 +15,7 @@ maintainer privately, without describing the issue itself.
 
 ## Trust model: what each format assumes about its input
 
-omnist reads and writes JSON, YAML, TOML, and XML — formats whose parsers
+Omnist reads and writes JSON, YAML, TOML, and XML — formats whose parsers
 have a long history of being used as attack surface (entity expansion,
 quadratic blowup, alias bombs, code execution via unsafe deserialization). If
 you call any `read_*` function on input you don't control, the following is
@@ -31,7 +31,7 @@ what's actually been considered and tested, and what hasn't.
   small payload that *looks* like it could expand to billions of elements
   (the "billion laughs" pattern) parses and validates in a fraction of a
   second, because PyYAML shares the underlying object across references and
-  omnist's own post-parse validation does too — see
+  Omnist's own post-parse validation does too — see
   [docs/formats/yaml.md](docs/formats/yaml.md). A genuine cycle (a value that
   contains itself) is rejected with `ParseError`.
 

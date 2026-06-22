@@ -1,6 +1,6 @@
-# omnist — user guide
+# Omnist — user guide
 
-omnist gives you **one canonical data model** for JSON, YAML, TOML, XML, and
+Omnist gives you **one canonical data model** for JSON, YAML, TOML, XML, and
 its own native OML, and a **schema language** to validate and compare shapes
 over it. The model is
 defined formally in [the model spec](design/model.md); this guide is the
@@ -24,7 +24,7 @@ practical tour; the [API reference](api.md) lists every name with signatures.
   of members is the label `member` appearing several times, *not* a field
   pointing to an array. This is what lets the same Document represent JSON,
   YAML, TOML, and XML (including XML's interleaved repeated elements) — and
-  it's exactly the shape OML, omnist's own format, was designed to spell out
+  it's exactly the shape OML, Omnist's own format, was designed to spell out
   directly (below).
 - A **Schema** is built from named **`record`** definitions (a closed set of
   named fields, each with a cardinality). A field's type is always exactly one
