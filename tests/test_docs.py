@@ -8,6 +8,7 @@ from omnist import (
     doc,
     field,
     infer,
+    nullable,
     parse_schema,
     read_json,
     read_oml,
@@ -51,6 +52,86 @@ def test_guide_oml_native_format():
     assert d.to_grouped() == {"name": "Ann", "tag": ["x", "y"],
                               "joined": datetime.date(2024, 1, 1)}
     assert d.to_oml() == 'name: "Ann"\ntag: "x"\ntag: "y"\njoined: 2024-01-01'
+
+
+def test_formats_oml_maps_to_the_same_document_as_the_builder():
+    import datetime
+    node = read_oml('''
+name: "Ann"
+role: "dev"
+joined: 2024-01-01
+tag: "x"
+tag: "y"
+manager: null
+''')
+    built = doc({
+        "name": "Ann",
+        "role": "dev",
+        "joined": datetime.date(2024, 1, 1),
+        "tag": ["x", "y"],
+        "manager": None,
+    })
+    assert node == built.to_data()
+
+
+def test_schema_page_dsl_shape_and_builder_equivalence():
+    DSL = '''
+    record Address { "street": string, "city": string }
+
+    record User {
+        "name":          string,
+        "nickname" [0,1]: string,
+        "emails" [1,]:    string,
+        "address":       Address,
+        "note":          string?,
+    }
+    root User
+    '''
+    s = parse_schema(DSL)
+    assert s.validate(doc({"name": "Ann", "emails": ["a@x.com"],
+                           "address": {"street": "1 Main", "city": "London"},
+                           "note": None})).ok
+
+    address = record(field("street", t.string), field("city", t.string))
+    user = record(
+        field("name",     t.string),
+        field("nickname", t.string, min=0, max=1),
+        field("emails",   t.string, min=1, max=None),
+        field("address",  ref("Address")),
+        field("note",     nullable(t.string)),
+    )
+    s2 = schema(ref("User"), User=user, Address=address)
+    assert s.equivalent(s2)
+
+
+def test_schema_page_validation_errors():
+    DSL = '''
+    record Address { "street": string, "city": string }
+    record User {
+        "name":          string,
+        "nickname" [0,1]: string,
+        "emails" [1,]:    string,
+        "address":       Address,
+        "note":          string?,
+    }
+    root User
+    '''
+    s = parse_schema(DSL)
+    bad = doc({"emails": [], "address": {"street": "x", "city": "y"}})
+    msgs = {e.message for e in s.validate(bad).errors}
+    assert any("'name' occurs 0 time(s), expected exactly 1" in m for m in msgs)
+    assert any("'emails' occurs 0 time(s), expected at least 1" in m for m in msgs)
+    assert any("'note' occurs 0 time(s), expected exactly 1" in m for m in msgs)
+
+
+def test_schema_page_operations_and_infer():
+    v1 = parse_schema('record R { "host": string }\nroot R')
+    v2 = parse_schema('record R { "host": string, "port" [0,1]: integer }\nroot R')
+    assert v1.compatible_with(v2)
+    assert not v2.compatible_with(v1)
+
+    assert infer([doc({"host": "b", "port": 80}), doc({"host": "a"})]).to_dsl() == (
+        'record Root {\n    "host": string,\n    "port" [0,1]: integer,\n}\nroot Root\n')
 
 
 def test_guide_editing():
