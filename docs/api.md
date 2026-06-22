@@ -8,7 +8,7 @@ a field's type is always exactly one `Scalar` or one `Ref`. See the
 
 ```python
 import omnist
-omnist.__version__        # "0.1.1a5"
+omnist.__version__        # "0.1.3"
 ```
 
 ---
@@ -123,8 +123,9 @@ s = schema(ref("User"),
 
 ### `class Schema`
 `Schema(root: Ref, env: dict[str, Record] = None)` — a root reference plus
-named record definitions. Raises `SchemaError` if a reference is undefined or
-the root doesn't resolve to a record.
+named record definitions. Raises `SchemaError` if `root` isn't a `Ref`, if any
+`env` entry isn't a `Record`, or if a `Ref` (the root or one inside a field)
+names an entry not present in `env`.
 
 | Method | |
 |---|---|
@@ -274,7 +275,9 @@ write." Iterable; `str(report)` is a readable multi-line summary.
 ### `class Adjustment`
 A named tuple `Adjustment(path, code, message, severity)` — `severity` is
 `"warning"` or `"error"`. Stable codes: `null.omitted` (TOML/XML), `temporal.stringified`
-(JSON/YAML/XML), `float.special` (JSON `NaN`/`Infinity`), `key.sanitized` (XML).
+(JSON/YAML/XML), `float.special` (JSON `NaN`/`Infinity`), `key.sanitized` (XML),
+`string.ambiguous` (XML — a string value that looks like another type, e.g. a
+digit string or `"true"`, and would read back as that type).
 
 ---
 

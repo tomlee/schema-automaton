@@ -352,3 +352,72 @@ def test_api_docs_format_registry():
         write=lambda node, **opts: " ".join(str(v) for _, v in node),
     ))
     assert Doc.from_format("lines", "1 2 3").to_format("lines") == "1 2 3"
+
+
+def test_api_docs_version():
+    assert ds.__version__ == "0.1.3"
+
+
+def test_api_docs_schema_raises():
+    from omnist import SchemaError
+    from omnist.canonical.schema import Ref, Scalar, Schema
+
+    # root isn't a Ref
+    try:
+        Schema(Scalar("string"))
+        assert False, "expected SchemaError"
+    except SchemaError:
+        pass
+
+    # an env entry isn't a Record
+    try:
+        Schema(Ref("R"), {"R": Scalar("string")})
+        assert False, "expected SchemaError"
+    except SchemaError:
+        pass
+
+    # a Ref names an entry not present in env
+    try:
+        Schema(Ref("R"), {})
+        assert False, "expected SchemaError"
+    except SchemaError:
+        pass
+
+
+def test_api_docs_string_ambiguous_adjustment():
+    d = doc({"x": "42"})
+    rep = WriteReport()
+    d.to_xml(report=rep)
+    assert [(a.code, a.severity) for a in rep] == [("string.ambiguous", "warning")]
+
+
+def test_model_docs_count1_no_schema_param():
+    import inspect
+
+    from omnist import write_json, write_toml, write_xml, write_yaml
+    for fn in (write_json, write_yaml, write_toml, write_xml):
+        assert "schema" not in inspect.signature(fn).parameters
+    assert write_json([("tag", "x")]) == '{"tag": "x"}'
+    assert write_json([("tag", "x"), ("tag", "y")]) == '{"tag": ["x", "y"]}'
+
+
+def test_model_docs_appendix_worked_example():
+    s = parse_schema('''
+record Member {
+    "name": string,
+    "role": string,
+}
+record Team {
+    "name":         string,
+    "members" [0,]: Member,
+}
+root Team
+''')
+    node = [("name", "Platform"),
+            ("members", [("name", "Ann"), ("role", "dev")]),
+            ("members", [("name", "Bob"), ("role", "pm")])]
+    d = Doc(node)
+    assert s.validate(d).ok
+    assert d.to_json() == (
+        '{"name": "Platform", "members": '
+        '[{"name": "Ann", "role": "dev"}, {"name": "Bob", "role": "pm"}]}')

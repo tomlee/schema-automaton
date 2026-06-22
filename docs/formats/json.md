@@ -26,10 +26,12 @@ write_json([("tag", "x"), ("tag", "y")])     # '{"tag": ["x", "y"]}'
 write_json([("tag", "x")])                    # '{"tag": "x"}'
 ```
 
-> **The count-1 rule.** Without a schema, a *single-element* array can't be told
-> apart from a single value — both are one edge — so it serializes as a bare
-> value. With a schema, cardinality decides (a `[0,]`/`[1,]` field always writes
-> a list). See [model spec §9](../design/model.md#9-resolved-decisions).
+> **The count-1 rule.** A *single-element* array can't be told apart from a
+> single value — both are one edge — so it always serializes as a bare value;
+> a label seen more than once always serializes as a list. `write_json` (like
+> the other writers) takes no schema, so there's currently no way to force a
+> single-element array field to write as a list. See
+> [model spec §9](../design/model.md#9-resolved-decisions).
 
 ## Notes
 

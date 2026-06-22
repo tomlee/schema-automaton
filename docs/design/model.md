@@ -171,7 +171,15 @@ Group all edges sharing a label into one key, regardless of position: `[(m,A),(x
 
 The corner cases, and how they're settled:
 
-1. **Count-1 serialization → schema-driven, with an always-list fallback.** When a schema is available, cardinality decides array-vs-bare (`max > 1` → list, else bare) — faithful, idiomatic output. With no schema, fall back to always-list (every grouped label becomes an array). This keeps the Document format-independent (no format-derived bits) and puts the array/bare decision where the cardinality actually lives.
+1. **Count-1 serialization → always-list, with no schema input today.** A
+   single-element array can't be told apart from a single value from the
+   Document alone (both are one edge), so a label seen exactly once always
+   serializes as a bare value, and a label seen more than once always
+   serializes as a list — the writers (`write_json`/`write_yaml`/`write_toml`/
+   `write_xml`) take no `schema=` parameter. A schema-driven array-vs-bare
+   decision (using `max > 1` to force a list even for a single-element array)
+   is a natural extension but isn't implemented; see the tracking issue for
+   it.
 2. **Array-of-scalar → a repeated label**, uniform with array-of-record (`"tags"[0,]: string`). One mechanism (cardinality) for all "many," matching XML's repeated elements.
 3. **Bare nested arrays (`[[1,2],[3,4]]`) → forbidden for now.** Inner elements have no label, so there's no edge to give them (and XML can't express them either); reading one raises a clear error. Revisit only if a concrete need appears.
 4. **Root → a `Ref` to a single record (single-rooted).** Guarantees a lossless XML round-trip (one document element) and keeps the entry point uniform with every other definition.
@@ -281,10 +289,10 @@ Document (canonical edge list) for a two-member team:
 
 ```
 [ ("name", "Platform"),
-  ("member", [ ("name","Ann"), ("role","dev") ]),
-  ("member", [ ("name","Bob"), ("role","pm")  ]) ]
+  ("members", [ ("name","Ann"), ("role","dev") ]),
+  ("members", [ ("name","Bob"), ("role","pm")  ]) ]
 ```
 
 - JSON projection: `{"name":"Platform", "members":[{"name":"Ann","role":"dev"},{"name":"Bob","role":"pm"}]}`
-- XML projection: `<name>…</name><member>…Ann…</member><member>…Bob…</member>` (and an interleaved XML input round-trips through the *same* Document).
-- Conformance: `member` occurs twice ∈ `[0,∞]` ✓; each `member` target conforms to `Member` ✓; `name` once ∈ `[1,1]` ✓; no unlisted labels ✓.
+- XML projection: `<name>…</name><members>…Ann…</members><members>…Bob…</members>` (and an interleaved XML input round-trips through the *same* Document).
+- Conformance: `members` occurs twice ∈ `[0,∞]` ✓; each `members` target conforms to `Member` ✓; `name` once ∈ `[1,1]` ✓; no unlisted labels ✓.
