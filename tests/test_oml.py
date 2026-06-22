@@ -394,6 +394,19 @@ def test_hyphenated_label():
     assert read_oml("a-b: 1") == [("a-b", 1)]
 
 
+@pytest.mark.parametrize("label", ["inf", "nan", "-inf"])
+def test_reserved_number_spelling_as_label_round_trips(label):
+    # Regression test for issue #71: "inf"/"nan"/"-inf" are reserved NUMBER
+    # spellings with higher tokenizer priority than IDENT, so write_oml must
+    # always quote them as labels -- writing them bare produces OML that
+    # read_oml cannot parse back, breaking OML's documented lossless
+    # round-trip guarantee.
+    node = [(label, 1)]
+    written = write_oml(node)
+    assert written == f'"{label}": 1'
+    assert read_oml(written) == node
+
+
 # ---------------------------------------------------------------------------
 # Numeric edge cases
 # ---------------------------------------------------------------------------

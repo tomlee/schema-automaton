@@ -168,6 +168,8 @@ read_oml("a: 1 b: 2")          # ParseError -- no separator between edges
 read_oml('{ a: 1 }\nb: 2')      # ParseError -- braces must wrap the WHOLE document
 read_oml("true: 1")             # ParseError -- true/false/null can't be bare labels
 read_oml('"true": 1')           # fine -- quoting always works
+read_oml("inf: 1")               # ParseError -- inf/nan are reserved NUMBER spellings too
+read_oml('"inf": 1')            # fine -- write_oml always quotes these labels for you
 ```
 
 There's also a digit-count limit on bare integers (4300 digits, matching
