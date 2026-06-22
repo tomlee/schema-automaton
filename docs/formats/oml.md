@@ -73,6 +73,59 @@ There's no type annotation — the literal's shape says what it is:
 Bare words are never strings — `name: Ann` is a syntax error; quote it:
 `name: "Ann"`.
 
+## Mapping to the Python Document
+
+`read_oml` doesn't build a special OML object — it builds exactly the same
+canonical node every other reader builds: a scalar, or a list of
+`(label, value)` edges (see [the model spec](../design/model.md)). Each OML
+scalar spelling becomes one specific Python type, with no ambiguity:
+
+| OML spelling | Python type |
+|---|---|
+| `"text"` | `str` |
+| `42` | `int` |
+| `3.14` / `nan` / `inf` | `float` |
+| `true` / `false` | `bool` |
+| `2024-01-01` | `datetime.date` |
+| `12:30:00` | `datetime.time` |
+| `2024-01-01T12:30:00` | `datetime.datetime` |
+| `null` | `None` |
+
+A `{ }` node becomes a nested edge list; a repeated label becomes the same
+label appearing more than once, in order — not a list value. That means the
+Python **builder** (`doc(...)`, see [the guide](../guide.md#documents)) can
+construct the exact same Document a piece of OML parses to, field for field:
+
+```python
+import datetime
+from omnist import read_oml, doc
+
+node = read_oml('''
+name: "Ann"
+role: "dev"
+joined: 2024-01-01
+tag: "x"
+tag: "y"
+manager: null
+''')
+
+built = doc({
+    "name": "Ann",
+    "role": "dev",
+    "joined": datetime.date(2024, 1, 1),
+    "tag": ["x", "y"],     # a repeated key -- becomes the label 'tag' twice
+    "manager": None,
+})
+
+node == built.to_data()    # True -- identical Document, two different sources
+```
+
+This is what "lossless" means concretely: there is no OML feature that
+needs a special case in the builder, and no Document shape the builder can
+make that OML can't spell out (every scalar type, `null`, repeats,
+interleaving, arbitrary nesting). `write_oml(node)` (or `Doc(node).to_oml()`)
+goes the other direction, turning either source's node back into OML text.
+
 ## Strings: escaping, raw, and multiline
 
 A normal string escapes the usual set: `\"`, `\\`, `\n`, `\t`, `\r`, `\b`,
@@ -126,7 +179,8 @@ process.
 ## Schema-directed read and validation
 
 Like every other format, `read_oml(text, schema=...)` upgrades leaves to
-match a schema, and the result validates the same way:
+match a schema, and the result validates the same way (see
+[the Schema model & DSL](../schema.md) for the schema side of this):
 
 ```python
 from omnist import parse_schema, Doc

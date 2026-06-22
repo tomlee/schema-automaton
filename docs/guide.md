@@ -1,10 +1,10 @@
 # Omnist — user guide
 
 Omnist gives you **one canonical data model** for JSON, YAML, TOML, XML, and
-its own native OML, and a **schema language** to validate and compare shapes
-over it. The model is
-defined formally in [the model spec](design/model.md); this guide is the
-practical tour; the [API reference](api.md) lists every name with signatures.
+its own native [**OML**](formats/oml.md), and a [**schema language**](schema.md)
+to validate and compare shapes over it. The model is defined formally in
+[the model spec](design/model.md); this guide is the practical tour; the
+[API reference](api.md) lists every name with signatures.
 
 - [The two ideas](#the-two-ideas)
 - [Documents](#documents)
@@ -109,7 +109,10 @@ rules, and edge cases.
 
 ## Schemas — the DSL
 
-A schema is `record` definitions plus a `root`.
+A schema is `record` definitions plus a `root`. See
+[the Schema model & DSL](schema.md) for a focused introduction to this
+feature on its own (same depth of treatment as [the OML page](formats/oml.md)
+gives the native format).
 
 ```
 record Address { "street": string, "city": string }

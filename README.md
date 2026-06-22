@@ -104,7 +104,11 @@ Full index: **[docs/](docs/README.md)**.
   [**the schema DSL**](docs/guide.md#schemas--the-dsl), the Python builder,
   validation, operations, other codecs, inference.
 - **[OML](docs/formats/oml.md)** — Omnist's own format, designed alongside the
-  model so every Document round-trips with zero adjustments.
+  model so every Document round-trips with zero adjustments, and how it maps
+  onto the Python Document.
+- **[The Schema model & DSL](docs/schema.md)** — Omnist's other central
+  feature: `record` definitions, cardinality, the Python builder, and the
+  comparison/inference operations.
 - **[API reference](docs/api.md)** — every public name, with signatures.
 - **[A real-life example](docs/example.md)** — one order schema validated against
   documents in JSON, YAML, TOML, and XML, plus a compatibility check.
