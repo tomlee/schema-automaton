@@ -510,7 +510,11 @@ _BARE_LABEL_RE = _re.compile(r"^[A-Za-z_][A-Za-z0-9_\-]*$")
 
 
 def _write_label(label: str) -> str:
-    if _BARE_LABEL_RE.match(label) and label not in _RESERVED:
+    if (
+        _BARE_LABEL_RE.match(label)
+        and label not in _RESERVED
+        and label not in _RESERVED_NUMBER
+    ):
         return label
     return _write_string(label)
 

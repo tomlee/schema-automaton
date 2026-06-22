@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.1.4]
+
+- Fix: `write_oml` wrote the labels `"inf"` and `"nan"` as bare (unquoted)
+  identifiers, but the scanner tokenizes these spellings as `NUMBER`
+  literals (higher priority than `IDENT`), so `read_oml` could not parse
+  the writer's own output back — a `ParseError` rather than the documented
+  always-lossless round-trip. `_write_label` now also quotes labels
+  matching these reserved `NUMBER` spellings, the same way `null`/`true`/
+  `false` were already handled. (`-inf` as a label was already safe, since
+  it can't start with `-` per the bare-label grammar.) (#71)
+
 ## [v0.1.3]
 
 - New: **OML** (Omnist Markup Language) — a native, lossless codec for the
