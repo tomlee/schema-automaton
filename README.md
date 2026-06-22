@@ -6,9 +6,9 @@
 [![status](https://img.shields.io/badge/status-alpha-orange)](#status)
 
 **omnist** ("omni-structure") is **one canonical data model for JSON, YAML,
-TOML, XML, and its own native OML** — read any of them into a single tree,
-validate it against a schema, compare schema versions, and write it back out
-to any of the others.
+TOML, XML, and its own native OML (Omnist Markup Language)** — read any of
+them into a single tree, validate it against a schema, compare schema
+versions, and write it back out to any of the others.
 
 ```python
 from omnist import parse_schema, doc

@@ -1,8 +1,9 @@
 # Formats
 
-omnist reads JSON, YAML, TOML, XML, and its own native **OML** into **one**
-canonical Document, and writes that Document back out to any of them.
-Because they share one model, converting is just *read one, write another*:
+omnist reads JSON, YAML, TOML, XML, and its own native **OML** (Omnist
+Markup Language) into **one** canonical Document, and writes that Document
+back out to any of them. Because they share one model, converting is just
+*read one, write another*:
 
 ```python
 from omnist import Doc
