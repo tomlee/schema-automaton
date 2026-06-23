@@ -159,3 +159,5 @@ exact cardinality and nullability rules.
   OML document, plus a backward-compatibility check.
 - [Model spec](design/model.md) — the formal Schema model, self-contained
   and plain.
+- For the full formal grammar, see
+  [the Schema DSL grammar](design/schema-dsl-grammar.md).

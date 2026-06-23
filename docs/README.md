@@ -12,6 +12,8 @@ Start here, in roughly this order:
 | **[API reference](api.md)** | Every public name: `Doc`, `Schema`, the builders, codecs, validation results, and exceptions, with signatures. |
 | **[Formats](formats/overview.md)** | How each format maps to the model and its caveats — [OML](formats/oml.md) · [JSON](formats/json.md) · [YAML](formats/yaml.md) · [TOML](formats/toml.md) · [XML](formats/xml.md). |
 | **[Model spec](design/model.md)** | The formal definitions of the Document and Schema models — self-contained, no paper required. |
+| **[OML-Core grammar](design/oml-grammar.md)** | The formal ABNF grammar for OML, verified against the parser: tokens, disambiguation rules, escaping, and documented limits. |
+| **[Schema DSL grammar](design/schema-dsl-grammar.md)** | The formal ABNF grammar for the schema DSL, verified against the parser: keywords, field syntax, cardinality, and the seven scalars. |
 | **[Glossary](glossary.md)** | One definition per term used across the docs and code, grouped by concept area. |
 | **[Testing](testing.md)** | The test suite: layout, coverage tooling and target, the fuzzing approach, and what CI runs. |
 | **[Repo layout](layout.md)** | How the repo itself is organized: `omnist/canonical/*.py` module responsibilities, the docs page map, and the test file map. |

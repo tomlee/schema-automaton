@@ -208,3 +208,5 @@ read_oml('d: "2024-01-01"\nn: 3', schema=s)
   trailing `Z` UTC-zone marker. None of these affect what OML can
   *represent* (every Document already round-trips); they're optional input
   sugar for later.
+- For the full formal grammar, see
+  [the OML-Core grammar](../design/oml-grammar.md).
