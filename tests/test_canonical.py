@@ -63,7 +63,7 @@ class TestPublicApi:
         import omnist as ds
 
         s = ds.parse_schema('record R { "n": integer, "s": string? }\nroot R')
-        assert ds.__version__ == "0.1.6"
+        assert ds.__version__ == "0.1.7"
         # operations are Schema methods
         assert s.validate(ds.doc({"n": 1, "s": None})).ok
         assert s.equivalent(ds.parse_schema(ds.to_dsl(s)))
@@ -1106,6 +1106,30 @@ class TestXmlAdjustmentCodes:
         node = doc({"a": "123"}).to_data()
         rep = check_xml(node)
         assert [a.code for a in rep] == ["string.ambiguous"]
+
+    def test_empty_internal_node_vs_empty_string_leaf(self):
+        # An internal node with zero edges ([]) and a leaf holding the empty
+        # string ('') both serialize to the same XML element, <tag />, so
+        # read_xml can't tell them apart -- see issue #68.
+        empty_internal = [("A", [])]
+        empty_leaf = [("A", "")]
+
+        # Both write to the identical XML text.
+        assert write_xml(empty_internal) == write_xml(empty_leaf)
+
+        # Writing the empty internal node is the lossy direction: check_xml
+        # flags it, and reading it back never reconstructs [] -- it always
+        # comes back as the empty-string leaf.
+        rep_internal = check_xml(empty_internal)
+        assert [a.code for a in rep_internal] == ["shape.empty_ambiguous"]
+        assert read_xml(write_xml(empty_internal)) == [("A", "")]
+        assert read_xml(write_xml(empty_internal)) != empty_internal
+
+        # Writing the empty-string leaf is not lossy: it round-trips fine and
+        # is not flagged.
+        rep_leaf = check_xml(empty_leaf)
+        assert list(rep_leaf) == []
+        assert read_xml(write_xml(empty_leaf)) == empty_leaf
 
 
 # ----------------------------------------------------------- TOML write errors

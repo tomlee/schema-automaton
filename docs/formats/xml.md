@@ -54,3 +54,8 @@ JSON can't interleave.)
   written as text (`temporal.stringified`). See
   [adjustment reports](../api.md#adjustment-reports-lossy-writes) to inspect
   these, or `strict=True` to raise instead of adjusting.
+- **An empty internal node (zero edges, `[]`) is indistinguishable from an
+  empty-string leaf (`""`)** once written: both serialize to `<tag />`, and
+  `read_xml` always reconstructs the empty-string leaf. Writing `[]` is
+  reported as `shape.empty_ambiguous` so you know ahead of time that it won't
+  round-trip; writing `""` round-trips fine and is not flagged.

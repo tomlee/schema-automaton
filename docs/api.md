@@ -277,7 +277,9 @@ A named tuple `Adjustment(path, code, message, severity)` — `severity` is
 `"warning"` or `"error"`. Stable codes: `null.omitted` (TOML/XML), `temporal.stringified`
 (JSON/YAML/XML), `float.special` (JSON `NaN`/`Infinity`), `key.sanitized` (XML),
 `string.ambiguous` (XML — a string value that looks like another type, e.g. a
-digit string or `"true"`, and would read back as that type), `string.line-break-char`
+digit string or `"true"`, and would read back as that type), `shape.empty_ambiguous`
+(XML — an empty internal node, i.e. zero edges, is written as `<tag />` and
+reads back as the empty-string leaf `""`, not `[]`), and `string.line-break-char`
 (YAML — a label or value containing U+0085 NEL, which YAML's line-break rules would
 otherwise normalize to a space; written double-quoted to round-trip correctly).
 
