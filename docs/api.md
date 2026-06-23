@@ -279,7 +279,12 @@ A named tuple `Adjustment(path, code, message, severity)` — `severity` is
 `string.ambiguous` (XML — a string value that looks like another type, e.g. a
 digit string or `"true"`, and would read back as that type), `shape.empty_ambiguous`
 (XML — an empty internal node, i.e. zero edges, is written as `<tag />` and
-reads back as the empty-string leaf `""`, not `[]`), and `string.line-break-char`
+reads back as the empty-string leaf `""`, not `[]`), `string.illegal_xml_char`
+(XML, `"error"` — a string contains a character XML 1.0 cannot represent, e.g.
+a C0 control other than tab/LF/CR, or a surrogate; `write_xml` replaces it with
+U+FFFD so the output is always well-formed), `string.cr_normalized` (XML — a
+string contains `\r`, which is legal XML but normalizes to `\n` on parse per
+the XML spec, so it doesn't round-trip byte-for-byte), and `string.line-break-char`
 (YAML — a label or value containing U+0085 NEL, which YAML's line-break rules would
 otherwise normalize to a space; written double-quoted to round-trip correctly).
 

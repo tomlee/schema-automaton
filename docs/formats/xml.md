@@ -59,3 +59,14 @@ JSON can't interleave.)
   `read_xml` always reconstructs the empty-string leaf. Writing `[]` is
   reported as `shape.empty_ambiguous` so you know ahead of time that it won't
   round-trip; writing `""` round-trips fine and is not flagged.
+- **A string containing a character XML 1.0 cannot represent** (most C0
+  control characters -- everything below U+0020 except tab/LF/CR -- or a
+  UTF-16 surrogate) would otherwise produce text that isn't well-formed XML,
+  so `write_xml` replaces each such character with U+FFFD (the standard
+  replacement character) and reports `string.illegal_xml_char` with
+  `"error"` severity -- `strict=True` raises instead of silently substituting.
+- **A string containing `\r`** is legal XML, but XML mandates line-ending
+  normalization on parse (`\r` and `\r\n` both become `\n`), so it doesn't
+  round-trip byte-for-byte. `write_xml` leaves `\r` as-is (no substitution
+  needed) and reports it as `string.cr_normalized` so you know ahead of time
+  the read-back value will differ.

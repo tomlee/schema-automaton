@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.1.8]
+
+- Fix: `write_xml` wrote string leaf values into element text verbatim, so a
+  string containing a C0 control character that XML 1.0 forbids (e.g. `\x00`,
+  `\x08`, `\x0b`, `\x0c`, `\x1f`, or a UTF-16 surrogate) produced text that
+  wasn't well-formed XML -- `read_xml` would then fail to parse the writer's
+  own output, and `check_xml` gave no advance warning. `check_xml`/`write_xml`
+  now detect this and report a new adjustment code, `string.illegal_xml_char`
+  (`"error"` severity); `write_xml` replaces each illegal character with
+  U+FFFD so the output is always well-formed (`strict=True` raises instead).
+  Separately, a literal `\r` survives `write_xml` as a raw CR byte, but XML's
+  mandated line-ending normalization on parse turns it into `\n` -- this was
+  already legal XML (not a bug) but undocumented lossiness; it's now reported
+  via a new `string.cr_normalized` adjustment code (`"warning"` severity).
+  Found by the fuzz suite (#64). Documented in `docs/api.md` and
+  `docs/formats/xml.md`. (#67)
+
 ## [v0.1.7]
 
 - Fix: a string used as a field label or scalar value containing U+0085

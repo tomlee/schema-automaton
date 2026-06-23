@@ -63,7 +63,7 @@ class TestPublicApi:
         import omnist as ds
 
         s = ds.parse_schema('record R { "n": integer, "s": string? }\nroot R')
-        assert ds.__version__ == "0.1.7"
+        assert ds.__version__ == "0.1.8"
         # operations are Schema methods
         assert s.validate(ds.doc({"n": 1, "s": None})).ok
         assert s.equivalent(ds.parse_schema(ds.to_dsl(s)))
@@ -1130,6 +1130,38 @@ class TestXmlAdjustmentCodes:
         rep_leaf = check_xml(empty_leaf)
         assert list(rep_leaf) == []
         assert read_xml(write_xml(empty_leaf)) == empty_leaf
+
+    def test_illegal_xml_control_char_is_sanitized_and_reported(self):
+        # XML 1.0 forbids most C0 control characters in character data (only
+        # tab/LF/CR and U+0020+ are legal).  write_xml used to emit them
+        # verbatim, producing text that read_xml's own parser then rejected
+        # -- see issue #67.  It should now substitute U+FFFD and flag it.
+        node = [("a", "x\x08y")]
+        rep = check_xml(node)
+        assert [a.code for a in rep] == ["string.illegal_xml_char"]
+        assert rep.errors                      # error severity, not a warning
+
+        text = write_xml(node)
+        assert "\x08" not in text              # the illegal byte is gone
+        assert "�" in text                # replaced with U+FFFD
+        assert read_xml(text) == [("a", "x�y")]   # round-trips cleanly now
+
+        with pytest.raises(WriteError) as ei:
+            write_xml(node, strict=True)
+        assert [a.code for a in ei.value.report] == ["string.illegal_xml_char"]
+
+    def test_carriage_return_normalization_is_reported(self):
+        # CR is legal XML, but XML's mandated line-ending normalization on
+        # parse turns '\r' (and '\r\n') into '\n', so it's a documented,
+        # non-error lossiness rather than a crash -- see issue #67.
+        node = [("a", "x\ry")]
+        rep = check_xml(node)
+        assert [a.code for a in rep] == ["string.cr_normalized"]
+        assert rep.warnings and not rep.errors
+
+        text = write_xml(node)
+        assert "\r" in text                    # CR is left as-is on write
+        assert read_xml(text) == [("a", "x\ny")]   # but reads back as LF
 
 
 # ----------------------------------------------------------- TOML write errors

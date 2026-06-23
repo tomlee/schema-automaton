@@ -220,6 +220,18 @@ def _strip_nulls(node: Any, path: str, rep: WriteReport) -> Any:
 # --------------------------------------------------------------- XML
 _XML_NAME = _re.compile(r"^[A-Za-z_][A-Za-z0-9_.\-]*$")
 
+# XML 1.0 only legally permits tab (U+0009), LF (U+000A), CR (U+000D), and
+# U+0020-U+D7FF, U+E000-U+FFFD, U+10000-U+10FFFF in character data.  Built
+# from codepoint ranges (rather than embedding raw control / surrogate
+# characters in this source file) to avoid any encoding ambiguity.
+_XML_ILLEGAL_RANGES = (
+    (0x00, 0x08), (0x0B, 0x0C), (0x0E, 0x1F),   # C0 controls minus tab/LF/CR
+    (0xD800, 0xDFFF),                            # surrogate range
+    (0xFFFE, 0xFFFF),                            # BMP noncharacters
+)
+_XML_ILLEGAL_CHAR = _re.compile(
+    chr(0x5B) + "".join(chr(lo) + "-" + chr(hi) for lo, hi in _XML_ILLEGAL_RANGES) + chr(0x5D))
+
 
 def read_xml(text: str, *, schema: Optional["Schema"] = None) -> Any:
     ET = _xml_parser()
@@ -289,6 +301,19 @@ def _scan_xml(node: Any, path: str, rep: WriteReport) -> None:
         rep.add(path, "string.ambiguous",
                 f"string {v!r} looks like another type and reads back as that type",
                 "warning")
+    if isinstance(v, str):
+        if _XML_ILLEGAL_CHAR.search(v):
+            rep.add(path, "string.illegal_xml_char",
+                    "string contains a character XML 1.0 cannot represent "
+                    "(e.g. a C0 control other than tab/LF/CR); it is replaced "
+                    "with U+FFFD on write so the output stays well-formed",
+                    "error")
+        if "\r" in v:
+            rep.add(path, "string.cr_normalized",
+                    "string contains a carriage return ('\\r'); XML mandates "
+                    "line-ending normalization on parse, so '\\r' (and "
+                    "'\\r\\n') read back as '\\n'",
+                    "warning")
 
 
 def _node_to_xml(content: Any, parent) -> None:
@@ -298,7 +323,7 @@ def _node_to_xml(content: Any, parent) -> None:
             sub = ET.SubElement(parent, _xml_name(label))
             _node_to_xml(child, sub)
     else:
-        parent.text = _xml_text(content)
+        parent.text = _xml_sanitize(_xml_text(content))
 
 
 def _xml_name(name: str) -> str:
@@ -318,6 +343,14 @@ def _xml_text(v: Any) -> str:
     if isinstance(v, (_dt.date, _dt.time)):
         return v.isoformat()
     return str(v)
+
+
+def _xml_sanitize(text: str) -> str:
+    """Replace characters XML 1.0 cannot represent (see ``string.illegal_xml_char``)
+    with U+FFFD so write_xml's output is always well-formed XML.  CR is left
+    as-is -- it's legal XML and only normalizes to LF on parse, which is
+    reported separately as ``string.cr_normalized``."""
+    return _XML_ILLEGAL_CHAR.sub(chr(0xFFFD), text)
 
 
 def _coerce(text: str) -> Any:
