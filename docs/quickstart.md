@@ -1,5 +1,10 @@
 # Quickstart
 
+```bash
+pip install omnist            # core + JSON
+pip install omnist[all]       # + pyyaml, tomli_w, defusedxml -- YAML/TOML-write/XML
+```
+
 The shortest possible tour -- one OML snippet, one schema, one validation,
 one inference. For the fuller order/address/line-item walkthrough, see
 [A real-life example](example.md).
