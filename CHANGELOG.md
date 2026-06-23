@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.1.9]
+
+- Fix: an XML element label containing a trailing or embedded newline (e.g.
+  `'A\n'`) was silently treated as a valid XML name and written verbatim by
+  `write_xml`, with `check_xml` reporting no adjustment -- but XML element
+  names can't legally contain whitespace, so the newline was actually
+  stripped on `read_xml`'s round-trip, losing data without warning. Root
+  cause: `_XML_NAME`'s regex anchored its end with a bare `$`, which in
+  Python matches either at the absolute end of the string *or* just before
+  a trailing `\n` -- so `'A\n'` was incorrectly accepted as already valid.
+  Anchored with `\Z` instead, so any label containing a newline (or other
+  non-XML-name character) anywhere now correctly falls through to the
+  existing `key.sanitized` adjustment path, the same one used for other
+  illegal-XML-name labels, and round-trips losslessly via the sanitized
+  name. Found by the fuzz suite. (#95)
+
 ## [v0.1.8]
 
 - Fix: `write_xml` wrote string leaf values into element text verbatim, so a

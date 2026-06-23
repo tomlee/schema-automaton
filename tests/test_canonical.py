@@ -63,7 +63,7 @@ class TestPublicApi:
         import omnist as ds
 
         s = ds.parse_schema('record R { "n": integer, "s": string? }\nroot R')
-        assert ds.__version__ == "0.1.8"
+        assert ds.__version__ == "0.1.9"
         # operations are Schema methods
         assert s.validate(ds.doc({"n": 1, "s": None})).ok
         assert s.equivalent(ds.parse_schema(ds.to_dsl(s)))
@@ -1162,6 +1162,35 @@ class TestXmlAdjustmentCodes:
         text = write_xml(node)
         assert "\r" in text                    # CR is left as-is on write
         assert read_xml(text) == [("a", "x\ny")]   # but reads back as LF
+
+    def test_label_with_trailing_newline_is_sanitized_and_reported(self):
+        # A label like 'A\n' isn't a valid XML name, but the old _XML_NAME
+        # regex used a bare '$' anchor, which in Python matches just before a
+        # trailing '\n' as well as at the absolute end of string -- so
+        # 'A\n' was treated as already-valid and wasn't flagged or
+        # sanitized, even though ElementTree happily wrote a tag literally
+        # containing the newline. check_xml's empty report then lied: the
+        # label silently lost its trailing newline on round-trip -- see
+        # issue #95. It should be sanitized and flagged like any other
+        # illegal-XML-name label.
+        node = [("A\n", False)]
+        rep = check_xml(node)
+        assert [a.code for a in rep] == ["key.sanitized"]
+        assert rep.warnings and not rep.errors
+
+        text = write_xml(node)
+        assert "\n" not in text.split(">", 1)[0]   # no raw newline in the tag
+        assert read_xml(text) == [("A_", False)]   # round-trips via sanitized name
+
+    def test_embedded_newline_label_is_sanitized_and_reported(self):
+        # Same bug class as above, but with the newline in the middle of the
+        # label rather than at the very end.
+        node = [("A\nB", False)]
+        rep = check_xml(node)
+        assert [a.code for a in rep] == ["key.sanitized"]
+
+        text = write_xml(node)
+        assert read_xml(text) == [("A_B", False)]
 
 
 # ----------------------------------------------------------- TOML write errors

@@ -218,7 +218,7 @@ def _strip_nulls(node: Any, path: str, rep: WriteReport) -> Any:
 
 
 # --------------------------------------------------------------- XML
-_XML_NAME = _re.compile(r"^[A-Za-z_][A-Za-z0-9_.\-]*$")
+_XML_NAME = _re.compile(r"^[A-Za-z_][A-Za-z0-9_.\-]*\Z")
 
 # XML 1.0 only legally permits tab (U+0009), LF (U+000A), CR (U+000D), and
 # U+0020-U+D7FF, U+E000-U+FFFD, U+10000-U+10FFFF in character data.  Built
