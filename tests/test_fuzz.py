@@ -209,7 +209,7 @@ _ALLOWED_CODES = {
     "yaml": {"temporal.stringified"},
     "toml": {"null.omitted"},
     "xml": {"null.omitted", "temporal.stringified", "string.ambiguous",
-            "key.sanitized"},
+            "key.sanitized", "shape.empty_ambiguous"},
 }
 
 

@@ -216,6 +216,12 @@ def check_xml(node: Any) -> WriteReport:
 
 def _scan_xml(node: Any, path: str, rep: WriteReport) -> None:
     if isinstance(node, list):
+        if not node:
+            rep.add(path, "shape.empty_ambiguous",
+                    "empty internal node (no edges) written as <tag /> and "
+                    "reads back as the empty-string leaf '', not []",
+                    "warning")
+            return
         counts: dict = {}
         for label, child in node:
             i = counts.get(label, 0)

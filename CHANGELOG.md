@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.1.6]
+
+- Fix: an internal node with zero edges (`[]`) and a leaf holding the empty
+  string (`''`) both serialize to the same XML element, `<tag />`, so
+  `read_xml` couldn't tell them apart and always reconstructed the
+  empty-string leaf -- a documented-but-previously-undetected round-trip
+  ambiguity found by the fuzz suite (#64). `check_xml`/`write_xml` now
+  report a new adjustment code, `shape.empty_ambiguous`, when writing an
+  empty internal node, since that's the direction that's actually lossy
+  (writing an empty-string leaf round-trips fine and is not flagged).
+  Documented in `docs/api.md` and `docs/formats/xml.md`. (#68)
+
 ## [v0.1.5]
 
 - Fix: `tests/test_fuzz.py::test_doc_and_build_node_round_trip_from_plain_python_value`
