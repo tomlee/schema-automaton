@@ -290,3 +290,17 @@ Document (canonical edge list) for a two-member team:
 - JSON projection: `{"name":"Platform", "members":[{"name":"Ann","role":"dev"},{"name":"Bob","role":"pm"}]}`
 - XML projection: `<name>…</name><members>…Ann…</members><members>…Bob…</members>` (and an interleaved XML input round-trips through the *same* Document).
 - Conformance: `members` occurs twice ∈ `[0,∞]` ✓; each `members` target conforms to `Member` ✓; `name` once ∈ `[1,1]` ✓; no unlisted labels ✓.
+
+The same Document as a tree of labeled edges. The two `members` edges share
+one label — that repetition *is* the array; there is no separate list node:
+
+```mermaid
+graph LR
+    Root(("node")) -->|name| Platform["Platform"]
+    Root -->|members| M1(("node"))
+    Root -->|members| M2(("node"))
+    M1 -->|name| Ann["Ann"]
+    M1 -->|role| Dev["dev"]
+    M2 -->|name| Bob["Bob"]
+    M2 -->|role| Pm["pm"]
+```
