@@ -227,21 +227,14 @@ list of adjustment codes.
 
 ### Schema-directed deserialization
 
-Pass `schema=` to a reader to upgrade leaves (an ISO-8601 string to a real
-`date`/`time`/`datetime`, an int literal to the exact numeric type) to match
-what the schema declares, whenever the conversion is value-exact:
+Without `schema=`, a reader's leaves are exactly whatever the format's own
+native parser produces (e.g. JSON gives back a plain `str` for a date). Pass
+`schema=` to upgrade leaves to match what the schema declares — an ISO-8601
+string to a real `date`/`time`/`datetime`, an int literal to the exact
+numeric type — whenever the conversion is value-exact.
 
-```python
-from omnist import parse_schema, read_json
-
-s = parse_schema('record R { "d": date, "n": number }\nroot R')
-read_json('{"d": "2024-01-01", "n": 3}', schema=s)
-# [('d', datetime.date(2024, 1, 1)), ('n', 3.0)]
-```
-
-See [the API reference](api.md#schema-directed-deserialization) for the full
-conversion rules (and which conversions raise `ParseError` instead) and
-`materialize`, which applies the same upgrade to an already-parsed node.
+See [Schema-directed deserialization](deserialization.md) for the full
+explanation, a worked before/after example, and the conversion rules.
 
 ### Custom formats
 

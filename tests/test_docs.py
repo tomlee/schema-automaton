@@ -399,6 +399,58 @@ def test_api_docs_string_ambiguous_adjustment():
     assert [(a.code, a.severity) for a in rep] == [("string.ambiguous", "warning")]
 
 
+def test_deserialization_docs_core_distinction():
+    import datetime
+
+    text = '{"d": "2024-01-01", "n": 3}'
+
+    no_schema = read_json(text)
+    assert no_schema == [("d", "2024-01-01"), ("n", 3)]
+    assert type(dict(no_schema)["d"]) is str
+
+    s = parse_schema('record R { "d": date, "n": number }\nroot R')
+    with_schema = read_json(text, schema=s)
+    assert with_schema == [("d", datetime.date(2024, 1, 1)), ("n", 3.0)]
+    assert type(dict(with_schema)["d"]) is datetime.date
+
+
+def test_deserialization_docs_per_format_no_schema_baseline():
+    import datetime
+
+    s = parse_schema('record D { "d": date }\nroot D')
+
+    assert type(dict(read_json('{"d": "2024-01-01"}'))["d"]) is str
+    assert type(dict(read_json('{"d": "2024-01-01"}', schema=s))["d"]) is datetime.date
+
+    assert type(dict(read_yaml('d: 2024-01-01'))["d"]) is datetime.date
+    assert type(dict(read_yaml('d: 2024-01-01', schema=s))["d"]) is datetime.date
+
+    assert type(dict(read_toml('d = 2024-01-01'))["d"]) is datetime.date
+    assert type(dict(read_toml('d = 2024-01-01', schema=s))["d"]) is datetime.date
+
+    assert type(dict(read_xml('<d>2024-01-01</d>'))["d"]) is str
+    assert type(dict(read_xml('<d>2024-01-01</d>', schema=s))["d"]) is datetime.date
+
+
+def test_deserialization_docs_parse_error_not_value_exact():
+    from omnist import ParseError
+
+    s = parse_schema('record R { "n": integer }\nroot R')
+    with pytest.raises(ParseError):
+        read_json('{"n": "abc"}', schema=s)
+
+
+def test_deserialization_docs_materialize():
+    import datetime
+
+    from omnist import materialize
+
+    s = parse_schema('record R { "d": date }\nroot R')
+    node = read_json('{"d": "2024-01-01"}')
+    assert node == [("d", "2024-01-01")]
+    assert materialize(node, s) == [("d", datetime.date(2024, 1, 1))]
+
+
 def test_model_docs_count1_no_schema_param():
     import inspect
 

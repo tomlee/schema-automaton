@@ -114,6 +114,9 @@ Full index: **[docs/](docs/README.md)**.
   feature: `record` definitions, cardinality, the Python builder, and the
   comparison/inference operations.
 - **[API reference](docs/api.md)** — every public name, with signatures.
+- **[Schema-directed deserialization](docs/deserialization.md)** — what
+  changes (and what doesn't) about a Document's Python types when a schema
+  is, vs. isn't, passed to a reader.
 - **[A real-life example](docs/example.md)** — one order schema validated against
   documents in JSON, YAML, TOML, and XML, plus a compatibility check.
 - **[Formats](docs/formats/overview.md)** — how each format maps to the model and

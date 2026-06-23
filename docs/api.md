@@ -203,44 +203,17 @@ recommends `defusedxml` (else an `UnsafeXMLWarning`). See
 
 ### Schema-directed deserialization
 
-JSON/YAML/TOML/XML have no `date`/`time` type, so a temporal field reads back
-as an ISO-8601 string; a whole-number value may read back as the wrong
-Python numeric type. Pass `schema=` to any reader (or `Doc.from_json` /
-`Doc.from_yaml` / `Doc.from_toml` / `Doc.from_xml`) to upgrade each leaf to
-match what the schema declares, when the conversion is **value-exact** --
-`"2024-01-01" -> date`, `1.0 -> int 1` -- and raise `ParseError` when it
-isn't -- `1.5 -> integer`, `"abc" -> integer`:
-
-```python
-from omnist import parse_schema, read_json
-
-s = parse_schema('record R { "d": date, "n": number }\nroot R')
-node = read_json('{"d": "2024-01-01", "n": 3}', schema=s)
-# [('d', datetime.date(2024, 1, 1)), ('n', 3.0)]
-```
-
-This is unambiguous by construction -- every field has exactly one candidate
-scalar (no unions, no enums), so there's never a choice between candidate
-representations, only "does this value exactly fit the one scalar declared."
-Shape problems (a missing or unexpected field, the wrong cardinality) are
-left to `Schema.validate`, not raised here.
+Pass `schema=` to any reader (or `Doc.from_json` / `Doc.from_yaml` /
+`Doc.from_toml` / `Doc.from_xml`) to upgrade each leaf to match what the
+schema declares, whenever the conversion is value-exact, raising
+`ParseError` when it isn't. See
+[Schema-directed deserialization](deserialization.md) for the full
+explanation, the conversion rules, and `materialize`.
 
 | | |
 |---|---|
+| `read_oml(text, schema=...)` / `read_json` / `read_yaml` / `read_toml` / `read_xml` | parse → a node, upgrading leaves to match `schema` |
 | `materialize(node, schema) -> node` | apply the same upgrade directly to an already-parsed node |
-
-**Exactly which Python type each scalar deserializes to, and which raw
-values convert vs. raise**, is a per-kind table, not a single rule -- see
-[model.md §10](design/model.md#10-scalar-and-python-type) for the full
-table. The two results most worth knowing up front, since they're easy to
-get wrong intuitively:
-
-- `number` always deserializes to `float`, even from an integer literal
-  (`3 -> 3.0`, not `3`) -- `integer` (`int`) is the one scalar that's a
-  subset of it.
-- `bool` never satisfies `integer` or `number`, even though Python's `bool`
-  is technically an `int` subclass -- `true`/`false` only ever satisfy
-  `boolean`.
 
 ### Adjustment reports (lossy writes)
 
