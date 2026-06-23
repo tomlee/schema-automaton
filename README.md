@@ -121,6 +121,8 @@ Full index: **[docs/](docs/README.md)**.
   self-contained and plain (no paper required).
 - **[Glossary](docs/glossary.md)** — one definition per term used across the
   docs and code, grouped by concept area.
+- **[Testing](docs/testing.md)** — the test suite layout, coverage tooling and
+  target, the fuzzing approach, and what CI runs.
 
 ## Status
 

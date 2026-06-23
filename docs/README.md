@@ -12,6 +12,7 @@ Start here, in roughly this order:
 | **[Formats](formats/overview.md)** | How each format maps to the model and its caveats — [OML](formats/oml.md) · [JSON](formats/json.md) · [YAML](formats/yaml.md) · [TOML](formats/toml.md) · [XML](formats/xml.md). |
 | **[Model spec](design/model.md)** | The formal definitions of the Document and Schema models — self-contained, no paper required. |
 | **[Glossary](glossary.md)** | One definition per term used across the docs and code, grouped by concept area. |
+| **[Testing](testing.md)** | The test suite: layout, coverage tooling and target, the fuzzing approach, and what CI runs. |
 
 ## The model in one minute
 
