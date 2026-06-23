@@ -87,6 +87,9 @@ Document = node                              -- (or a bare value at a leaf)
 for the full table of how each supported format's constructs map onto this
 Document shape.
 
+This is the model-level shape; for the full formal grammar of OML — the
+concrete syntax that maps onto it — see [the OML-Core grammar](oml-grammar.md).
+
 ---
 
 ## 5. Schema model
@@ -130,6 +133,10 @@ root Team
 - **Quoting rule:** `"quoted"` = a **data string** (a field label); an **unquoted identifier** = a **schema name** (a scalar kind or a `Ref`).
 - `string?`, `integer?`, etc. are the nullable form of a scalar — the only suffix the grammar allows.
 - `record` is the one naming keyword. ("type" is *not* a keyword — it would be ambiguous between "a definition", "the thing being named", and a record.)
+
+This is the model-level shape; for the full formal grammar of the Schema
+DSL concrete syntax shown above, see
+[the Schema DSL grammar](schema-dsl-grammar.md).
 
 ---
 
