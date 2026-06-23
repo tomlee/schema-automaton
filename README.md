@@ -32,8 +32,8 @@ self-contained formal model (inspired by Lee & Cheung, CIKM 2010):
 
 - A **Document** is a *tree* — an ordered list of labeled edges. Arrays are
   just repeated labels, so the *same* Document represents JSON, YAML, TOML,
-  XML (including its interleaved repeated elements), and OML — Omnist's own
-  format, the only one with zero loss in either direction.
+  XML (including its interleaved repeated elements), and [OML](docs/formats/oml.md)
+  — Omnist's own format, the only one with zero loss in either direction.
 - A **Schema** is named `record` definitions (closed named fields, each with a
   cardinality), where every field's type is always exactly one fixed scalar
   (optionally nullable) or one `Ref` to a named record — referenced by name for
@@ -43,14 +43,15 @@ self-contained formal model (inspired by Lee & Cheung, CIKM 2010):
   structureless escape hatches, and scalar types are never composed.
 
 The model is defined formally in
-[docs/design/model.md](docs/design/model.md).
+[docs/design/model.md](docs/design/model.md); see
+[the user guide](docs/guide.md) for the practical tour.
 
 ## A 60-second tour
 
 ```python
 from omnist import Doc, parse_schema, infer, doc, read_json
 
-# OML is omnist's own format -- the only one with zero adjustments either way
+# OML is omnist's own format -- see docs/formats/oml.md
 Doc.from_oml('id: 1\ntags: "a"\ntags: "b"\n').to_oml()
 
 # converting from other formats is just read one, write another
