@@ -32,6 +32,16 @@ record Root { "order": Order }      # single top-level key
 root Root
 ```
 
+The records of this schema form a graph, linked by `Ref` edges with the
+field's cardinality attached:
+
+```mermaid
+graph LR
+    Root["Root"] -->|"order [1,1]"| Order["Order"]
+    Order -->|"address [1,1]"| Address["Address"]
+    Order -->|"items [1,]"| LineItem["LineItem"]
+```
+
 The same schema with the Python builder:
 
 ```python
@@ -72,6 +82,28 @@ order: {
 ''')
 
 s.validate(Doc(o)).ok      # True
+```
+
+The resulting Document, as a tree of labeled edges (the two `items` edges
+share the label `items` — that's how an array of records is written;
+there's no list syntax, just the label repeating, in order):
+
+```mermaid
+graph LR
+    order["order"] --> id["id: A1"]
+    order --> status["status: shipped"]
+    order --> total["total: 29.97"]
+    order --> address["address"]
+    address --> street["street: 1 Main"]
+    address --> city["city: London"]
+    order --> items1["items"]
+    items1 --> sku1["sku: W"]
+    items1 --> qty1["qty: 3"]
+    items1 --> price1["price: 9.99"]
+    order --> items2["items"]
+    items2 --> sku2["sku: G"]
+    items2 --> qty2["qty: 1"]
+    items2 --> price2["price: 9.99"]
 ```
 
 Notice the two `items` edges share the label `items` — that's how an array

@@ -297,7 +297,18 @@ record Order {
 root Order
 '''
 s = parse_schema(ORDER)
+```
 
+The records form a graph, linked by `Ref` edges with the field's
+cardinality attached:
+
+```mermaid
+graph LR
+    Order["Order"] -->|"address [1,1]"| Address["Address"]
+    Order -->|"items [1,]"| LineItem["LineItem"]
+```
+
+```python
 good = Doc.from_oml('''
 id: "A1"
 status: "shipped"
@@ -306,7 +317,25 @@ address: { street: "1 Main St"; city: "London" }
 items: { sku: "W"; qty: 3; price: 9.99 }
 ''')
 s.validate(good).ok        # True
+```
 
+The resulting Document, as a tree of labeled edges:
+
+```mermaid
+graph LR
+    order["(root)"] --> id["id: A1"]
+    order --> status["status: shipped"]
+    order --> total["total: 29.97"]
+    order --> address["address"]
+    address --> street["street: 1 Main St"]
+    address --> city["city: London"]
+    order --> items["items"]
+    items --> sku["sku: W"]
+    items --> qty["qty: 3"]
+    items --> price["price: 9.99"]
+```
+
+```python
 bad = Doc.from_oml('''
 id: "A2"
 status: "shipped"
