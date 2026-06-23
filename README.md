@@ -106,7 +106,8 @@ pip install pyyaml tomli_w defusedxml   # YAML / writing TOML / hardened XML
 
 ## Documentation
 
-Full index: **[docs/](docs/README.md)**.
+Full index: **[docs/](docs/README.md)**, also browsable as a site at
+**[tomlee.github.io/omnist](https://tomlee.github.io/omnist/)**.
 
 - **[Quickstart](docs/quickstart.md)** — the shortest possible example: one
   OML snippet, one schema, `validate()`, `infer()`.
