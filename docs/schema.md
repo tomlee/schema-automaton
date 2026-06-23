@@ -53,6 +53,18 @@ root User
 - **Records are closed** — an unexpected label is a validation error, not
   silently ignored.
 
+The records of a schema form a graph, linked by `Ref` edges with the field's
+cardinality attached. Using the order schema from
+[the real-life example](example.md#the-schema) (`Order` has one `address`
+and one or more `items`):
+
+```mermaid
+graph LR
+    Root["Root"] -->|"order [1,1]"| Order["Order"]
+    Order -->|"address [1,1]"| Address["Address"]
+    Order -->|"items [1,]"| LineItem["LineItem"]
+```
+
 All of this is defined formally, with proofs, in
 [the model spec](design/model.md).
 

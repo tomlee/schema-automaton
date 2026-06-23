@@ -56,6 +56,23 @@ d.to_json()
 | **[TOML](toml.md)** | native dates, no `null`, top-level must be a table |
 | **[XML](xml.md)** | single document element, repeated-element arrays, untyped text |
 
+One model, many formats — every reader converges on the same Document, and
+every writer diverges back out from it:
+
+```mermaid
+flowchart LR
+    JSON1["JSON"] --> Doc(("Document"))
+    YAML1["YAML"] --> Doc
+    TOML1["TOML"] --> Doc
+    XML1["XML"] --> Doc
+    OML1["OML"] --> Doc
+    Doc --> JSON2["JSON"]
+    Doc --> YAML2["YAML"]
+    Doc --> TOML2["TOML"]
+    Doc --> XML2["XML"]
+    Doc --> OML2["OML"]
+```
+
 ## One thing to know: single-rooted for XML
 
 An XML document has exactly **one** top-level element, so its Document has one
