@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.1.7]
+
+- Fix: a string used as a field label or scalar value containing U+0085
+  (NEL, "next line") silently came back as a plain space after a
+  `write_yaml`/`read_yaml` round-trip, with `check_yaml` reporting no
+  adjustment — undocumented data loss. Root cause: PyYAML's emitter/parser
+  treat U+0085 as a line-break character under the default plain/
+  single-quoted scalar styles and normalize it away; U+2028/U+2029 are
+  unaffected. Forcing PyYAML's double-quoted scalar style for any string
+  containing U+0085 round-trips it correctly (confirmed both globally and
+  per-scalar), so `write_yaml` now does this automatically via a custom
+  string representer, and `check_yaml`/`write_yaml` report it with the new
+  `string.line-break-char` adjustment code. (#69)
+
 ## [v0.1.6]
 
 - Fix: an internal node with zero edges (`[]`) and a leaf holding the empty

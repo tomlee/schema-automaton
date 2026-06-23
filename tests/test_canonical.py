@@ -63,7 +63,7 @@ class TestPublicApi:
         import omnist as ds
 
         s = ds.parse_schema('record R { "n": integer, "s": string? }\nroot R')
-        assert ds.__version__ == "0.1.6"
+        assert ds.__version__ == "0.1.7"
         # operations are Schema methods
         assert s.validate(ds.doc({"n": 1, "s": None})).ok
         assert s.equivalent(ds.parse_schema(ds.to_dsl(s)))
@@ -677,6 +677,20 @@ class TestReports:
         rep = check_yaml(node)
         assert [a.code for a in rep] == ["temporal.stringified"]
         assert "09:30:00" in write_yaml(node)
+
+    def test_yaml_nel_value_round_trips_and_is_reported(self):
+        # U+0085 (NEL) is normalized to a space by YAML's default scalar
+        # styles; omnist forces double-quoted style for it so it round-trips.
+        node = [("a", "\x85")]
+        rep = check_yaml(node)
+        assert [a.code for a in rep] == ["string.line-break-char"]
+        assert read_yaml(write_yaml(node)) == node
+
+    def test_yaml_nel_label_round_trips_and_is_reported(self):
+        node = [("\x85", None)]
+        rep = check_yaml(node)
+        assert [a.code for a in rep] == ["string.line-break-char"]
+        assert read_yaml(write_yaml(node)) == node
 
     def test_xml_sanitizes_bad_key_and_reports_temporal(self):
         node = doc({"r": {"a b": 1, "d": datetime.date(2024, 1, 1)}}).to_data()

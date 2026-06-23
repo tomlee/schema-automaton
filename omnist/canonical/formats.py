@@ -103,8 +103,9 @@ def write_yaml(node: Any, *, strict: bool = False,
     yaml = _need("yaml", "pip install pyyaml")
     rep = check_yaml(node)
     prepared = _prepare_yaml(node)
-    text = yaml.safe_dump(_grouped(prepared), sort_keys=False, allow_unicode=True,
-                          default_flow_style=False)
+    dumper = _yaml_dumper(yaml)
+    text = yaml.dump(_grouped(prepared), Dumper=dumper, sort_keys=False,
+                     allow_unicode=True, default_flow_style=False)
     return finish_write(text, rep, strict=strict, report=report)
 
 
@@ -115,7 +116,32 @@ def check_yaml(node: Any) -> WriteReport:
             rep.add(path, "temporal.stringified",
                     "time-of-day written as a string (YAML has no standalone time)",
                     "warning")
+    _scan_yaml_labels(node, "$", rep)
     return rep
+
+
+def _scan_yaml_labels(node: Any, path: str, rep: WriteReport) -> None:
+    """PyYAML's emitter/parser treat U+0085 (NEL) as a line-break character and
+    normalize it away under the default (unquoted/single-quoted) scalar styles,
+    so a label containing it would silently come back as a space.  We force
+    double-quoted style for any such scalar (see ``_yaml_str_representer``),
+    which round-trips correctly, but still flag it here for visibility."""
+    if not isinstance(node, list):
+        return
+    counts: dict = {}
+    for label, child in node:
+        i = counts.get(label, 0)
+        counts[label] = i + 1
+        p = f"{path}.{label}" if i == 0 else f"{path}.{label}[{i}]"
+        if isinstance(label, str) and "\x85" in label:
+            rep.add(p, "string.line-break-char",
+                    "label contains U+0085 (NEL); written double-quoted to "
+                    "round-trip correctly", "warning")
+        if isinstance(child, str) and "\x85" in child:
+            rep.add(p, "string.line-break-char",
+                    "value contains U+0085 (NEL); written double-quoted to "
+                    "round-trip correctly", "warning")
+        _scan_yaml_labels(child, p, rep)
 
 
 def _prepare_yaml(node: Any) -> Any:
@@ -124,6 +150,26 @@ def _prepare_yaml(node: Any) -> Any:
     if isinstance(node, _dt.time):
         return node.isoformat()
     return node
+
+
+def _yaml_str_representer(dumper, data: str):
+    # U+0085 (NEL) is normalized to a space by PyYAML under the default
+    # scalar styles; double-quoted style escapes it (as "\N") and round-trips.
+    style = '"' if "\x85" in data else None
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data, style=style)
+
+
+_YAML_DUMPER_CACHE: dict = {}
+
+
+def _yaml_dumper(yaml):
+    """A SafeDumper subclass whose str representer escapes U+0085 safely."""
+    dumper = _YAML_DUMPER_CACHE.get(yaml)
+    if dumper is None:
+        dumper = type("_OmnistYamlDumper", (yaml.SafeDumper,), {})
+        dumper.add_representer(str, _yaml_str_representer)
+        _YAML_DUMPER_CACHE[yaml] = dumper
+    return dumper
 
 
 # --------------------------------------------------------------- TOML

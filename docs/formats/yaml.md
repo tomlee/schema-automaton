@@ -28,3 +28,9 @@ document and the equivalent JSON document read into the **same** Document.
 - Sequences of mappings (`- {…}`) are the idiomatic way to write an array of
   records, and map to a repeated label — see
   [the real-life example](../example.md).
+- A label or string value containing U+0085 (NEL, "next line") is written
+  double-quoted rather than plain/single-quoted, since YAML's line-break
+  normalization would otherwise turn it into a plain space on read. This is
+  reported as the `string.line-break-char` adjustment code (a warning, since
+  it round-trips correctly — it's surfaced only so callers know the output
+  style was forced for that value).
