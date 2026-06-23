@@ -44,6 +44,7 @@ self-contained formal model (inspired by Lee & Cheung, CIKM 2010):
 
 The model is defined formally in
 [docs/design/model.md](docs/design/model.md); see
+[the quickstart](docs/quickstart.md) for the shortest possible example, or
 [the user guide](docs/guide.md) for the practical tour.
 
 ## A 60-second tour
@@ -100,6 +101,8 @@ pip install pyyaml tomli_w defusedxml   # YAML / writing TOML / hardened XML
 
 Full index: **[docs/](docs/README.md)**.
 
+- **[Quickstart](docs/quickstart.md)** — the shortest possible example: one
+  OML snippet, one schema, `validate()`, `infer()`.
 - **[User guide](docs/guide.md)** — the practical tour: documents,
   [**OML**](docs/guide.md#oml--the-native-format) (the native format),
   [**the schema DSL**](docs/guide.md#schemas--the-dsl), the Python builder,
@@ -123,6 +126,9 @@ Full index: **[docs/](docs/README.md)**.
   docs and code, grouped by concept area.
 - **[Testing](docs/testing.md)** — the test suite layout, coverage tooling and
   target, the fuzzing approach, and what CI runs.
+- **[Repo layout](docs/layout.md)** — how the repo itself is organized:
+  `omnist/canonical/*.py` module responsibilities, the docs page map, and the
+  test file map.
 
 ## Status
 

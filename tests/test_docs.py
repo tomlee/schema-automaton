@@ -33,6 +33,15 @@ def test_readme_at_a_glance():
     assert ds.__version__ == "0.1.5"
 
 
+def test_quickstart():
+    d = Doc.from_oml('name: "Ann"')
+    s = parse_schema('record Person { "name": string }\nroot Person')
+    assert s.validate(d).ok
+
+    assert infer([doc({"name": "Ann"}), doc({"name": "Bo"})]).to_dsl() == (
+        'record Root {\n    "name": string,\n}\nroot Root\n')
+
+
 def test_readme_60_second_tour_infer():
     assert infer([doc({"id": 1, "tags": ["a"]})]).to_dsl() == (
         'record Root {\n    "id": integer,\n    "tags": string,\n}\nroot Root\n')
