@@ -23,6 +23,22 @@ d.to_json()    # '{"order": {"id": "A1", "items": [{"sku": "W"}, {"sku": "G"}]}}
 - An **array-of-tables** (`[[order.items]]`) is the idiomatic array of records —
   it maps to a repeated `items` label, the same as JSON `"items": [{…}, {…}]`.
 
+Read raw, each `[[items]]` block becomes its own `items` edge — the repeated
+label is in the edge list directly, not just in the regrouped JSON-shaped
+projection:
+
+```python
+from omnist import read_toml
+
+read_toml("""
+[[items]]
+sku = "W"
+[[items]]
+sku = "G"
+""")
+# [('items', [('sku', 'W')]), ('items', [('sku', 'G')])]
+```
+
 ## Reading
 
 ### Without a schema

@@ -18,6 +18,16 @@ Identical to [JSON](json.md): a mapping becomes a list of edges, a key whose
 value is a sequence expands into a repeated label, scalars are leaves. A YAML
 document and the equivalent JSON document read into the **same** Document.
 
+Read raw (no `.to_json()` projection), a YAML sequence comes back as the
+repeated-label edge list directly:
+
+```python
+from omnist import read_yaml
+
+read_yaml('tags: [x, y]')
+# [('tags', 'x'), ('tags', 'y')]
+```
+
 ## Reading
 
 ### Without a schema

@@ -20,6 +20,16 @@ d.to_json()    # '{"order": {"id": "A1", "item": [{"sku": "W"}, {"sku": "G"}]}}'
   `item` twice, i.e. an array, exactly like JSON `"item": [{…}, {…}]`.
 - A leaf element is a scalar — its text content.
 
+Read raw, repeated `<item>` elements come back as the repeated-label edge list
+directly, not the regrouped JSON-shaped array:
+
+```python
+from omnist import read_xml
+
+read_xml('<items><item>x</item><item>y</item></items>')
+# [('items', [('item', 'x'), ('item', 'y')])]
+```
+
 ## Single document element
 
 XML has exactly **one** top-level element, so an XML Document always has a

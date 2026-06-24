@@ -16,6 +16,16 @@ d.to_json()                      # '{"name": "Ann", "tags": ["x", "y"]}'
   label): `{"tags": ["x", "y"]}` → `[(tags, "x"), (tags, "y")]`.
 - A nested object becomes a nested node; scalars are leaves.
 
+That's the raw edge list, not a round-tripped projection — `read_json` itself
+returns it directly:
+
+```python
+from omnist import read_json
+
+read_json('{"tags": ["x", "y"]}')
+# [('tags', 'x'), ('tags', 'y')]
+```
+
 ## Reading
 
 ### Without a schema

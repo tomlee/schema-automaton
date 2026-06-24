@@ -65,6 +65,16 @@ def test_guide_oml_native_format():
     assert d.to_oml() == 'name: "Ann"\ntag: "x"\ntag: "y"\njoined: 2024-01-01'
 
 
+def test_formats_oml_edge_order_is_data_but_validation_ignores_it():
+    doc1 = Doc.from_oml('a: 1\nb: 2')
+    doc2 = Doc.from_oml('b: 2\na: 1')
+    assert doc1 != doc2  # different Documents, order is data
+
+    s = parse_schema('record R { "a": integer, "b": integer }\nroot R')
+    assert s.validate(doc1).ok
+    assert s.validate(doc2).ok  # same result; validation ignores order
+
+
 def test_formats_oml_maps_to_the_same_document_as_the_builder():
     import datetime
     node = read_oml('''
@@ -332,6 +342,28 @@ def test_formats_docs_snippets():
     assert write_json([("tag", "x")]) == '{"tag": "x"}'
     assert read_xml("<t><m>a</m><x>1</x><m>b</m></t>") == \
         [("t", [("m", "a"), ("x", 1), ("m", "b")])]      # interleaving preserved
+
+
+def test_formats_json_docs_raw_array_edge_list():
+    assert read_json('{"tags": ["x", "y"]}') == [("tags", "x"), ("tags", "y")]
+
+
+def test_formats_yaml_docs_raw_sequence_edge_list():
+    assert read_yaml('tags: [x, y]') == [("tags", "x"), ("tags", "y")]
+
+
+def test_formats_toml_docs_raw_array_of_tables_edge_list():
+    assert read_toml("""
+[[items]]
+sku = "W"
+[[items]]
+sku = "G"
+""") == [("items", [("sku", "W")]), ("items", [("sku", "G")])]
+
+
+def test_formats_xml_docs_raw_repeated_element_edge_list():
+    assert read_xml('<items><item>x</item><item>y</item></items>') == \
+        [("items", [("item", "x"), ("item", "y")])]
 
 
 def test_api_docs_schema_directed_deserialization():
