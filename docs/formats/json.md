@@ -102,3 +102,5 @@ Doc.of({"tag": ["x", "y"]}).to_json()         # '{"tag": ["x", "y"]}'
   `datetime` (it has no time component to satisfy it with).
 - A bare top-level array (`[1, 2, 3]`) has no labels, so it isn't a Document on
   its own — wrap it under a key.
+- See [the comparison table](overview.md#special-features-mapped-to-oml) for
+  how JSON's quirks stack up against the other formats.

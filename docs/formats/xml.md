@@ -148,3 +148,6 @@ Doc.of({"order": {"id": "A1"}}).to_xml()
 
 - **Not supported** (outside the data-XML profile): attributes, mixed text and
   elements, and CDATA. A namespace prefix is stripped (`<n:a>` reads as `a`).
+- See [the comparison table](overview.md#special-features-mapped-to-oml) for
+  how XML's attribute- and namespace-dropping stack up against the other
+  formats.

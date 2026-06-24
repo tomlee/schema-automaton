@@ -112,3 +112,6 @@ Doc.of({"id": "A1"}).to_toml()          # 'id = "A1"\n'
 - TOML round-trips `date`/`time`/`datetime` natively in both directions —
   there's no `temporal.stringified` adjustment for TOML the way there is for
   JSON/XML.
+- See [the comparison table](overview.md#special-features-mapped-to-oml) for
+  how TOML's native temporal types and array-of-tables stack up against the
+  other formats.

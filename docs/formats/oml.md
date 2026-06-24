@@ -293,3 +293,6 @@ process.
   sugar for later.
 - For the full formal grammar, see
   [the OML-Core grammar](../design/oml-grammar.md).
+- See [the comparison table](overview.md#special-features-mapped-to-oml) for
+  how OML maps every other format's special-cased features, feature by
+  feature.

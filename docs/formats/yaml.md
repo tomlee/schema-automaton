@@ -110,3 +110,6 @@ Doc.of({"name": "Ada"}).to_yaml()
 - Sequences of mappings (`- {…}`) are the idiomatic way to write an array of
   records, and map to a repeated label — see
   [the real-life example](../example.md).
+- See [the comparison table](overview.md#special-features-mapped-to-oml) for
+  how YAML's anchors, aliases, and native date handling stack up against the
+  other formats.

@@ -2,7 +2,9 @@
 
 Omnist gives you **one canonical data model** for JSON, YAML, TOML, XML, and
 its own native [**OML**](formats/oml.md), and a [**schema language**](schema.md)
-to validate and compare shapes over it. The model is defined formally in
+to validate and compare shapes over it. (See [why Omnist](why-omnist.md) for
+the differentiation case -- why this model, instead of JSON Schema/XSD/etc --
+before diving into the how.) The model is defined formally in
 [the model spec](design/model.md); this guide is the practical tour; the
 [API reference](api.md) lists every name with signatures.
 
