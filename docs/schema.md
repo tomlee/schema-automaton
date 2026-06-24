@@ -119,7 +119,9 @@ to_dsl(parse_schema('record Car { "license": string }\nroot Car'))
 
 `schema.validate(doc)` returns a `ValidationResult` with `.ok` and `.errors`
 (each an `Error(path, message)`, at the exact failing path); validation
-**ignores edge order**:
+**ignores edge order** — see [OML's note on order vs.
+validation](formats/oml.md#shape) for why that's true even though OML
+preserves order as data:
 
 ```python
 bad = doc({"emails": [], "address": {"street": "x", "city": "y"}})

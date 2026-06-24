@@ -55,6 +55,27 @@ This reads straight into the Document `[(venue, [...]), (session, [...]),
 label (two notes, in order), `session.tags` likewise, and `session.start`
 comes back as a real `datetime.datetime`, not a string.
 
+Edge order here is **data**, not metadata: the order edges are written and
+read in OML is preserved in the resulting Document, exactly like any other
+value. But order is *not* a schema constraint — a schema validating that
+Document never looks at the order its edges came in. Two OML documents with
+the same edges in a different order build two different Documents (they
+compare unequal), yet both validate identically against the same schema:
+
+```python
+from omnist import Doc, parse_schema
+
+doc1 = Doc.from_oml('a: 1\nb: 2')
+doc2 = Doc.from_oml('b: 2\na: 1')
+doc1 == doc2                     # False -- different Documents, order is data
+
+s = parse_schema('record R { "a": integer, "b": integer }\nroot R')
+s.validate(doc1).ok              # True
+s.validate(doc2).ok              # True -- same result; validation ignores order
+```
+
+See [Validation](../schema.md#validation) for the schema side of this.
+
 ## Scalars are typed by their spelling, not a tag
 
 There's no type annotation — the literal's shape says what it is:

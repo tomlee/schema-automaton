@@ -65,6 +65,16 @@ def test_guide_oml_native_format():
     assert d.to_oml() == 'name: "Ann"\ntag: "x"\ntag: "y"\njoined: 2024-01-01'
 
 
+def test_formats_oml_edge_order_is_data_but_validation_ignores_it():
+    doc1 = Doc.from_oml('a: 1\nb: 2')
+    doc2 = Doc.from_oml('b: 2\na: 1')
+    assert doc1 != doc2  # different Documents, order is data
+
+    s = parse_schema('record R { "a": integer, "b": integer }\nroot R')
+    assert s.validate(doc1).ok
+    assert s.validate(doc2).ok  # same result; validation ignores order
+
+
 def test_formats_oml_maps_to_the_same_document_as_the_builder():
     import datetime
     node = read_oml('''
