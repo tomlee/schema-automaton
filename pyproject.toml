@@ -28,7 +28,7 @@ yaml = ["pyyaml"]
 toml = ["tomli_w"]          # writing TOML; reading uses stdlib tomllib (3.11+)
 xml = ["defusedxml"]
 all = ["pyyaml", "tomli_w", "defusedxml"]
-dev = ["pytest", "pyyaml", "tomli_w", "defusedxml", "ruff", "hypothesis"]
+dev = ["pytest", "pyyaml", "tomli_w", "defusedxml", "ruff", "hypothesis", "jsonschema"]
 
 [project.urls]
 Homepage = "https://github.com/tomlee/omnist"

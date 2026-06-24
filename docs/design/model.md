@@ -9,14 +9,14 @@
 
 This defines Omnist's two core models — the **Document** (the data) and the
 **Schema** (the constraint) — as one small, format-independent formalism,
-deliberately restrictive for the JSON family of formats.
+deliberately closed, for the JSON family of formats, so the schema operations in §9-§11 stay well-defined.
 
 The headline ideas:
 
 1. A **Document is an ordered list of labeled edges**, not a map whose values may be arrays.
 2. A **Schema has exactly three building blocks** — `record` (constrained by its child labels), `Scalar` (one of seven fixed kinds, optionally nullable), and `Ref` (naming and recursion). A field's type is always exactly one `Scalar` or one `Ref` — never a composition of either.
 3. **Field cardinality `[min,max]`** is the single mechanism for optional / required / array. There is no separate array type.
-4. The model is **restrictive by default**: records are closed, scalar types are never composed into enums or unions, and there are no structureless escape hatches (`Any`, open objects, maps).
+4. The model is **closed by construction**: records are closed, scalar types are never composed into enums or unions, and there are no structureless escape hatches (`Any`, open objects, maps). This is what makes `compatible_with`, `equivalent`, `normalize`, and `infer` well-defined, decidable operations -- not a constraint imposed for its own sake.
 
 ---
 
@@ -54,7 +54,7 @@ a choice to make.
 
 **Goals**
 - One canonical Document model, format-independent, faithful to every supported input (including XML interleaving).
-- A small, self-contained schema model that's restrictive by default — a schema guarantees structure.
+- A small, self-contained schema model that's closed by construction -- every operation over it (`validate`, `compatible_with`, `equivalent`, `normalize`, `infer`) has exactly one answer, never a best-effort guess.
 - A clean formal definition both models can be specified and reasoned about from.
 
 **Non-goals (deliberately out of scope for now)**

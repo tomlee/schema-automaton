@@ -628,3 +628,48 @@ def test_formats_oml_writing():
     from omnist import write_oml
     assert write_oml([("name", "Ada")]) == 'name: "Ada"'
     assert Doc.of({"name": "Ada"}).to_oml() == 'name: "Ada"'
+
+
+def test_why_omnist_compatible_with_worked_example():
+    v1 = parse_schema('record R { "host": string }' + chr(10) + 'root R')
+    v2 = parse_schema('record R { "host": string, "port" [0,1]: integer }' + chr(10) + 'root R')
+    assert v1.compatible_with(v2)
+    assert not v2.compatible_with(v1)
+
+
+def test_why_omnist_jsonschema_has_no_compatibility_api():
+    import jsonschema
+
+    assert not hasattr(jsonschema, "compatible_with")
+    assert not hasattr(jsonschema, "is_subset")
+
+    v1 = {
+        "type": "object",
+        "properties": {"host": {"type": "string"}},
+        "required": ["host"],
+        "additionalProperties": False,
+    }
+    v2 = {
+        "type": "object",
+        "properties": {"host": {"type": "string"}, "port": {"type": "integer"}},
+        "required": ["host"],
+        "additionalProperties": False,
+    }
+    # jsonschema.validate only ever checks one document against one schema --
+    # it proves nothing about whether v1's whole document set fits under v2.
+    jsonschema.validate({"host": "x"}, v1)
+    jsonschema.validate({"host": "x"}, v2)
+
+
+def test_why_omnist_xml_drops_attributes_silently():
+    from omnist import check_xml, read_xml
+
+    assert read_xml('<a x="1"><b>hi</b></a>') == [("a", [("b", "hi")])]
+    assert list(check_xml('<a x="1"><b>hi</b></a>')) == []
+
+
+def test_why_omnist_xml_strips_namespaces_silently():
+    from omnist import read_xml
+
+    assert read_xml('<a xmlns:foo="http://x"><foo:b>hi</foo:b></a>') == \
+        [("a", [("b", "hi")])]

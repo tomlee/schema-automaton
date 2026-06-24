@@ -39,8 +39,11 @@ self-contained formal model (inspired by Lee & Cheung, CIKM 2010):
   (optionally nullable) or one `Ref` to a named record — referenced by name for
   reuse and recursion. **Validate** a Document, **compare** two schemas for
   backward-compatibility, or **infer** a schema from examples.
-- **Restrictive by default** — a schema guarantees structure; there are no
-  structureless escape hatches, and scalar types are never composed.
+- **Closed by construction** — records are closed, and scalar types are
+  never composed into enums or unions. That is not a constraint bolted on
+  top; it is what makes `compatible_with`, `equivalent`, `normalize`, and
+  `infer` well-defined, decidable operations instead of best-effort
+  heuristics. See [why Omnist](docs/why-omnist.md) for the case in full.
 
 The model is defined formally in
 [docs/design/model.md](docs/design/model.md); see
@@ -111,6 +114,10 @@ Full index: **[docs/](docs/README.md)**, also browsable as a site at
 
 - **[Quickstart](docs/quickstart.md)** — the shortest possible example: one
   OML snippet, one schema, `validate()`, `infer()`.
+- **[Why Omnist](docs/why-omnist.md)** — the differentiation case: a
+  falsifiable thesis, a verified capability matrix against JSON/YAML/TOML/XML,
+  a worked `compatible_with` comparison against `jsonschema`, and the honest
+  non-goals (including XML attribute/namespace dropping).
 - **[User guide](docs/guide.md)** — the practical tour: documents,
   [**OML**](docs/guide.md#oml--the-native-format) (the native format),
   [**the schema DSL**](docs/guide.md#schemas--the-dsl), the Python builder,

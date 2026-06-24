@@ -5,6 +5,7 @@ Start here, in roughly this order:
 | Doc | What it covers |
 |---|---|
 | **[Quickstart](quickstart.md)** | The shortest possible tour — one OML snippet, one schema, `validate()`, `infer()`. Read this if you just want to see it work. |
+| **[Why Omnist](why-omnist.md)** | The differentiation case: a falsifiable thesis, a verified capability matrix against JSON/YAML/TOML/XML, a worked `compatible_with` comparison against `jsonschema`, and the honest non-goals. |
 | **[User guide](guide.md)** | The practical tour — documents, OML, the schema DSL and Python builder, validation, the schema operations, codecs, inference. Read this first. |
 | **[OML](formats/oml.md)** | Omnist's own format: the only one with zero adjustments, and how it maps onto the Python Document. |
 | **[The Schema model & DSL](schema.md)** | Omnist's other central feature: `record` definitions, cardinality, the Python builder, and the comparison/inference operations. |
