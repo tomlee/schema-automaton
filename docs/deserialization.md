@@ -1,5 +1,12 @@
 # Schema-directed deserialization
 
+**The guarantee:** if deserialization with `schema=` succeeds, the resulting
+Document is guaranteed to conform to the given schema — every leaf matches
+its declared scalar, and every field's shape and cardinality are correct. If
+the input data doesn't fit the schema, deserialization fails with a
+`ParseError` (listing every problem found, not just the first) instead of
+returning a partial or non-conforming Document.
+
 Every reader (`read_json` / `read_yaml` / `read_toml` / `read_xml` / `read_oml`,
 and the matching `Doc.from_*`) produces a [node](glossary.md) from raw text.
 **Without a `schema=`**, every leaf is exactly whatever the format's own
