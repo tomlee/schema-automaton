@@ -4,6 +4,36 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.2.2] — schema-directed deserialization now guarantees conformance (BREAKING)
+
+**Breaking:** `materialize()` (and `schema=` on every reader / `Doc.from_*`)
+now raises `ParseError` for shape problems too — an unexpected field, a
+missing field, the wrong cardinality, a record where a scalar was expected
+or vice versa — not just scalar conversions that aren't value-exact. There's
+no `strict=` flag: passing a schema is itself the request for a
+guaranteed-conforming Document, so this is now the only behavior once a
+schema is given; `schema=None` remains the unchanged way to opt out of any
+checking. All problems found in one deserialization (scalar *and* shape) are
+collected and raised together in a single `ParseError`, rather than failing
+on only the first one encountered.
+
+Previously, `materialize` only checked/converted scalar leaves and silently
+passed shape mismatches through unchanged, leaving them to a separate,
+explicit `schema.validate(doc)` call — see issue
+[#115](https://github.com/omnist-dev/omnist/issues/115). That split meant
+code passing `schema=` to a reader could still get back a Document that
+didn't actually conform to it, without anything raising. `materialize` now
+performs validation and upgrading together in one recursive pass (it
+doesn't call `Schema.validate` after the fact — that would be a second,
+redundant top-down walk with no notion of upgrading); `Schema.validate`
+itself is unchanged and still useful for validating a Document you didn't
+just deserialize.
+
+If you relied on the old passthrough behavior, switch to reading without
+`schema=` (untouched node, no checking at all) and call
+`schema.validate(doc(...))` yourself when you want to check shape without
+upgrading scalars.
+
 ## [v0.2.1] — moved to the omnist-dev GitHub organization
 
 No code changes. The repository moved from `github.com/tomlee/omnist` to

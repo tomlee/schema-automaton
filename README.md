@@ -150,7 +150,7 @@ Full index: **[docs/](docs/README.md)**, also browsable as a site at
 
 ## Status
 
-Omnist is **alpha** (v0.2.1), built around a small, self-contained
+Omnist is **alpha** (v0.2.2), built around a small, self-contained
 formalism; the public API may still change before a stable release.
 
 Feedback and bug reports welcome:

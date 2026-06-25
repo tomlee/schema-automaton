@@ -63,7 +63,7 @@ class TestPublicApi:
         import omnist as ds
 
         s = ds.parse_schema('record R { "n": integer, "s": string? }\nroot R')
-        assert ds.__version__ == "0.2.1"
+        assert ds.__version__ == "0.2.2"
         # operations are Schema methods
         assert s.validate(ds.doc({"n": 1, "s": None})).ok
         assert s.equivalent(ds.parse_schema(ds.to_dsl(s)))
@@ -578,20 +578,36 @@ class TestDeserialize:
         again = materialize(node, s)
         assert again == node
 
-    def test_unknown_field_and_missing_schema_passthrough(self):
-        # shape problems (unexpected field) are validate()'s job, not raised here
+    def test_unknown_field_raises(self):
+        # a schema is a request for a guaranteed-conforming Document --
+        # an unexpected field is a shape problem, and now raises too
         s = parse_schema('record R { "a": integer }\nroot R')
-        node = read_json('{"a": 1, "b": "extra"}', schema=s)
-        assert ("b", "extra") in node
+        with pytest.raises(ParseError, match="unexpected field"):
+            read_json('{"a": 1, "b": "extra"}', schema=s)
         assert read_json('{"a": 1}') == [("a", 1)]      # no schema -> unchanged
 
-    def test_shape_mismatches_pass_through(self):
-        # a record expected but the node holds a scalar, or vice versa --
-        # validate()'s job, not raised here
+    def test_shape_mismatches_raise(self):
+        # a record expected but the node holds a scalar, or vice versa
         s = parse_schema('record R { "a": R2 }\nrecord R2 { "x": integer }\nroot R')
-        assert materialize([("a", 5)], s) == [("a", 5)]
+        with pytest.raises(ParseError, match="expected an object"):
+            materialize([("a", 5)], s)
         s2 = parse_schema('record R { "a": integer }\nroot R')
-        assert materialize([("a", [("x", 1)])], s2) == [("a", [("x", 1)])]
+        with pytest.raises(ParseError, match="expected a integer value"):
+            materialize([("a", [("x", 1)])], s2)
+
+    def test_missing_field_raises(self):
+        s = parse_schema('record R { "a": integer }\nroot R')
+        with pytest.raises(ParseError, match="expected exactly 1"):
+            materialize([], s)
+
+    def test_multiple_problems_all_reported_together(self):
+        s = parse_schema('record R { "a": integer, "b": string }\nroot R')
+        with pytest.raises(ParseError) as exc:
+            materialize([("a", "x"), ("c", 1)], s)
+        msg = str(exc.value)
+        assert "unexpected field" in msg          # "c"
+        assert "cannot be read as integer" in msg  # "a"
+        assert "expected exactly 1" in msg          # missing "b"
 
     def test_bool_never_satisfies_integer_or_number(self):
         # bool is an int subclass, but a Scalar("integer")/Scalar("number")

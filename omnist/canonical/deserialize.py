@@ -1,23 +1,31 @@
-"""Schema-directed deserialization: upgrade a freshly-read node's leaf values
-to match a :class:`~omnist.canonical.schema.Schema`'s declared scalars.
+"""Schema-directed deserialization: make a freshly-read node conform to a
+:class:`~omnist.canonical.schema.Schema`, or raise.
 
 Readers (``read_json``, etc.) hand back text-shaped values: JSON/YAML/TOML
 have no ``date``/``time`` type, so a temporal field arrives as an ISO-8601
 string; a whole-number ``float`` may need to become an ``int`` (or vice
-versa) to match what the schema declares. :func:`materialize` converts each
+versa) to match what the schema declares. Passing ``schema=`` to a reader is
+the request for a Document that's *guaranteed* to conform to that schema:
+:func:`materialize` walks the node together with the schema, upgrading each
 leaf **only when the conversion is value-exact** -- ``"2024-01-01" -> date``,
-``1.0 -> int 1`` -- and raises :class:`~omnist.errors.ParseError` when it
-isn't -- ``1.5 -> integer``, ``"abc" -> integer``.
+``1.0 -> int 1`` -- and checking every record's shape (closed fields,
+cardinality) along the way, exactly as :meth:`Schema.validate` would. If
+anything can't be made to conform -- an inexact scalar, an unknown field, a
+missing field, the wrong cardinality -- :func:`materialize` collects *every*
+such problem (not just the first) and raises one
+:class:`~omnist.errors.ParseError` with the full report.
 
-This is unambiguous by construction: every field has exactly one candidate
-scalar (see ``docs/design/model.md``), so there's never a choice between
-candidate representations -- only "does this value exactly fit the one
-scalar declared, or not."
+This can't simply delegate to :meth:`Schema.validate` after the fact:
+``validate`` only ever *checks* a value already in its final form, with no
+notion of upgrading, and it would mean a second, redundant top-down walk of
+the same tree using different traversal code. Since :func:`materialize`
+already knows, at every node, exactly which field/type the schema expects
+there, upgrading and shape-checking happen together in one pass.
 
-Shape problems (a missing field, an unexpected field, the wrong cardinality)
-are left to :meth:`Schema.validate`, not raised here -- :func:`materialize`
-only ever touches values whose field type it can identify; anything it
-doesn't recognize is passed through unchanged for ``validate`` to flag.
+There's no ``strict=`` switch: a schema is either given, in which case the
+result is guaranteed to conform (or an error is raised), or it isn't, in
+which case the node is returned exactly as read, untouched -- ``schema=None``
+is the existing, well-defined way to opt out of validation entirely.
 """
 
 from __future__ import annotations
@@ -26,26 +34,35 @@ import datetime as _dt
 from typing import Any
 
 from ..errors import ParseError
-from .schema import Record, Scalar, Schema
+from .schema import Record, Scalar, Schema, ValidationResult
 
 _TEMPORAL_CLASS = {"date": _dt.date, "time": _dt.time, "datetime": _dt.datetime}
 
 
 def materialize(node: Any, schema: Schema) -> Any:
-    """A copy of ``node`` with leaf values upgraded to match ``schema``."""
-    return _materialize_type(node, schema, schema.root, "$")
+    """A copy of ``node`` with leaf values upgraded to match ``schema``,
+    guaranteed to conform to it -- raises :class:`~omnist.errors.ParseError`
+    (with every problem found, not just the first) if it can't be made to."""
+    res = ValidationResult()
+    out = _materialize_type(node, schema, schema.root, "$", res)
+    if not res.ok:
+        raise ParseError(str(res))
+    return out
 
 
-def _materialize_type(node: Any, schema: Schema, t: Any, path: str) -> Any:
+def _materialize_type(node: Any, schema: Schema, t: Any, path: str,
+                       res: ValidationResult) -> Any:
     d = schema.resolve(t)
     if isinstance(d, Scalar):
-        return _materialize_scalar(node, d, path)
-    return _materialize_record(node, schema, d, path)
+        return _materialize_scalar(node, d, path, res)
+    return _materialize_record(node, schema, d, path, res)
 
 
-def _materialize_record(node: Any, schema: Schema, rec: Record, path: str) -> Any:
+def _materialize_record(node: Any, schema: Schema, rec: Record, path: str,
+                         res: ValidationResult) -> Any:
     if not isinstance(node, list):
-        return node                       # a shape mismatch -- validate()'s job
+        res.add(path, "expected an object, got a value")
+        return node
     out = []
     counts: dict = {}
     for label, child in node:
@@ -54,15 +71,26 @@ def _materialize_record(node: Any, schema: Schema, rec: Record, path: str) -> An
         p = f"{path}.{label}" if i == 0 else f"{path}.{label}[{i}]"
         f = rec.field(label)
         if f is None:
-            out.append((label, child))    # an unexpected field -- validate()'s job
+            res.add(p, "unexpected field")
+            out.append((label, child))
         else:
-            out.append((label, _materialize_type(child, schema, f.type, p)))
+            out.append((label, _materialize_type(child, schema, f.type, p, res)))
+    for f in rec.fields:
+        c = counts.get(f.label, 0)
+        if c < f.min or (f.max is not None and c > f.max):
+            res.add(path,
+                    f"field {f.label!r} occurs {c} time(s), expected {f.cardinality_str()}")
     return out
 
 
-def _materialize_scalar(value: Any, s: Scalar, path: str) -> Any:
-    if value is None or isinstance(value, list):
-        return value                      # null, or a shape mismatch -- validate()'s job
+def _materialize_scalar(value: Any, s: Scalar, path: str, res: ValidationResult) -> Any:
+    if isinstance(value, list):
+        res.add(path, f"expected a {s.name} value, got an object")
+        return value
+    if value is None:
+        if not s.nullable:
+            res.add(path, "null not allowed here")
+        return value
     if s.name == "string":
         if isinstance(value, str):
             return value
@@ -85,8 +113,8 @@ def _materialize_scalar(value: Any, s: Scalar, path: str) -> Any:
         converted = _materialize_temporal(value, s.name)
         if converted is not _SENTINEL:
             return converted
-    raise ParseError(f"{path}: {value!r} cannot be read as {s.name} "
-                     "(not a value-exact conversion)")
+    res.add(path, f"{value!r} cannot be read as {s.name} (not a value-exact conversion)")
+    return value
 
 
 _SENTINEL = object()
