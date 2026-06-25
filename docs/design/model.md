@@ -236,12 +236,18 @@ Notes:
   string form. A bare date string only ever satisfies `date`; a real
   `datetime.datetime(2024, 1, 1)` (even at midnight) only ever satisfies
   `datetime`, never `date`.
-- **Shape mismatches are validation's job, not deserialization's.** If a
-  value's *structure* doesn't match what's expected at all (a record where a
-  scalar is expected, or vice versa) or a field is missing/unexpected,
-  `materialize` passes the node through unchanged for `Schema.validate` to
-  flag — it only ever converts a value it can identify as belonging to a
-  known field's scalar.
+- **Deserialization checks shape too, not just scalars.** Passing `schema=`
+  is the request for a guaranteed-conforming Document: if a value's
+  *structure* doesn't match what's expected (a record where a scalar is
+  expected, or vice versa) or a field is missing/unexpected/repeated outside
+  its cardinality, `materialize` raises `ParseError` for that too — the same
+  checks `Schema.validate` performs, run in the same pass as the scalar
+  conversions above, with every problem found (not just the first) collected
+  into one error. There's no separate opt-in for this: a schema is either
+  given, in which case the result is guaranteed to conform or an error is
+  raised, or `schema=None`, in which case the node is returned exactly as
+  read. `Schema.validate` still exists on its own, for validating a Document
+  you didn't just deserialize.
 
 ## 11. Inference: determining a field's `Scalar` from samples
 

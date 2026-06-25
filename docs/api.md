@@ -204,9 +204,11 @@ recommends `defusedxml` (else an `UnsafeXMLWarning`). See
 ### Schema-directed deserialization
 
 Pass `schema=` to any reader (or `Doc.from_json` / `Doc.from_yaml` /
-`Doc.from_toml` / `Doc.from_xml`) to upgrade each leaf to match what the
-schema declares, whenever the conversion is value-exact, raising
-`ParseError` when it isn't. See
+`Doc.from_toml` / `Doc.from_xml`) for a **guaranteed-conforming** Document:
+each leaf is upgraded to match what the schema declares wherever the
+conversion is value-exact, and the result's shape (closed fields,
+cardinality) is checked too — raising `ParseError`, with every problem
+found, if it can't be made to conform. See
 [Schema-directed deserialization](deserialization.md) for the full
 explanation, the conversion rules, and `materialize`.
 

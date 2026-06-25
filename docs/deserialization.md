@@ -102,17 +102,22 @@ between — only one question: **does this value exactly fit the one scalar
 declared, or not.** That's why the conversion can run automatically with no
 configuration and no heuristics.
 
-Shape problems — a missing or unexpected field, the wrong cardinality, a
-record where a scalar is expected — are left to `Schema.validate`, not
-raised by deserialization. `materialize`/`schema=` only ever converts a leaf
-it can already identify as belonging to a known field's scalar; it passes
-mismatched shapes through unchanged for validation to flag.
+Passing `schema=` is the request for a **guaranteed-conforming** Document:
+deserialization checks shape problems too — a missing or unexpected field,
+the wrong cardinality, a record where a scalar is expected — not just
+scalar conversions. There's no separate opt-in for this; if you don't want
+shape checking (or scalar upgrading), don't pass `schema=` at all, and the
+node comes back exactly as the format's own parser produced it. Once you
+pass a schema, every problem it finds — scalar *and* shape, all of them, not
+just the first — is collected into one raised error.
 
-## When a conversion isn't value-exact: `ParseError`
+## When a Document can't be made to conform: `ParseError`
 
-If a leaf's raw value doesn't exactly fit the declared scalar, deserialization
-raises `ParseError` rather than guessing or silently leaving the value
-unconverted:
+If a leaf's raw value doesn't exactly fit the declared scalar, or the shape
+doesn't match (an unknown field, a missing field, the wrong cardinality, a
+record where a scalar was expected, or vice versa), deserialization raises
+`ParseError` rather than guessing, silently leaving the value unconverted, or
+returning a Document that doesn't actually match the schema:
 
 ```python
 from omnist import parse_schema, read_json, ParseError
@@ -120,22 +125,34 @@ from omnist import parse_schema, read_json, ParseError
 s = parse_schema('record R { "n": integer }\nroot R')
 read_json('{"n": "abc"}', schema=s)
 # ParseError: $.n: 'abc' cannot be read as integer (not a value-exact conversion)
+
+s2 = parse_schema('record R { "a": integer }\nroot R')
+read_json('{"a": 1, "b": "extra"}', schema=s2)
+# ParseError: $.b: unexpected field
 ```
 
 `1.5` into `integer` fails the same way (`1.5` has a fractional part, so it's
 not a value-exact `int`), while `4.0` into `integer` succeeds (`4.0` is
-value-exact as `4`).
+value-exact as `4`). If more than one problem exists, the `ParseError`
+message lists every one of them, each on its own line with its path — the
+same multi-error formatting `Schema.validate` uses.
+
+`Schema.validate` still exists and is still useful on its own: it checks an
+already-built `Doc` (one made with `doc()`, say) without re-deserializing
+anything, and it's the only way to validate a Document you didn't just read
+from text. What's changed is that `schema=`/`materialize` no longer needs a
+second, separate `validate()` call afterward to catch shape problems — they
+share the same checks, run together in one pass.
 
 ## Conversion rules
 
 The full, per-kind mapping of what validation accepts (checks a value
-already in the document, never converts) versus what deserialization
-additionally converts (and rejects) for each `Scalar` kind — along with the
-"`bool` never satisfies `integer`/`number`," "`number` always deserializes
-to `float`," "`date`/`datetime` stay mutually exclusive," and "shape
-mismatches are validation's job" notes that go with it — lives in one place:
-[model spec §10](design/model.md#10-scalar-and-python-type), the formal
-definition this page's examples are derived from.
+already in the document) versus what deserialization additionally converts
+(and rejects) for each `Scalar` kind — along with the "`bool` never
+satisfies `integer`/`number`," "`number` always deserializes to `float`,"
+and "`date`/`datetime` stay mutually exclusive" notes that go with it —
+lives in one place: [model spec §10](design/model.md#10-scalar-and-python-type),
+the formal definition this page's examples are derived from.
 
 ## `materialize`: upgrading an already-parsed node
 
