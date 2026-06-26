@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.2.6] — `omnist infer`
+
+Adds `omnist infer <input>... --from FMT [-o OUTPUT]` (see
+`docs/design/cli-spec.md`). All inputs must be the same format; each is
+read as a `Doc`, `infer(docs)` drafts a schema from them, written out as
+OSD.
+
 ## [v0.2.5] — `omnist schema normalize`/`compatible-with`/`equivalent`
 
 Adds three more schema CLI commands (see `docs/design/cli-spec.md`):

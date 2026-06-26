@@ -25,6 +25,20 @@ echo 'a:   1' | omnist format -
 Malformed OML raises the same `ParseError` `read_oml` would, printed to
 stderr as `error: ...`, exit code `2` — nothing written.
 
+## `omnist infer`
+
+```
+omnist infer <input>... --from FMT [-o OUTPUT]
+```
+
+All inputs must be the same format. Each is read as a `Doc`,
+[`infer(docs)`](schema.md#operations-compare-and-infer) drafts a schema
+from them, written out as OSD.
+
+```sh
+omnist infer samples/*.json --from json -o inferred.osd
+```
+
 ## `omnist validate`
 
 ```

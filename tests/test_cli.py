@@ -173,6 +173,60 @@ class TestValidate:
         assert err.startswith("error: ")
 
 
+class TestInfer:
+    def test_drafts_schema_from_multiple_samples(self, tmp_path, capsys):
+        f1 = tmp_path / "a.json"
+        f1.write_text('{"host": "a"}')
+        f2 = tmp_path / "b.json"
+        f2.write_text('{"host": "b", "port": 80}')
+        code, out, err = run(
+            ["infer", str(f1), str(f2), "--from", "json"], capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert err == ""
+        assert '"host": string' in out
+        assert '"port" [0,1]: integer' in out
+        assert out.startswith("record Root {")
+
+    def test_single_sample(self, tmp_path, capsys):
+        f1 = tmp_path / "a.json"
+        f1.write_text('{"x": 1}')
+        code, out, err = run(["infer", str(f1), "--from", "json"], capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert '"x": integer' in out
+
+    def test_writes_to_output_file(self, tmp_path, capsys):
+        f1 = tmp_path / "a.json"
+        f1.write_text('{"x": 1}')
+        dst = tmp_path / "out.osd"
+        code, out, err = run(
+            ["infer", str(f1), "--from", "json", "-o", str(dst)], capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert out == ""
+        assert '"x": integer' in dst.read_text()
+
+    def test_conflicting_scalars_is_a_clean_error_not_a_traceback(self, tmp_path, capsys):
+        f1 = tmp_path / "a.json"
+        f1.write_text('{"v": 1}')
+        f2 = tmp_path / "b.json"
+        f2.write_text('{"v": "x"}')
+        code, out, err = run(
+            ["infer", str(f1), str(f2), "--from", "json"], capsys=capsys, monkeypatch=None)
+        assert code == 2
+        assert err.startswith("error: ")
+
+    def test_missing_input_is_argparse_usage_error(self):
+        with pytest.raises(SystemExit) as exc:
+            main(["infer", "--from", "json"])
+        assert exc.value.code == 2
+
+    def test_missing_from_is_argparse_usage_error(self, tmp_path):
+        f1 = tmp_path / "a.json"
+        f1.write_text('{"x": 1}')
+        with pytest.raises(SystemExit) as exc:
+            main(["infer", str(f1)])
+        assert exc.value.code == 2
+
+
 class TestSchemaFormat:
     def test_reformats_osd_from_file_to_stdout(self, tmp_path, capsys):
         p = tmp_path / "in.osd"

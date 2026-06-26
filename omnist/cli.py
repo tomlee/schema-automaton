@@ -20,6 +20,7 @@ from . import (
     ValidationResult,
     WriteError,
     doc,
+    infer,
     parse_schema,
     read_json,
     read_oml,
@@ -91,6 +92,14 @@ def _cmd_validate(args: argparse.Namespace) -> int:
     return 0 if result.ok else 1
 
 
+def _cmd_infer(args: argparse.Namespace) -> int:
+    reader = _READERS[args.from_]
+    docs = [Doc(reader(_read_input(p))) for p in args.input]
+    s = infer(docs)
+    _write_output(args.output, to_dsl(s))
+    return 0
+
+
 def _cmd_schema_format(args: argparse.Namespace) -> int:
     s = parse_schema(_read_input(args.schema_file))
     _write_output(args.output, to_dsl(s))
@@ -149,6 +158,13 @@ def _build_parser() -> argparse.ArgumentParser:
     validate_p.add_argument(
         "--result-format", choices=RESULT_FORMAT_CHOICES, default="text")
     validate_p.set_defaults(func=_cmd_validate)
+
+    infer_p = subparsers.add_parser(
+        "infer", help="draft a schema from example documents (all the same format)")
+    infer_p.add_argument("input", nargs="+", help="document files, same format")
+    infer_p.add_argument("--from", dest="from_", required=True, choices=FMT_CHOICES)
+    infer_p.add_argument("-o", "--output", help="output file; omit for stdout")
+    infer_p.set_defaults(func=_cmd_infer)
 
     schema_p = subparsers.add_parser("schema", help="operate on a Schema (OSD)")
     schema_sub = schema_p.add_subparsers(dest="schema_command", required=True)
