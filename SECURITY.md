@@ -45,7 +45,7 @@ what's actually been considered and tested, and what hasn't.
 
 - **Deeply/adversarially nested input raises a clean exception instead of
   crashing the process.** `Doc` construction, the functional codecs, and the
-  schema DSL parser all bound recursion well under Python's stack limit, so
+  OSD parser all bound recursion well under Python's stack limit, so
   a maliciously deep document or schema raises `DocumentError`/`SchemaError`
   rather than an uncatchable `RecursionError`.
 

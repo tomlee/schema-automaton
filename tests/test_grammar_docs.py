@@ -1,7 +1,7 @@
 """Executes the worked examples from the formal grammar docs.
 
 Each test corresponds to a numbered row in the "Worked examples" table of
-``docs/design/oml-grammar.md`` or ``docs/design/schema-dsl-grammar.md``, so
+``docs/design/oml-grammar.md`` or ``docs/design/schema-osd-grammar.md``, so
 the claims in those docs can't silently rot. These are the same
 verify-before-claim snippets used while drafting the grammars, kept here as
 real tests rather than one-off scratch scripts.
@@ -99,7 +99,7 @@ def test_oml_ex17_bare_top_level_scalar_is_the_whole_document():
 
 
 # ---------------------------------------------------------------------------
-# docs/design/schema-dsl-grammar.md -- Worked examples
+# docs/design/schema-osd-grammar.md -- Worked examples
 # ---------------------------------------------------------------------------
 
 def test_dsl_ex1_label_backslash_escape_drops_backslash_no_named_escapes():

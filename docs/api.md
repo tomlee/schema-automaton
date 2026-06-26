@@ -77,12 +77,12 @@ plain value).
 ## Schemas
 
 ### `parse_schema(text) -> Schema`
-Parse DSL text (`record` / `root`) into a `Schema`. Raises
+Parse OSD text (`record` / `root`) into a `Schema`. Raises
 `SchemaError` on malformed text or an undefined reference. See the
-[DSL section of the guide](guide.md#schemas--the-dsl).
+[OSD section of the guide](guide.md#schemas--osd).
 
 ### `to_dsl(schema) -> str`
-Serialize a `Schema` back to DSL text. `parse_schema(to_dsl(s))` is equivalent
+Serialize a `Schema` back to OSD text. `parse_schema(to_dsl(s))` is equivalent
 to `s`.
 
 ### `infer(samples, root_name="Root") -> Schema`
@@ -134,13 +134,13 @@ names an entry not present in `env`.
 | `.compatible_with(other) -> bool` | every document this accepts, `other` also accepts (backward-compat) |
 | `.equivalent(other) -> bool` | both accept exactly the same documents |
 | `.normalize() -> Schema` | merge structurally-identical named definitions |
-| `.to_dsl() -> str` | serialize back to DSL |
+| `.to_dsl() -> str` | serialize back to OSD |
 | `.root`, `.env` | the root `Ref` and the name→record map |
 | `.resolve(t) -> Record` | follow a `Ref` chain to a `Record` |
 
 ### Definition & type classes
 
-These are produced by the DSL and builder; you can also construct them directly.
+These are produced by OSD and the builder; you can also construct them directly.
 
 - **`Record(fields: list[Field])`** — a closed record. `.fields`;
   `.field(label) -> Field | None`.
@@ -300,7 +300,7 @@ simulating a write without producing output. The four built-ins all provide
 | | Raised when |
 |---|---|
 | `OmnistError` | base class for all Omnist errors |
-| `SchemaError` | invalid schema text or structure (bad DSL, undefined `Ref`, bad cardinality) |
+| `SchemaError` | invalid schema text or structure (bad OSD, undefined `Ref`, bad cardinality) |
 | `ParseError` | a document couldn't be read from its format |
 | `DocumentError` | a value isn't a legal Document, or an invalid `Doc` operation |
 | `WriteError` | a Document can't be represented in the target format (e.g. multi-rooted XML) |

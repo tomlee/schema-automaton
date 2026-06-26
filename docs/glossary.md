@@ -89,7 +89,7 @@ valid. Defined formally in
 - **`Field`** — the Python class implementing a field (capitalized,
   contrast with lowercase **field**, the general concept, and with the
   `field()` builder function below).
-- **record** (lowercase) — the DSL keyword that introduces a record
+- **record** (lowercase) — the OSD keyword that introduces a record
   definition (`record Member { ... }`), and the general concept: a closed
   set of named fields. See [the schema doc](schema.md#shape).
 - **`Record`** — the Python class: a closed set of `Field`s, constructed
@@ -111,20 +111,20 @@ valid. Defined formally in
   [`omnist/canonical/schema.py`](https://github.com/omnist-dev/omnist/blob/master/omnist/canonical/schema.py) and
   [the API reference](api.md#schemas).
 - **schema** (lowercase, general use) — the constraint as a concept, or an
-  instance of `Schema`; also used loosely for "the DSL text describing one."
-  Distinguished from **the DSL** (below) by context: "a schema" is the
-  parsed/constructed object or the idea; "the DSL" is the text syntax used
+  instance of `Schema`; also used loosely for "the OSD text describing one."
+  Distinguished from **OSD** (below) by context: "a schema" is the
+  parsed/constructed object or the idea; "OSD" is the text syntax used
   to write one.
 
-## OML / format terms
+## OML / OSD format terms
 
-- **DSL** — the small text language (`record` / `root` syntax) for writing
-  a `Schema`, parsed by `parse_schema()` and produced by `to_dsl()`. See
-  [the schema doc](schema.md#shape).
+- **OSD** (Omnist Schema Definition) — the small text language (`record` /
+  `root` syntax) for writing a `Schema`, parsed by `parse_schema()` and
+  produced by `to_dsl()`. See [the schema doc](schema.md#shape).
 - **OML** (Omnist Markup Language) — Omnist's own native format, designed
   so every Document shape round-trips through it with zero adjustments.
-  Distinct from "the DSL": OML is a *data* format (like JSON/YAML/TOML/XML),
-  while the DSL is a *schema* text syntax — they look superficially similar
+  Distinct from OSD: OML is a *data* format (like JSON/YAML/TOML/XML),
+  while OSD is a *schema* text syntax — they look superficially similar
   (both use `label: value`-ish syntax) but describe different things (data
   vs. constraints). See [the OML format page](formats/oml.md).
 - **codec** — a `Format`'s `read`/`write` (and optional `check`) functions,

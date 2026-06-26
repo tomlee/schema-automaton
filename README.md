@@ -120,12 +120,12 @@ Full index: **[docs/](docs/README.md)**, also browsable as a site at
   non-goals (including XML attribute/namespace dropping).
 - **[User guide](docs/guide.md)** — the practical tour: documents,
   [**OML**](docs/guide.md#oml--the-native-format) (the native format),
-  [**the schema DSL**](docs/guide.md#schemas--the-dsl), the Python builder,
+  [**OSD**](docs/guide.md#schemas--osd), the Python builder,
   validation, operations, other codecs, inference.
 - **[OML](docs/formats/oml.md)** — Omnist's own format, designed alongside the
   model so every Document round-trips with zero adjustments, and how it maps
   onto the Python Document.
-- **[The Schema model & DSL](docs/schema.md)** — Omnist's other central
+- **[The Schema model & OSD](docs/schema.md)** — Omnist's other central
   feature: `record` definitions, cardinality, the Python builder, and the
   comparison/inference operations.
 - **[API reference](docs/api.md)** — every public name, with signatures.

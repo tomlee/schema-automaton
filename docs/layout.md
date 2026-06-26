@@ -14,8 +14,8 @@ is where the logic actually lives.
   (`[(label, node), ...]` / scalar leaf), with navigation/editing helpers.
 - **`schema.py`** -- the Schema model: `Record`, `Scalar`, `Ref`, `Field`,
   `Schema` (with `validate`), and the seven scalar kinds.
-- **`dsl.py`** -- the schema DSL: `parse_schema` / `to_dsl`, parsing and
-  serializing the `record ... root ...` text syntax.
+- **`dsl.py`** -- OSD (Omnist Schema Definition): `parse_schema` / `to_dsl`,
+  parsing and serializing the `record ... root ...` text syntax.
 - **`oml.py`** -- OML (Omnist's own format): tokenizer, parser, and writer;
   the only format with zero adjustments on write.
 - **`formats.py`** -- the JSON/YAML/TOML/XML codecs (`read_*`/`write_*`/
@@ -45,7 +45,7 @@ Outside `canonical/`: `omnist/errors.py` defines the exception hierarchy
   snippet, one schema, `validate()`, `infer()`.
 - **[guide.md](guide.md)** -- the practical, narrative tour of the whole
   library. Read this first if you're not in a hurry.
-- **[schema.md](schema.md)** -- the Schema model and DSL on their own:
+- **[schema.md](schema.md)** -- the Schema model and OSD on their own:
   `record` definitions, cardinality, the Python builder, the comparison/
   inference operations.
 - **[example.md](example.md)** -- one order/address/line-item schema
@@ -76,7 +76,7 @@ Full test strategy (coverage target, fuzzing approach, CI) is in
 [testing.md](testing.md) -- this is just a map of what lives where.
 
 - **`test_canonical.py`** -- the core suite for the Document/Schema model:
-  `Doc`, the `record`/`Ref` schema, the DSL, validation, the schema
+  `Doc`, the `record`/`Ref` schema, OSD, validation, the schema
   operations (`compatible_with`/`equivalent`/`infer`), and the format
   codecs.
 - **`test_oml.py`** -- OML round-tripping: every scalar kind, escaping,
@@ -89,7 +89,7 @@ Full test strategy (coverage target, fuzzing approach, CI) is in
 - **`test_examples.py`** -- runs every `examples/*.py` file as a subprocess
   and asserts a clean exit, since examples are documentation too.
 - **`test_fuzz.py`** -- property-based fuzzing (Hypothesis) of the Document
-  model, codecs, and the DSL parser.
+  model, codecs, and the OSD parser.
 
 See also [testing.md](testing.md) for coverage measurement, the fuzzing
 methodology, and what CI runs on every push and PR.

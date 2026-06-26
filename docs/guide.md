@@ -11,7 +11,7 @@ before diving into the how.) The model is defined formally in
 - [The two ideas](#the-two-ideas)
 - [Documents](#documents)
 - [OML — the native format](#oml--the-native-format)
-- [Schemas — the DSL](#schemas--the-dsl)
+- [Schemas — OSD](#schemas--osd)
 - [Schemas — the Python builder](#schemas--the-python-builder)
 - [Validation](#validation)
 - [Operations](#operations)
@@ -95,12 +95,13 @@ Reach for OML whenever you're not constrained to a specific interchange
 format: for example, as a config or fixture format inside your own project,
 or as the artifact you snapshot/diff in tests.
 
-## Schemas — the DSL
+## Schemas — OSD
 
-A schema is `record` definitions plus a `root`. **Cardinality `[min,max]`**
-is the only multiplicity knob (required / optional / array), and a field's
-type is always exactly one fixed scalar or one `Ref` — never a composition.
-See [the Schema model & DSL](schema.md#shape) for the full shape, cardinality
+A schema is written as **OSD** (Omnist Schema Definition): `record`
+definitions plus a `root`. **Cardinality `[min,max]`** is the only
+multiplicity knob (required / optional / array), and a field's type is
+always exactly one fixed scalar or one `Ref` — never a composition. See
+[the Schema model & OSD](schema.md#shape) for the full shape, cardinality
 rules, and quoting conventions (same depth of treatment as
 [the OML page](formats/oml.md) gives the native format).
 
@@ -123,13 +124,13 @@ Round-tripping back to text:
 from omnist import parse_schema, to_dsl
 
 s = parse_schema('record Car { "license": string }\nroot Car')
-to_dsl(s)                  # prints the schema back as DSL
+to_dsl(s)                  # prints the schema back as OSD
 ```
 
 ## Schemas — the Python builder
 
-The same schema can be built from Python instead of parsed from DSL text —
-see [the Schema model & DSL: the Python builder](schema.md#the-python-builder)
+The same schema can be built from Python instead of parsed from OSD text —
+see [the Schema model & OSD: the Python builder](schema.md#the-python-builder)
 for the full builder reference (`record`, `field`, `ref`, `nullable`, `t`,
 `schema`).
 
@@ -151,7 +152,7 @@ s = schema(ref("User"), User=user, Address=address)
 
 `schema.validate(doc)` returns a `ValidationResult` with `.ok` and `.errors`
 (each an `Error(path, message)`); validation **ignores edge order**. See
-[the Schema model & DSL: Validation](schema.md#validation) for more on the
+[the Schema model & OSD: Validation](schema.md#validation) for more on the
 result shape.
 
 ```python
@@ -168,7 +169,7 @@ print(r)
 Comparison operations are **methods on `Schema`** — `compatible_with` (is
 every document one schema accepts also accepted by another, the
 backward-compatibility check), `equivalent`, and `normalize`. See
-[the Schema model & DSL: Operations](schema.md#operations-compare-and-infer)
+[the Schema model & OSD: Operations](schema.md#operations-compare-and-infer)
 for the full set.
 
 ```python

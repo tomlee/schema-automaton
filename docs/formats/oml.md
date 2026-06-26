@@ -206,7 +206,7 @@ Doc.from_oml('d: "2024-01-01"\nn: 3', schema=s).to_data()
 ```
 
 Once read, the result **validates** the same way regardless of format (see
-[the Schema model & DSL](../schema.md) for the schema side of this) — for
+[the Schema model & OSD](../schema.md) for the schema side of this) — for
 OML, `Schema.validate` is the main reason to pass a schema at all, since
 shape and field-presence problems (a missing field, the wrong cardinality)
 are exactly what validation — not deserialization — catches.

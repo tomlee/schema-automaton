@@ -10,14 +10,14 @@ All tests live in `tests/`, run with `pytest`.
 - **`tests/test_canonical.py`** — the core test file for the canonical
   (current) Document/Schema model described in `docs/design/model.md`: the
   edge-list `Doc`, the `record`/`Ref` schema model with its seven scalar
-  kinds and field cardinality, the schema DSL, validation (`Schema.validate`,
+  kinds and field cardinality, OSD, validation (`Schema.validate`,
   `accepts`), the schema operations (`compatible_with`, `equivalent`,
   `infer`), and the codecs (`check_*`/`read_*`/`write_*` for JSON, YAML,
   TOML, XML). It's organized into `Test*` classes by area — public API,
-  `Doc`, `infer`, validation, DSL robustness, temporal boundary values,
+  `Doc`, `infer`, validation, OSD robustness, temporal boundary values,
   operations, malformed input, codecs, deserialize-with-schema, reports,
   the format registry, `Doc`/module-level check parity, `WriteReport.__str__`,
-  DSL error messages, document/schema-construction error paths, schema model
+  OSD error messages, document/schema-construction error paths, schema model
   dunders (`__repr__`/`__eq__`/`__hash__`/`__str__`/`__bool__`),
   `matches_kind`/`value_kind`, infer errors, and TOML/XML-specific edge
   cases.
@@ -131,7 +131,7 @@ round-tripped through every codec:
   is itself round-tripped through OML.
 
 **2. Crash-freedom fuzzing.** Arbitrary text — both fully random Unicode and
-text drawn from an alphabet biased toward OML/DSL syntax characters (more
+text drawn from an alphabet biased toward OML/OSD syntax characters (more
 likely to reach deep parser states) — is fed into `read_oml` and
 `parse_schema`. The only exceptions either is allowed to raise are
 `ParseError`/`SchemaError` (or a subclass); anything else escaping is

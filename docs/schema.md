@@ -1,12 +1,13 @@
-# The Schema model & the DSL
+# The Schema model & OSD
 
 A **Schema** is Omnist's other central feature, alongside
-[OML](formats/oml.md): a small, closed language for describing the shape a
-Document must have. It's `record` definitions — a closed set of named
-fields, each with a cardinality — plus a `root` saying which one a document
-validates against. There's no JSON Schema-style open-ended composition: a
-field's type is always **exactly one** fixed scalar or one reference to
-another record, never a union, enum, or literal value.
+[OML](formats/oml.md). It's written as **OSD** (Omnist Schema Definition) —
+a small, closed text language for describing the shape a Document must
+have: `record` definitions — a closed set of named fields, each with a
+cardinality — plus a `root` saying which one a document validates against.
+There's no JSON Schema-style open-ended composition: a field's type is
+always **exactly one** fixed scalar or one reference to another record,
+never a union, enum, or literal value.
 
 ```python
 from omnist import parse_schema, doc
@@ -90,13 +91,13 @@ s2 = schema(ref("User"), User=user, Address=address)
 s.equivalent(s2)      # True -- same schema, built two different ways
 ```
 
-Two paths, one result — DSL text and the Python builder both produce an
+Two paths, one result — OSD text and the Python builder both produce an
 ordinary `Schema` object; nothing downstream (`validate`, `compatible_with`,
 `to_dsl`, …) can tell which path built the one it's holding:
 
 ```mermaid
 flowchart LR
-    dsl["DSL text\n(record ... root ...)"] -->|"parse_schema()"| s["Schema"]
+    dsl["OSD text\n(record ... root ...)"] -->|"parse_schema()"| s["Schema"]
     builder["Python builder\n(record/field/ref/schema)"] -->|"schema(...)"| s
 ```
 
@@ -106,7 +107,7 @@ flowchart LR
 `t.datetime` are ready-to-use `Scalar` instances; `nullable(scalar)` returns
 a nullable copy; `field(label, type, min=1, max=1)`; `record(*fields)`;
 `schema(root_ref, **named_definitions)`. `to_dsl(schema)` serializes a
-`Schema` built either way back to DSL text:
+`Schema` built either way back to OSD text:
 
 ```python
 from omnist import to_dsl
@@ -145,7 +146,7 @@ v2.compatible_with(v1)     # False -- a v2 document with a port isn't valid unde
 ```
 
 `infer(samples)` drafts a `Schema` from example Documents instead of writing
-the DSL by hand:
+OSD by hand:
 
 ```python
 from omnist import infer
@@ -174,4 +175,4 @@ exact cardinality and nullability rules.
 - [Model spec](design/model.md) — the formal Schema model, self-contained
   and plain.
 - For the full formal grammar, see
-  [the Schema DSL grammar](design/schema-dsl-grammar.md).
+  [the OSD grammar](design/schema-osd-grammar.md).

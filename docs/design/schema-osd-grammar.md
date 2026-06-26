@@ -1,11 +1,12 @@
-# Schema DSL formal grammar
+# OSD formal grammar
 
-This is the formal grammar for the **Schema DSL** — the small text language
-parsed by `parse_schema()` and produced by `to_dsl()` — written in ABNF
-([RFC 5234](https://www.rfc-editor.org/rfc/rfc5234)). It is the normative
-companion to [the Schema model & DSL page](../schema.md); read that first
-for context and examples, and the [glossary](../glossary.md) for the terms
-used here (record, field, cardinality, Scalar, Ref).
+This is the formal grammar for **OSD** (Omnist Schema Definition) — the
+small text language parsed by `parse_schema()` and produced by `to_dsl()`
+— written in ABNF ([RFC 5234](https://www.rfc-editor.org/rfc/rfc5234)). It
+is the normative companion to [the Schema model & OSD page](../schema.md);
+read that first for context and examples, and the
+[glossary](../glossary.md) for the terms used here (record, field,
+cardinality, Scalar, Ref).
 
 Every production below has been exercised against the real implementation
 in [`omnist/canonical/dsl.py`](https://github.com/omnist-dev/omnist/blob/master/omnist/canonical/dsl.py) (the
@@ -40,7 +41,7 @@ decimal-num = ["-"] 1*DIGIT "." 1*DIGIT
 integer-num = ["-"] 1*DIGIT
 
 name        = (ALPHA / "_") *(ALPHA / DIGIT / "_")
-              ; note: NO hyphen here, unlike OML's IDENT -- a DSL `name`
+              ; note: NO hyphen here, unlike OML's IDENT -- an OSD `name`
               ; allows only [A-Za-z0-9_], never '-'.
 ALPHA       = %x41-5A / %x61-7A
 DIGIT       = %x30-39
@@ -82,7 +83,7 @@ root-def    = %s"root" name
 field       = string [cardinality] ":" type
               ; the label MUST be a quoted `string` token -- an unquoted
               ; `name` in label position is a SchemaError ("expected a
-              ; quoted field name"). This is the DSL's quoting rule in
+              ; quoted field name"). This is OSD's quoting rule in
               ; full: quoted = data string (always a label, the only use
               ; for a string literal in this grammar); unquoted = schema
               ; name (a scalar keyword or a Ref).
@@ -105,7 +106,7 @@ int         = 1*DIGIT
               ; an inverted (max < min) range is still tokenizable but is
               ; rejected one layer up, by Field's own constructor
               ; (SchemaError "... has an invalid cardinality [...]"), not
-              ; by the DSL parser itself -- see Worked examples #7-#8.
+              ; by the OSD parser itself -- see Worked examples #7-#8.
 
 type        = scalar-type / ref-type
 scalar-type = scalar-name ["?"]

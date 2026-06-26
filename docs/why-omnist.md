@@ -168,7 +168,7 @@ Omnist is not trying to be a bigger hammer than it is. Specifically:
 
 - [Model spec](design/model.md) -- the formal Document and Schema
   definitions this page's claims are checked against.
-- [Schema model & DSL](schema.md) -- `compatible_with`, `equivalent`,
+- [Schema model & OSD](schema.md) -- `compatible_with`, `equivalent`,
   `normalize`, and `infer` in full.
 - [Formats](formats/overview.md) -- the per-format mapping and caveats,
   including [XML](formats/xml.md)'s in more detail.

@@ -134,9 +134,9 @@ root Team
 - `string?`, `integer?`, etc. are the nullable form of a scalar — the only suffix the grammar allows.
 - `record` is the one naming keyword. ("type" is *not* a keyword — it would be ambiguous between "a definition", "the thing being named", and a record.)
 
-This is the model-level shape; for the full formal grammar of the Schema
-DSL concrete syntax shown above, see
-[the Schema DSL grammar](schema-dsl-grammar.md).
+This is the model-level shape; for the full formal grammar of the OSD
+concrete syntax shown above, see
+[the OSD grammar](schema-osd-grammar.md).
 
 ---
 

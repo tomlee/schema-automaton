@@ -50,7 +50,7 @@ nav:
   - Why Omnist: why-omnist.md
   - User guide: guide.md
   - OML: formats/oml.md
-  - Schema model & DSL: schema.md
+  - Schema model & OSD: schema.md
   - A real-life example: example.md
   - API reference: api.md
   - Schema-directed deserialization: deserialization.md
@@ -64,7 +64,7 @@ nav:
   - Design:
       - Document & Schema model: design/model.md
       - OML-Core grammar: design/oml-grammar.md
-      - Schema DSL grammar: design/schema-dsl-grammar.md
+      - OSD grammar: design/schema-osd-grammar.md
   - Glossary: glossary.md
   - Testing: testing.md
   - Repo layout: layout.md

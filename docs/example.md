@@ -68,7 +68,7 @@ s = schema(ref("Root"),
 ```python
 from omnist import parse_schema, read_oml, Doc
 
-s = parse_schema(SCHEMA)   # the DSL above
+s = parse_schema(SCHEMA)   # the OSD above
 
 o = read_oml('''
 order: {
@@ -215,7 +215,7 @@ v2.compatible_with(v1)        # False -- a v2 order with a port doesn't
 
 - [User guide](guide.md) — the full reference for documents, OML, schemas, and operations.
 - [OML](formats/oml.md) — Omnist's own format, with zero loss either way.
-- [The Schema model & DSL](schema.md) — a focused introduction to schemas on their own.
+- [The Schema model & OSD](schema.md) — a focused introduction to schemas on their own.
 - [Formats](formats/overview.md) — how each format maps to the model, and its caveats.
 - [Model spec](design/model.md) — the formal definitions.
 - [`examples/canonical_model.py`](https://github.com/omnist-dev/omnist/blob/master/examples/canonical_model.py) — a runnable version.
