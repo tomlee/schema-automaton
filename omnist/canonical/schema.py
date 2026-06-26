@@ -318,9 +318,9 @@ class Schema:
         return normalize(self)
 
     # -- serialization --------------------------------------------------
-    def to_osd(self) -> str:
+    def to_osd(self, *, indent: Optional[int] = 4) -> str:
         from .osd import to_osd
-        return to_osd(self)
+        return to_osd(self, indent=indent)
 
     def __repr__(self) -> str:
         return f"Schema(root={self.root!r}, env={list(self.env)})"

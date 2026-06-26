@@ -116,6 +116,18 @@ to_osd(parse_schema('record Car { "license": string }\nroot Car'))
 # 'record Car {\n    "license": string,\n}\nroot Car\n'
 ```
 
+`to_osd(schema, indent=None)` (and the equivalent `schema.to_osd(indent=None)`)
+renders the same schema on a single line instead, for cases where
+pretty-printing isn't useful (e.g. embedding in a log line or a one-line
+config value):
+
+```python
+to_osd(parse_schema('record Car { "license": string }\nroot Car'), indent=None)
+# 'record Car { "license": string } root Car\n'
+```
+
+Both forms round-trip through `parse_schema` to an equivalent `Schema`.
+
 ## Validation
 
 `schema.validate(doc)` returns a `ValidationResult` with `.ok` and `.errors`

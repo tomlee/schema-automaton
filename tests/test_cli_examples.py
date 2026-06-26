@@ -74,6 +74,12 @@ class TestFormatExample:
         assert code == 0
         assert out == 'name: "Ann"\n'
 
+    def test_messy_person_oml_compact(self, capsys):
+        code, out, err = run(
+            ["format", "examples/cli/messy-person.oml", "--compact"], capsys)
+        assert code == 0
+        assert out == 'name: "Ann"; age: 30\n'
+
 
 class TestConvertExamples:
     def test_person_json_to_oml(self, capsys):
@@ -189,6 +195,12 @@ class TestSchemaFormatExample:
             '}\n'
             'root Person\n'
         )
+
+    def test_messy_person_osd_compact(self, capsys):
+        code, out, err = run(
+            ["schema", "format", "examples/cli/messy-person.osd", "--compact"], capsys)
+        assert code == 0
+        assert out == 'record Person { "name": string, "age" [0,1]: integer } root Person\n'
 
 
 class TestSchemaNormalizeExample:

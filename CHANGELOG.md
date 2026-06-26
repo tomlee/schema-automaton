@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.2.11] — Compact (single-line) output for OML and OSD
+
+`write_oml(node, indent=None)` and `to_osd(schema, indent=None)` (also
+`Schema.to_osd(indent=None)`) now render single-line, machine-oriented
+output instead of the pretty-printed default — `indent=None` mirrors
+`write_json`'s existing convention. Both compact forms round-trip through
+the unchanged `read_oml`/`parse_schema`, since OML already treats `;` as
+an edge separator and OSD already treats whitespace as insignificant.
+
+The CLI gains a `--compact` flag on every command that writes OML or OSD
+text: `format`, `convert` (when `--to oml`), `infer`, `schema format`,
+`schema normalize`. Purely additive — all defaults are unchanged. See
+issue [#133](https://github.com/omnist-dev/omnist/issues/133).
+
 ## [v0.2.10] — Rename `to_dsl`/`dsl.py` to `to_osd`/`osd.py` (Breaking)
 
 `to_dsl()` and `Schema.to_dsl()` are renamed to `to_osd()`/`Schema.to_osd()`,

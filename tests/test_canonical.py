@@ -63,7 +63,7 @@ class TestPublicApi:
         import omnist as ds
 
         s = ds.parse_schema('record R { "n": integer, "s": string? }\nroot R')
-        assert ds.__version__ == "0.2.10"
+        assert ds.__version__ == "0.2.11"
         # operations are Schema methods
         assert s.validate(ds.doc({"n": 1, "s": None})).ok
         assert s.equivalent(ds.parse_schema(ds.to_osd(s)))
@@ -360,6 +360,25 @@ def test_osd_round_trip(text):
     s = parse_schema(text)
     s2 = parse_schema(to_osd(s))
     assert equivalent(s, s2), f"\n{text}\n->\n{to_osd(s)}"
+
+
+# ------------------------------------------------ OSD compact (indent=None)
+@pytest.mark.parametrize("text", OSD_CASES)
+def test_osd_compact_round_trip(text):
+    s = parse_schema(text)
+    s2 = parse_schema(to_osd(s, indent=None))
+    assert equivalent(s, s2), f"\n{text}\n->\n{to_osd(s, indent=None)}"
+
+
+def test_osd_compact_exact_string():
+    s = parse_schema(
+        'record Member { "name": string, "role": string }\n'
+        'record Team { "name": string, "members" [1,]: Member, '
+        '"lead" [0,1]: string }\nroot Team')
+    assert to_osd(s, indent=None) == (
+        'record Member { "name": string, "role": string } '
+        'record Team { "name": string, "members" [1,]: Member, '
+        '"lead" [0,1]: string } root Team\n')
 
 
 # ----------------------------------------------------------- operations

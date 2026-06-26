@@ -98,6 +98,15 @@ def test_oml_ex17_bare_top_level_scalar_is_the_whole_document():
     assert read_oml('"hello"') == "hello"
 
 
+def test_oml_ex18_compact_write_round_trips():
+    from omnist import write_oml
+
+    node = [("a", 1), ("b", [("x", 1), ("y", 2)])]
+    text = write_oml(node, indent=None)
+    assert text == "a: 1; b: { x: 1; y: 2 }"
+    assert read_oml(text) == node
+
+
 # ---------------------------------------------------------------------------
 # docs/design/schema-osd-grammar.md -- Worked examples
 # ---------------------------------------------------------------------------
@@ -199,3 +208,12 @@ def test_osd_ex18_to_osd_roundtrip():
 
     s = parse_schema('record R { "a" [0,3]: string? }\nroot R')
     assert to_osd(s) == 'record R {\n    "a" [0,3]: string?,\n}\nroot R\n'
+
+
+def test_osd_ex19_compact_to_osd_roundtrip():
+    from omnist import to_osd
+
+    s = parse_schema('record R { "a": string }\nroot R')
+    text = to_osd(s, indent=None)
+    assert text == 'record R { "a": string } root R\n'
+    assert s.equivalent(parse_schema(text))

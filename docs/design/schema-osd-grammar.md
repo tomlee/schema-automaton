@@ -189,3 +189,4 @@ behavior (see `tests/test_grammar_docs.py` for the executable form).
 | 16 | `record R { "a": string, }` (trailing comma) | OK — trailing comma after the last field is accepted |
 | 17 | `# comment\nrecord R { "a": string } # trailing\nroot R` | comments anywhere whitespace is valid are discarded; schema parses normally |
 | 18 | `to_osd(parse_schema('record R { "a" [0,3]: string? }\nroot R'))` | round-trips to `'record R {\n    "a" [0,3]: string?,\n}\nroot R\n'` |
+| 19 | `to_osd(parse_schema('record R { "a": string }\nroot R'), indent=None)` | compact form `'record R { "a": string } root R\n'`, which `parse_schema` parses back to an equivalent schema |

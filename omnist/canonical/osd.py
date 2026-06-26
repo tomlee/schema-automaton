@@ -196,18 +196,32 @@ def parse_schema(text: str) -> Schema:
 # Serialize a Schema back to OSD text
 # ---------------------------------------------------------------------------
 
-def to_osd(schema: Schema) -> str:
-    lines: List[str] = []
-    for name, rec in schema.env.items():
-        lines.append(_record(name, rec))
-    lines.append(f"root {schema.root.name}")
-    return "\n".join(lines) + "\n"
+def to_osd(schema: Schema, *, indent: Optional[int] = 4) -> str:
+    """Serialize a Schema back to OSD text.
+
+    ``indent=None`` renders a single-line, machine-oriented form (record
+    defs and the ``root`` statement joined by spaces, fields joined by
+    ``", "``, no trailing comma) instead of the default pretty-printed,
+    indented form -- mirroring ``write_oml``/``write_json``'s own
+    ``indent=None`` convention. A non-``None`` int sets the pretty-mode
+    indent width (default 4, matching the prior hardcoded behavior). Both
+    forms round-trip through ``parse_schema``.
+    """
+    parts: List[str] = [_record(name, rec, indent) for name, rec in schema.env.items()]
+    parts.append(f"root {schema.root.name}")
+    if indent is None:
+        return " ".join(parts) + "\n"
+    return "\n".join(parts) + "\n"
 
 
-def _record(name: str, rec: Record) -> str:
+def _record(name: str, rec: Record, indent: Optional[int]) -> str:
+    if indent is None:
+        fields = ", ".join(_field(f) for f in rec.fields)
+        return f"record {name} {{ {fields} }}"
+    pad = " " * indent
     out = [f"record {name} {{"]
     for f in rec.fields:
-        out.append(f"    {_field(f)},")
+        out.append(f"{pad}{_field(f)},")
     out.append("}")
     return "\n".join(out)
 

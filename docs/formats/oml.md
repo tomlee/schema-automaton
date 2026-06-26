@@ -230,6 +230,19 @@ Doc.of({"name": "Ada"}).to_oml()      # 'name: "Ada"'
 > the minimal string-escape form (`\"` and `\\` plus literal Unicode) — same
 > input always produces the same output (useful for diffing/snapshotting).
 
+`write_oml(node, indent=None)` switches to a single-line, machine-oriented
+form — edges joined by `; ` instead of newlines — for cases like log lines
+or diffless storage where pretty-printing isn't useful:
+
+```python
+node = [("name", "Ada"), ("tags", [("tag", "x"), ("tag", "y")])]
+write_oml(node)             # 'name: "Ada"\ntags: {\n  tag: "x"\n  tag: "y"\n}'
+write_oml(node, indent=None) # 'name: "Ada"; tags: { tag: "x"; tag: "y" }'
+```
+
+Both forms round-trip through `read_oml` to the same Document — `indent`
+only changes layout, never meaning.
+
 ## Strings: escaping, raw, and multiline
 
 A normal string escapes the usual set: `\"`, `\\`, `\n`, `\t`, `\r`, `\b`,

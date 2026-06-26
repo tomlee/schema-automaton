@@ -472,15 +472,22 @@ def read_oml(text: str, *, schema: Optional[Any] = None) -> Any:
     return materialize(node, schema)
 
 
-def write_oml(node: Any, *, indent: int = 2) -> str:
+def write_oml(node: Any, *, indent: Optional[int] = 2) -> str:
     """Render a canonical Document node as OML source.
 
     OML is lossless for every Document: there is never an adjustment to
     report (unlike JSON/YAML/TOML/XML), so there is no ``check_oml``/
     ``strict=``/``report=`` machinery — the write always succeeds exactly.
+
+    ``indent=None`` renders a single-line, machine-oriented form (edges
+    joined by ``"; "``, no newlines/padding) instead of the default
+    pretty-printed, indented form -- mirroring ``write_json``'s own
+    ``indent=None`` convention. Both forms round-trip through ``read_oml``.
     """
     if not isinstance(node, list):
         return _write_scalar(node)
+    if indent is None:
+        return _write_edges_compact(node)
     return _write_edges(node, 0, indent)
 
 
@@ -504,6 +511,21 @@ def _write_edges(edges: List[Tuple[str, Any]], depth: int, indent: int) -> str:
         else:
             lines.append(f"{pad}{lab}: {_write_scalar(child)}")
     return "\n".join(lines)
+
+
+def _write_edges_compact(edges: List[Tuple[str, Any]]) -> str:
+    parts = []
+    for label, child in edges:
+        lab = _write_label(label)
+        if isinstance(child, list):
+            if not child:
+                parts.append(f"{lab}: {{}}")
+            else:
+                inner = _write_edges_compact(child)
+                parts.append(f"{lab}: {{ {inner} }}")
+        else:
+            parts.append(f"{lab}: {_write_scalar(child)}")
+    return "; ".join(parts)
 
 
 _BARE_LABEL_RE = _re.compile(r"^[A-Za-z_][A-Za-z0-9_\-]*$")

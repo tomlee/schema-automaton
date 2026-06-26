@@ -8,14 +8,14 @@
 ## 1. Command tree
 
 ```
-omnist format     <input>                          [-o OUTPUT]
-omnist convert    <input>   --from FMT --to FMT [--schema FILE] [--strict] [--report] [--result-format text|json|oml] [-o OUTPUT]
+omnist format     <input>                          [--compact] [-o OUTPUT]
+omnist convert    <input>   --from FMT --to FMT [--schema FILE] [--strict] [--report] [--result-format text|json|oml] [--compact] [-o OUTPUT]
 omnist validate   <input>   --from FMT --schema FILE [--result-format text|json|oml]
-omnist infer      <input>...  --from FMT             [-o OUTPUT]
+omnist infer      <input>...  --from FMT             [--compact] [-o OUTPUT]
 omnist check      <input>   --from FMT --to FMT [--strict] [--result-format text|json|oml]
 
-omnist schema format           <schema-file>  [-o OUTPUT]
-omnist schema normalize        <schema-file>  [-o OUTPUT]
+omnist schema format           <schema-file>  [--compact] [-o OUTPUT]
+omnist schema normalize        <schema-file>  [--compact] [-o OUTPUT]
 omnist schema compatible-with  <a> <b>        [--result-format text|json|oml]
 omnist schema equivalent       <a> <b>        [--result-format text|json|oml]
 ```
@@ -38,15 +38,17 @@ no `--from`/`--to`.
 
 ## 3. Commands
 
-### `omnist format <input> [-o OUTPUT]`
+### `omnist format <input> [--compact] [-o OUTPUT]`
 
-`read_oml(text)` → `write_oml(node)`. OML only; no flags beyond `-o`.
+`read_oml(text)` → `write_oml(node)`. OML only; `--compact` is the only
+flag beyond `-o` (`write_oml(node, indent=None)` — single-line output).
 
 ```sh
 omnist format messy.oml -o clean.oml
+omnist format messy.oml --compact
 ```
 
-### `omnist convert <input> --from FMT --to FMT [--schema FILE] [--strict] [--report] [--result-format text|json|oml] [-o OUTPUT]`
+### `omnist convert <input> --from FMT --to FMT [--schema FILE] [--strict] [--report] [--result-format text|json|oml] [--compact] [-o OUTPUT]`
 
 `read_<from>(text, schema=...)` → `write_<to>(node, strict=, report=)`.
 
@@ -57,6 +59,8 @@ omnist format messy.oml -o clean.oml
   `--result-format`, default `text`); the write still happens.
 - `--strict`: refuses to write at all if anything would need adjusting —
   exit `1`.
+- `--compact`: single-line OML output (`write_oml(node, indent=None)`)
+  when `--to oml`; no effect for other `--to` values.
 - `--from oml --to oml` is rejected (exit `2`, use `format`). Every other
   same-format pair (`json`→`json`, etc.) is allowed.
 - One document in, one document out; no batch mode.
@@ -83,9 +87,10 @@ omnist validate order.json --from json --schema order.osd
 omnist validate order.xml --from xml --schema order.osd --result-format json
 ```
 
-### `omnist infer <input>... --from FMT [-o OUTPUT]`
+### `omnist infer <input>... --from FMT [--compact] [-o OUTPUT]`
 
 All inputs same format; `infer(docs)`, writes the result as OSD.
+`--compact` emits a single-line schema (`to_osd(schema, indent=None)`).
 
 ```sh
 omnist infer samples/*.json --from json -o inferred.osd
@@ -104,20 +109,23 @@ omnist check data.json --from json --to toml
 omnist check data.json --from json --to toml --strict
 ```
 
-### `omnist schema format <schema-file> [-o OUTPUT]`
+### `omnist schema format <schema-file> [--compact] [-o OUTPUT]`
 
 `parse_schema` → `to_osd`. Safe reformat only — same records, same names,
 canonical whitespace/field order. No structural change (contrast
-`normalize`).
+`normalize`). `--compact` emits a single-line schema (`to_osd(schema,
+indent=None)`).
 
 ```sh
 omnist schema format messy.osd -o clean.osd
+omnist schema format messy.osd --compact
 ```
 
-### `omnist schema normalize <schema-file> [-o OUTPUT]`
+### `omnist schema normalize <schema-file> [--compact] [-o OUTPUT]`
 
 `Schema.normalize()`, written back as OSD. May merge structurally-
 identical records — a structural change, unlike `schema format`.
+`--compact` emits a single-line schema, same as `schema format`.
 
 ### `omnist schema compatible-with <a> <b> [--result-format text|json|oml]`
 

@@ -108,7 +108,7 @@ def _encode_validation_result(result: ValidationResult, fmt: str) -> str:
 
 def _cmd_format(args: argparse.Namespace) -> int:
     node = read_oml(_read_input(args.input))
-    _write_output(args.output, write_oml(node))
+    _write_output(args.output, write_oml(node, indent=None if args.compact else 2))
     return 0
 
 
@@ -128,9 +128,11 @@ def _encode_write_report(rep: WriteReport, fmt: str) -> str:
     raise ValueError(f"unknown result format {fmt!r}")  # unreachable: argparse restricts choices
 
 
-def _write_to_format(fmt: str, node: Any, *, strict: bool, report: Optional[WriteReport]) -> str:
+def _write_to_format(
+    fmt: str, node: Any, *, strict: bool, report: Optional[WriteReport], compact: bool
+) -> str:
     if fmt == "oml":
-        return write_oml(node)
+        return write_oml(node, indent=None if compact else 2)
     return _WRITERS[fmt](node, strict=strict, report=report)
 
 
@@ -144,7 +146,8 @@ def _cmd_convert(args: argparse.Namespace) -> int:
     node = _READERS[args.from_](_read_input(args.input), schema=schema)
     report = WriteReport() if args.report else None
     try:
-        text = _write_to_format(args.to, node, strict=args.strict, report=report)
+        text = _write_to_format(
+            args.to, node, strict=args.strict, report=report, compact=args.compact)
     except WriteError as exc:
         if exc.report is not None:
             # --strict refused a lossy write -- a definite "no," not a
@@ -181,19 +184,19 @@ def _cmd_infer(args: argparse.Namespace) -> int:
     reader = _READERS[args.from_]
     docs = [Doc(reader(_read_input(p))) for p in args.input]
     s = infer(docs)
-    _write_output(args.output, to_osd(s))
+    _write_output(args.output, to_osd(s, indent=None if args.compact else 4))
     return 0
 
 
 def _cmd_schema_format(args: argparse.Namespace) -> int:
     s = parse_schema(_read_input(args.schema_file))
-    _write_output(args.output, to_osd(s))
+    _write_output(args.output, to_osd(s, indent=None if args.compact else 4))
     return 0
 
 
 def _cmd_schema_normalize(args: argparse.Namespace) -> int:
     s = parse_schema(_read_input(args.schema_file))
-    _write_output(args.output, to_osd(s.normalize()))
+    _write_output(args.output, to_osd(s.normalize(), indent=None if args.compact else 4))
     return 0
 
 
@@ -238,6 +241,9 @@ def _build_parser() -> argparse.ArgumentParser:
     format_p = subparsers.add_parser(
         "format", help="canonicalize an OML document (the only format with no other tool for this)")
     format_p.add_argument("input", help="OML file, or - for stdin")
+    format_p.add_argument(
+        "--compact", action="store_true",
+        help="single-line, machine-oriented output instead of pretty-printed")
     format_p.add_argument("-o", "--output", help="output file; omit for stdout")
     format_p.set_defaults(func=_cmd_format)
 
@@ -256,6 +262,9 @@ def _build_parser() -> argparse.ArgumentParser:
     convert_p.add_argument(
         "--result-format", choices=RESULT_FORMAT_CHOICES, default="text",
         help="encoding for --report's output; no effect without --report")
+    convert_p.add_argument(
+        "--compact", action="store_true",
+        help="single-line, machine-oriented output when --to oml; no effect otherwise")
     convert_p.add_argument("-o", "--output", help="output file; omit for stdout")
     convert_p.set_defaults(func=_cmd_convert)
 
@@ -284,6 +293,9 @@ def _build_parser() -> argparse.ArgumentParser:
         "infer", help="draft a schema from example documents (all the same format)")
     infer_p.add_argument("input", nargs="+", help="document files, same format")
     infer_p.add_argument("--from", dest="from_", required=True, choices=FMT_CHOICES)
+    infer_p.add_argument(
+        "--compact", action="store_true",
+        help="single-line, machine-oriented OSD output instead of pretty-printed")
     infer_p.add_argument("-o", "--output", help="output file; omit for stdout")
     infer_p.set_defaults(func=_cmd_infer)
 
@@ -293,12 +305,18 @@ def _build_parser() -> argparse.ArgumentParser:
     schema_format_p = schema_sub.add_parser(
         "format", help="canonicalize an OSD schema file (safe reformat only, no structural change)")
     schema_format_p.add_argument("schema_file", help="OSD file, or - for stdin")
+    schema_format_p.add_argument(
+        "--compact", action="store_true",
+        help="single-line, machine-oriented output instead of pretty-printed")
     schema_format_p.add_argument("-o", "--output", help="output file; omit for stdout")
     schema_format_p.set_defaults(func=_cmd_schema_format)
 
     schema_normalize_p = schema_sub.add_parser(
         "normalize", help="simplify an OSD schema (may merge structurally-identical records)")
     schema_normalize_p.add_argument("schema_file", help="OSD file, or - for stdin")
+    schema_normalize_p.add_argument(
+        "--compact", action="store_true",
+        help="single-line, machine-oriented output instead of pretty-printed")
     schema_normalize_p.add_argument("-o", "--output", help="output file; omit for stdout")
     schema_normalize_p.set_defaults(func=_cmd_schema_normalize)
 

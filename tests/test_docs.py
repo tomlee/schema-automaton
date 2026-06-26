@@ -22,6 +22,7 @@ from omnist import (
     register_format,
     schema,
     t,
+    to_osd,
 )
 
 
@@ -30,7 +31,7 @@ def test_readme_at_a_glance():
                      'record Team { "name": string, "members" [1,]: Member }\nroot Team')
     assert s.validate(doc({"name": "X",
                            "members": [{"name": "Ann", "role": "dev"}]})).ok
-    assert ds.__version__ == "0.2.10"
+    assert ds.__version__ == "0.2.11"
 
 
 def test_quickstart():
@@ -63,6 +64,13 @@ def test_guide_oml_native_format():
     assert d.to_grouped() == {"name": "Ann", "tag": ["x", "y"],
                               "joined": datetime.date(2024, 1, 1)}
     assert d.to_oml() == 'name: "Ann"\ntag: "x"\ntag: "y"\njoined: 2024-01-01'
+
+
+def test_formats_oml_compact_write():
+    from omnist import write_oml
+    node = [("name", "Ada"), ("tags", [("tag", "x"), ("tag", "y")])]
+    assert write_oml(node) == 'name: "Ada"\ntags: {\n  tag: "x"\n  tag: "y"\n}'
+    assert write_oml(node, indent=None) == 'name: "Ada"; tags: { tag: "x"; tag: "y" }'
 
 
 def test_formats_oml_edge_order_is_data_but_validation_ignores_it():
@@ -123,6 +131,13 @@ def test_schema_page_osd_shape_and_builder_equivalence():
     )
     s2 = schema(ref("User"), User=user, Address=address)
     assert s.equivalent(s2)
+
+
+def test_schema_page_to_osd_pretty_and_compact():
+    s = parse_schema('record Car { "license": string }\nroot Car')
+    assert to_osd(s) == 'record Car {\n    "license": string,\n}\nroot Car\n'
+    assert to_osd(s, indent=None) == 'record Car { "license": string } root Car\n'
+    assert s.equivalent(parse_schema(to_osd(s, indent=None)))
 
 
 def test_schema_page_validation_errors():
@@ -400,7 +415,7 @@ def test_api_docs_format_registry():
 
 
 def test_api_docs_version():
-    assert ds.__version__ == "0.2.10"
+    assert ds.__version__ == "0.2.11"
 
 
 def test_api_docs_schema_raises():

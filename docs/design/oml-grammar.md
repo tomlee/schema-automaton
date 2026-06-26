@@ -329,3 +329,4 @@ behavior (see `tests/test_grammar_docs.py` for the executable form).
 | 15 | `tag: "x"␊tag: "y"` | repeated label → two edges, `[('tag', 'x'), ('tag', 'y')]` (an array is just a repeated label, never a list value) |
 | 16 | `a: {}` | empty node value → `[('a', [])]` |
 | 17 | `"hello"` (top level, no label) | the whole document is the single scalar `'hello'` |
+| 18 | `write_oml([('a', 1), ('b', [('x', 1), ('y', 2)])], indent=None)` | compact form `'a: 1; b: { x: 1; y: 2 }'`, which `read_oml` parses back to the same node |

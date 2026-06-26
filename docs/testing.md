@@ -60,10 +60,10 @@ omnist/__init__.py                   12      0   100%
 omnist/canonical/__init__.py         12      0   100%
 omnist/canonical/deserialize.py      75      0   100%
 omnist/canonical/document.py        202      0   100%
-omnist/canonical/osd.py             145      0   100%
+omnist/canonical/osd.py             149      0   100%
 omnist/canonical/formats.py         217      0   100%
 omnist/canonical/infer.py            77      0   100%
-omnist/canonical/oml.py             424      0   100%
+omnist/canonical/oml.py             437      0   100%
 omnist/canonical/operations.py       76      0   100%
 omnist/canonical/registry.py         32      0   100%
 omnist/canonical/report.py           35      0   100%

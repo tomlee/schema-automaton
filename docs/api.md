@@ -81,9 +81,10 @@ Parse OSD text (`record` / `root`) into a `Schema`. Raises
 `SchemaError` on malformed text or an undefined reference. See the
 [OSD section of the guide](guide.md#schemas--osd).
 
-### `to_osd(schema) -> str`
+### `to_osd(schema, *, indent=4) -> str`
 Serialize a `Schema` back to OSD text. `parse_schema(to_osd(s))` is equivalent
-to `s`.
+to `s`. `indent=None` renders a single-line, machine-oriented form instead
+of the pretty-printed default; both round-trip through `parse_schema`.
 
 ### `infer(samples, root_name="Root") -> Schema`
 Draft a schema from example Documents (`Doc`s or plain values). Cardinality
@@ -134,7 +135,7 @@ names an entry not present in `env`.
 | `.compatible_with(other) -> bool` | every document this accepts, `other` also accepts (backward-compat) |
 | `.equivalent(other) -> bool` | both accept exactly the same documents |
 | `.normalize() -> Schema` | merge structurally-identical named definitions |
-| `.to_osd() -> str` | serialize back to OSD |
+| `.to_osd(*, indent=4) -> str` | serialize back to OSD; `indent=None` for a single-line, compact form |
 | `.root`, `.env` | the root `Ref` and the name→record map |
 | `.resolve(t) -> Record` | follow a `Ref` chain to a `Record` |
 
@@ -189,7 +190,7 @@ Low-level codecs over the canonical node form (a scalar, or a list of
 | | |
 |---|---|
 | `read_oml(text)` / `read_json` / `read_yaml` / `read_toml` / `read_xml` | parse → a node |
-| `write_oml(node, *, indent=2)` | a node → **OML**, losslessly — no `strict`/`report` needed (see below) |
+| `write_oml(node, *, indent=2)` | a node → **OML**, losslessly — no `strict`/`report` needed (see below); `indent=None` for a single-line, compact form |
 | `write_json(node, *, strict=False, report=None, indent=None)` | a node → JSON (groups same-label edges) |
 | `write_yaml(node, *, strict=False, report=None)` | a node → YAML |
 | `write_toml(node, *, strict=False, report=None)` | a node → TOML |

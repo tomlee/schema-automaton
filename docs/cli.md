@@ -65,7 +65,7 @@ options:
 ## `omnist format`
 
 ```
-omnist format <input> [-o OUTPUT]
+omnist format <input> [--compact] [-o OUTPUT]
 ```
 
 Canonicalizes an OML document — `read_oml` then `write_oml`. `<input>` is a
@@ -83,13 +83,21 @@ $ echo 'name:   "Ann"' | omnist format -
 name: "Ann"
 ```
 
+`--compact` emits a single-line, machine-oriented form instead
+(`write_oml(node, indent=None)`):
+
+```sh
+$ omnist format examples/cli/messy-person.oml --compact
+name: "Ann"; age: 30
+```
+
 Malformed OML raises the same `ParseError` `read_oml` would, printed to
 stderr as `error: ...`, exit code `2` — nothing written.
 
 ## `omnist convert`
 
 ```
-omnist convert <input> --from FMT --to FMT [--schema FILE] [--strict] [--report] [--result-format text|json|oml] [-o OUTPUT]
+omnist convert <input> --from FMT --to FMT [--schema FILE] [--strict] [--report] [--result-format text|json|oml] [--compact] [-o OUTPUT]
 ```
 
 `read_<from>(text, schema=...)` → `write_<to>(node, strict=, report=)`.
@@ -119,6 +127,9 @@ OML is always exactly lossless):
   adjusting — exit `1` (a definite "no, not losslessly possible," grouped
   with `validate`/`compatible-with`'s `1`, not the usage/parse failures
   that exit `2`).
+
+`--compact` emits single-line, machine-oriented OML (`write_oml(node,
+indent=None)`) when `--to oml`; no effect for other `--to` values.
 
 `convert` is one document in, one document out — no batch mode (the
 library's `read_xml`/`write_xml` only support a single-rooted Document;
@@ -192,12 +203,13 @@ warning: $.age: null value dropped (TOML has no null)
 ## `omnist infer`
 
 ```
-omnist infer <input>... --from FMT [-o OUTPUT]
+omnist infer <input>... --from FMT [--compact] [-o OUTPUT]
 ```
 
 All inputs must be the same format. Each is read as a `Doc`,
 [`infer(docs)`](schema.md#operations-compare-and-infer) drafts a schema
-from them, written out as OSD.
+from them, written out as OSD. `--compact` emits a single-line form
+(`to_osd(schema, indent=None)`) instead of the pretty-printed default.
 
 ```sh
 $ omnist infer examples/cli/sample1.json examples/cli/sample2.json --from json
@@ -260,7 +272,7 @@ input or schema, printed to stderr as `error: ...`).
 ## `omnist schema format`
 
 ```
-omnist schema format <schema-file> [-o OUTPUT]
+omnist schema format <schema-file> [--compact] [-o OUTPUT]
 ```
 
 Canonicalizes an OSD ([Omnist Schema Definition](schema.md)) file —
@@ -281,13 +293,21 @@ record Person {
 root Person
 ```
 
+`--compact` emits a single-line form instead (`to_osd(schema,
+indent=None)`):
+
+```sh
+$ omnist schema format examples/cli/messy-person.osd --compact
+record Person { "name": string, "age" [0,1]: integer } root Person
+```
+
 Malformed OSD raises `SchemaError`, printed to stderr as `error: ...`,
 exit code `2`.
 
 ## `omnist schema normalize`
 
 ```
-omnist schema normalize <schema-file> [-o OUTPUT]
+omnist schema normalize <schema-file> [--compact] [-o OUTPUT]
 ```
 
 `Schema.normalize()`, written back out as OSD — unlike `schema format`,
@@ -312,6 +332,9 @@ record Company {
 }
 root Company
 ```
+
+`--compact` emits the same merged schema on a single line instead
+(`to_osd(schema, indent=None)`).
 
 ## `omnist schema compatible-with`
 

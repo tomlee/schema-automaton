@@ -631,3 +631,42 @@ def test_write_oml_rejects_unsupported_scalar_type():
 def test_write_oml_escapes_cr_tab_and_other_control_chars():
     text = write_oml([("a", "x\ry\tz\x01")])
     assert text == 'a: "x\\ry\\tz\\u0001"'
+
+
+# ---------------------------------------------------------------------------
+# write_oml(indent=None) -- compact, single-line output
+# ---------------------------------------------------------------------------
+
+def test_write_oml_compact_exact_string():
+    node = [
+        ("name", "Platform"),
+        ("members", [("name", "Ann"), ("role", "dev")]),
+        ("members", [("name", "Bob"), ("role", "pm")]),
+    ]
+    assert write_oml(node, indent=None) == (
+        'name: "Platform"; members: { name: "Ann"; role: "dev" }; '
+        'members: { name: "Bob"; role: "pm" }')
+
+
+def test_write_oml_compact_empty_nested_node():
+    assert write_oml([("a", [])], indent=None) == "a: {}"
+
+
+def test_write_oml_compact_bare_scalar_document():
+    assert write_oml(42, indent=None) == "42"
+
+
+@pytest.mark.parametrize("node", [
+    [("title", "Conference"),
+     ("attendee", "Ann"),
+     ("session", [("id", 1), ("active", True)]),
+     ("attendee", "Bob"),
+     ("session", [("id", 2), ("active", False)]),
+     ("when", datetime.datetime(2024, 1, 1, 9, 30)),
+     ("price", 29.99),
+     ("notes", None)],
+    [("a", [("b", [("c", 1)])])],
+    [("tag", "x"), ("tag", "y")],
+])
+def test_write_oml_compact_round_trips(node):
+    assert read_oml(write_oml(node, indent=None)) == node

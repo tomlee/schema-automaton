@@ -70,6 +70,13 @@ class TestFormat:
             main(["format"])
         assert exc.value.code == 2
 
+    def test_compact_flag_emits_single_line_output(self, tmp_path, capsys):
+        p = tmp_path / "in.oml"
+        p.write_text('a: 1\nb: { x: 1; y: 2 }\n')
+        code, out, err = run(["format", str(p), "--compact"], capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert out == "a: 1; b: { x: 1; y: 2 }\n"
+
 
 class TestConvert:
     def test_json_to_yaml(self, tmp_path, capsys):
@@ -88,6 +95,15 @@ class TestConvert:
             ["convert", str(p), "--from", "json", "--to", "oml"], capsys=capsys, monkeypatch=None)
         assert code == 0
         assert out == 'a: 1\nb: "x"\n'
+
+    def test_json_to_oml_compact(self, tmp_path, capsys):
+        p = tmp_path / "in.json"
+        p.write_text('{"a": 1, "b": "x"}')
+        code, out, err = run(
+            ["convert", str(p), "--from", "json", "--to", "oml", "--compact"],
+            capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert out == 'a: 1; b: "x"\n'
 
     def test_writes_to_output_file(self, tmp_path, capsys):
         src = tmp_path / "in.json"
@@ -491,6 +507,15 @@ class TestInfer:
             main(["infer", str(f1)])
         assert exc.value.code == 2
 
+    def test_compact_flag_emits_single_line_osd(self, tmp_path, capsys):
+        f1 = tmp_path / "a.json"
+        f1.write_text('{"x": 1}')
+        code, out, err = run(
+            ["infer", str(f1), "--from", "json", "--compact"], capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert "\n" not in out.rstrip("\n")
+        assert '"x": integer' in out
+
 
 class TestSchemaFormat:
     def test_reformats_osd_from_file_to_stdout(self, tmp_path, capsys):
@@ -537,6 +562,14 @@ class TestSchemaFormat:
             main(["schema"])
         assert exc.value.code == 2
 
+    def test_compact_flag_emits_single_line_output(self, tmp_path, capsys):
+        p = tmp_path / "in.osd"
+        p.write_text('record R { "a": integer }\nroot R\n')
+        code, out, err = run(
+            ["schema", "format", str(p), "--compact"], capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert out == 'record R { "a": integer } root R\n'
+
 
 class TestSchemaNormalize:
     def test_merges_structurally_identical_records(self, tmp_path, capsys):
@@ -567,6 +600,14 @@ class TestSchemaNormalize:
         code, out, err = run(["schema", "normalize", str(p)], capsys=capsys, monkeypatch=None)
         assert code == 2
         assert err.startswith("error: ")
+
+    def test_compact_flag_emits_single_line_output(self, tmp_path, capsys):
+        p = tmp_path / "in.osd"
+        p.write_text('record R { "a": integer }\nroot R\n')
+        code, out, err = run(
+            ["schema", "normalize", str(p), "--compact"], capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert out == 'record R { "a": integer } root R\n'
 
 
 class TestSchemaCompatibleWith:
