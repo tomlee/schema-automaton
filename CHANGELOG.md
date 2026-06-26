@@ -4,6 +4,27 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.2.7] — `omnist convert` (core)
+
+Adds `omnist convert <input> --from FMT --to FMT [--schema FILE] [-o
+OUTPUT]` (see `docs/design/cli-spec.md`) — the core cross-format
+conversion command:
+
+- `--from oml --to oml` is rejected (exit `2`, points at `omnist format`
+  instead, which already covers that case losslessly). Every other
+  same-format pair (`json`→`json`, etc.) is allowed, since there's no
+  replacement command for those.
+- `--schema FILE` upgrades/validates the input on read per the
+  [deserialization guarantee](docs/deserialization.md); a conformance
+  failure raises `ParseError` (every problem found), nothing written,
+  exit `2`.
+- One document in, one document out, following the library's
+  single-rooted Document constraint (most visible in XML's one-root
+  requirement) — no batch mode.
+
+`--strict`/`--report`/`--result-format` (the adjustment-reporting flags)
+land in a follow-up release.
+
 ## [v0.2.6] — `omnist infer`
 
 Adds `omnist infer <input>... --from FMT [-o OUTPUT]` (see

@@ -71,6 +71,113 @@ class TestFormat:
         assert exc.value.code == 2
 
 
+class TestConvert:
+    def test_json_to_yaml(self, tmp_path, capsys):
+        p = tmp_path / "in.json"
+        p.write_text('{"a": 1}')
+        code, out, err = run(
+            ["convert", str(p), "--from", "json", "--to", "yaml"], capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert err == ""
+        assert out == "a: 1\n"
+
+    def test_json_to_oml(self, tmp_path, capsys):
+        p = tmp_path / "in.json"
+        p.write_text('{"a": 1, "b": "x"}')
+        code, out, err = run(
+            ["convert", str(p), "--from", "json", "--to", "oml"], capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert out == 'a: 1\nb: "x"\n'
+
+    def test_writes_to_output_file(self, tmp_path, capsys):
+        src = tmp_path / "in.json"
+        src.write_text('{"a": 1}')
+        dst = tmp_path / "out.yaml"
+        code, out, err = run(
+            ["convert", str(src), "--from", "json", "--to", "yaml", "-o", str(dst)],
+            capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert out == ""
+        assert dst.read_text() == "a: 1\n"
+
+    def test_reads_from_stdin(self, capsys, monkeypatch):
+        code, out, err = run(
+            ["convert", "-", "--from", "json", "--to", "yaml"],
+            stdin='{"a": 1}', capsys=capsys, monkeypatch=monkeypatch)
+        assert code == 0
+        assert out == "a: 1\n"
+
+    def test_same_format_other_than_oml_is_allowed(self, tmp_path, capsys):
+        p = tmp_path / "in.json"
+        p.write_text('{"a":   1}')
+        code, out, err = run(
+            ["convert", str(p), "--from", "json", "--to", "json"], capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert out == '{"a": 1}\n'
+
+    def test_oml_to_oml_is_rejected(self, tmp_path, capsys):
+        p = tmp_path / "in.oml"
+        p.write_text('a: 1\n')
+        code, out, err = run(
+            ["convert", str(p), "--from", "oml", "--to", "oml"], capsys=capsys, monkeypatch=None)
+        assert code == 2
+        assert out == ""
+        assert "use `omnist format` instead" in err
+
+    def test_schema_directed_upgrade(self, tmp_path, capsys):
+        p = tmp_path / "in.json"
+        p.write_text('{"d": "2024-01-01"}')
+        schema_f = tmp_path / "s.osd"
+        schema_f.write_text('record R { "d": date }\nroot R\n')
+        code, out, err = run(
+            ["convert", str(p), "--from", "json", "--to", "oml", "--schema", str(schema_f)],
+            capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert out == "d: 2024-01-01\n"   # a real date now, not a quoted string
+
+    def test_schema_conformance_failure_is_a_clean_error(self, tmp_path, capsys):
+        p = tmp_path / "in.json"
+        p.write_text('{"a": 1, "b": "extra"}')
+        schema_f = tmp_path / "s.osd"
+        schema_f.write_text('record R { "a": integer }\nroot R\n')
+        code, out, err = run(
+            ["convert", str(p), "--from", "json", "--to", "oml", "--schema", str(schema_f)],
+            capsys=capsys, monkeypatch=None)
+        assert code == 2
+        assert out == ""
+        assert err.startswith("error: ")
+
+    def test_multi_root_to_xml_is_a_clean_error_not_a_traceback(self, tmp_path, capsys):
+        p = tmp_path / "in.json"
+        p.write_text('{"a": 1, "b": 2}')   # two top-level edges -- not single-rooted
+        code, out, err = run(
+            ["convert", str(p), "--from", "json", "--to", "xml"], capsys=capsys, monkeypatch=None)
+        assert code == 2
+        assert err.startswith("error: ")
+
+    def test_missing_to_is_argparse_usage_error(self, tmp_path):
+        p = tmp_path / "in.json"
+        p.write_text('{"a": 1}')
+        with pytest.raises(SystemExit) as exc:
+            main(["convert", str(p), "--from", "json"])
+        assert exc.value.code == 2
+
+    def test_unknown_to_value_is_argparse_usage_error(self, tmp_path):
+        p = tmp_path / "in.json"
+        p.write_text('{"a": 1}')
+        with pytest.raises(SystemExit) as exc:
+            main(["convert", str(p), "--from", "json", "--to", "bogus"])
+        assert exc.value.code == 2
+
+    def test_malformed_input_is_a_clean_error_not_a_traceback(self, tmp_path, capsys):
+        p = tmp_path / "in.json"
+        p.write_text('{not valid json')
+        code, out, err = run(
+            ["convert", str(p), "--from", "json", "--to", "yaml"], capsys=capsys, monkeypatch=None)
+        assert code == 2
+        assert err.startswith("error: ")
+
+
 class TestValidate:
     SCHEMA = 'record R { "a": integer }\nroot R\n'
 

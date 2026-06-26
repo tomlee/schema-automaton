@@ -25,6 +25,41 @@ echo 'a:   1' | omnist format -
 Malformed OML raises the same `ParseError` `read_oml` would, printed to
 stderr as `error: ...`, exit code `2` — nothing written.
 
+## `omnist convert`
+
+```
+omnist convert <input> --from FMT --to FMT [--schema FILE] [-o OUTPUT]
+```
+
+`read_<from>(text, schema=...)` → `write_<to>(node)`. Reformats data
+across formats, optionally upgrading/validating it against a schema on
+the way in (per the [deserialization guarantee](deserialization.md)).
+
+`--from oml --to oml` is rejected (exit `2`, pointing at `omnist format`
+instead) — that's the one same-format case with a real alternative.
+Every *other* same-format pair (`json`→`json`, `yaml`→`yaml`, etc.) is
+allowed through `convert`, since there's no replacement command for
+those (other formats already have their own formatters elsewhere; this
+CLI doesn't duplicate them).
+
+If `--schema` is given and the input can't be made to conform,
+`materialize` raises `ParseError` (every problem found, not just the
+first) — printed to stderr, nothing written, exit `2`.
+
+`convert` is one document in, one document out — no batch mode (the
+library's `read_xml`/`write_xml` only support a single-rooted Document;
+converting many files is a shell loop).
+
+```sh
+omnist convert order.json --from json --to oml
+omnist convert order.xml --from xml --to oml --schema order.osd -o order.oml
+cat data.toml | omnist convert - --from toml --to json
+```
+
+(`--strict`/`--report`/`--result-format`, for asking about or refusing a
+lossy write, land in a follow-up release — see
+[the CLI spec](design/cli-spec.md) for the full planned surface.)
+
 ## `omnist infer`
 
 ```

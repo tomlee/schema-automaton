@@ -28,7 +28,11 @@ from . import (
     read_xml,
     read_yaml,
     to_dsl,
+    write_json,
     write_oml,
+    write_toml,
+    write_xml,
+    write_yaml,
 )
 
 FMT_CHOICES = ["json", "yaml", "toml", "xml", "oml"]
@@ -40,6 +44,14 @@ _READERS = {
     "toml": read_toml,
     "xml": read_xml,
     "oml": read_oml,
+}
+
+_WRITERS = {
+    "json": write_json,
+    "yaml": write_yaml,
+    "toml": write_toml,
+    "xml": write_xml,
+    "oml": write_oml,
 }
 
 
@@ -80,6 +92,19 @@ def _encode_validation_result(result: ValidationResult, fmt: str) -> str:
 def _cmd_format(args: argparse.Namespace) -> int:
     node = read_oml(_read_input(args.input))
     _write_output(args.output, write_oml(node))
+    return 0
+
+
+def _cmd_convert(args: argparse.Namespace) -> int:
+    if args.from_ == "oml" and args.to == "oml":
+        print(
+            "error: --from oml --to oml is not supported here; use `omnist format` instead",
+            file=sys.stderr)
+        return 2
+    schema = parse_schema(_read_input(args.schema)) if args.schema else None
+    node = _READERS[args.from_](_read_input(args.input), schema=schema)
+    text = _WRITERS[args.to](node)
+    _write_output(args.output, text)
     return 0
 
 
@@ -149,6 +174,15 @@ def _build_parser() -> argparse.ArgumentParser:
     format_p.add_argument("input", help="OML file, or - for stdin")
     format_p.add_argument("-o", "--output", help="output file; omit for stdout")
     format_p.set_defaults(func=_cmd_format)
+
+    convert_p = subparsers.add_parser(
+        "convert", help="convert a document between formats (one in, one out)")
+    convert_p.add_argument("input", help="document file, or - for stdin")
+    convert_p.add_argument("--from", dest="from_", required=True, choices=FMT_CHOICES)
+    convert_p.add_argument("--to", required=True, choices=FMT_CHOICES)
+    convert_p.add_argument("--schema", help="OSD file for schema-directed deserialization")
+    convert_p.add_argument("-o", "--output", help="output file; omit for stdout")
+    convert_p.set_defaults(func=_cmd_convert)
 
     validate_p = subparsers.add_parser(
         "validate", help="check a document against a schema (no schema-directed upgrading)")
