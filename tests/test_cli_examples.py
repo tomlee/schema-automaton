@@ -5,6 +5,9 @@ to the CLI page. Assumes cwd is the repo root (pytest's default).
 """
 from __future__ import annotations
 
+import pytest
+
+from omnist import __version__
 from omnist.cli import main
 
 
@@ -15,6 +18,47 @@ def run(argv, capsys, stdin_text=None, monkeypatch=None):
     code = main(argv)
     out = capsys.readouterr()
     return code, out.out, out.err
+
+
+class TestVersionAndHelpExample:
+    def test_version(self, capsys):
+        with pytest.raises(SystemExit) as exc:
+            main(["--version"])
+        assert exc.value.code == 0
+        assert capsys.readouterr().out == f"omnist {__version__}\n"
+
+    def test_help(self, capsys, monkeypatch):
+        # argparse wraps help text based on terminal width (via COLUMNS);
+        # pin it so this assertion doesn't depend on the runner's environment.
+        monkeypatch.setenv("COLUMNS", "80")
+        with pytest.raises(SystemExit) as exc:
+            main(["--help"])
+        assert exc.value.code == 0
+        out = capsys.readouterr().out
+        assert out == (
+            "usage: omnist [-h] [--version]\n"
+            "              {format,convert,check,validate,infer,schema} ...\n"
+            "\n"
+            "One canonical data model for JSON, YAML, TOML, XML, and OML -- read, validate,\n"
+            "and write any of them. See docs/cli.md for the full command reference.\n"
+            "\n"
+            "positional arguments:\n"
+            "  {format,convert,check,validate,infer,schema}\n"
+            "    format              canonicalize an OML document (the only format with no\n"
+            "                        other tool for this)\n"
+            "    convert             convert a document between formats (one in, one out)\n"
+            "    check               report what writing as --to would adjust, without ever\n"
+            "                        writing\n"
+            "    validate            check a document against a schema (no schema-directed\n"
+            "                        upgrading)\n"
+            "    infer               draft a schema from example documents (all the same\n"
+            "                        format)\n"
+            "    schema              operate on a Schema (OSD)\n"
+            "\n"
+            "options:\n"
+            "  -h, --help            show this help message and exit\n"
+            "  --version             show program's version number and exit\n"
+        )
 
 
 class TestFormatExample:

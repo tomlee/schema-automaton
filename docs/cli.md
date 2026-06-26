@@ -12,8 +12,55 @@ it — see `tests/test_cli_examples.py`, which runs every one of these and
 fails CI if the output ever drifts from what's shown here. Run them
 yourself from the repo root.
 
-`omnist --version` prints the installed version and exits; `omnist --help`
-(or `omnist <command> --help`) prints usage.
+## Commands
+
+- [Version and help](#version-and-help)
+- [`omnist format`](#omnist-format)
+- [`omnist convert`](#omnist-convert)
+- [`omnist check`](#omnist-check)
+- [`omnist infer`](#omnist-infer)
+- [`omnist validate`](#omnist-validate)
+- [`omnist schema format`](#omnist-schema-format)
+- [`omnist schema normalize`](#omnist-schema-normalize)
+- [`omnist schema compatible-with`](#omnist-schema-compatible-with)
+- [`omnist schema equivalent`](#omnist-schema-equivalent)
+
+## Version and help
+
+```sh
+$ omnist --version
+omnist 0.2.9
+```
+
+`--help` is available on the top-level command and every subcommand
+(`omnist <command> --help`) — standard `argparse` behavior, nothing
+omnist-specific:
+
+```sh
+$ omnist --help
+usage: omnist [-h] [--version]
+              {format,convert,check,validate,infer,schema} ...
+
+One canonical data model for JSON, YAML, TOML, XML, and OML -- read, validate,
+and write any of them. See docs/cli.md for the full command reference.
+
+positional arguments:
+  {format,convert,check,validate,infer,schema}
+    format              canonicalize an OML document (the only format with no
+                        other tool for this)
+    convert             convert a document between formats (one in, one out)
+    check               report what writing as --to would adjust, without ever
+                        writing
+    validate            check a document against a schema (no schema-directed
+                        upgrading)
+    infer               draft a schema from example documents (all the same
+                        format)
+    schema              operate on a Schema (OSD)
+
+options:
+  -h, --help            show this help message and exit
+  --version             show program's version number and exit
+```
 
 ## `omnist format`
 
