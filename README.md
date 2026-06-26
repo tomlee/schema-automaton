@@ -70,7 +70,7 @@ print(s.validate(doc({"id": "x", "tags": ["a"]})))
 #     at $.id: expected integer, got string ('x')
 
 # learn a schema from examples
-print(infer([doc({"id": 1, "tags": ["a"]})]).to_dsl())
+print(infer([doc({"id": 1, "tags": ["a"]})]).to_osd())
 #   record Root {
 #       "id": integer,
 #       "tags": string,

@@ -14,7 +14,7 @@ is where the logic actually lives.
   (`[(label, node), ...]` / scalar leaf), with navigation/editing helpers.
 - **`schema.py`** -- the Schema model: `Record`, `Scalar`, `Ref`, `Field`,
   `Schema` (with `validate`), and the seven scalar kinds.
-- **`dsl.py`** -- OSD (Omnist Schema Definition): `parse_schema` / `to_dsl`,
+- **`osd.py`** -- OSD (Omnist Schema Definition): `parse_schema` / `to_osd`,
   parsing and serializing the `record ... root ...` text syntax.
 - **`oml.py`** -- OML (Omnist's own format): tokenizer, parser, and writer;
   the only format with zero adjustments on write.

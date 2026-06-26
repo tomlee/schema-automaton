@@ -102,100 +102,100 @@ def test_oml_ex17_bare_top_level_scalar_is_the_whole_document():
 # docs/design/schema-osd-grammar.md -- Worked examples
 # ---------------------------------------------------------------------------
 
-def test_dsl_ex1_label_backslash_escape_drops_backslash_no_named_escapes():
+def test_osd_ex1_label_backslash_escape_drops_backslash_no_named_escapes():
     s = parse_schema('record R { "a\\nb": string }\nroot R')
     assert s.env["R"].fields[0].label == "anb"
 
 
-def test_dsl_ex2_cardinality_m_n():
+def test_osd_ex2_cardinality_m_n():
     s = parse_schema('record R { "a" [1,5]: string }\nroot R')
     f = s.env["R"].fields[0]
     assert (f.min, f.max) == (1, 5)
 
 
-def test_dsl_ex3_cardinality_m_open():
+def test_osd_ex3_cardinality_m_open():
     s = parse_schema('record R { "a" [5,]: string }\nroot R')
     f = s.env["R"].fields[0]
     assert (f.min, f.max) == (5, None)
 
 
-def test_dsl_ex4_cardinality_open_n():
+def test_osd_ex4_cardinality_open_n():
     s = parse_schema('record R { "a" [,5]: string }\nroot R')
     f = s.env["R"].fields[0]
     assert (f.min, f.max) == (0, 5)
 
 
-def test_dsl_ex5_cardinality_fully_open():
+def test_osd_ex5_cardinality_fully_open():
     s = parse_schema('record R { "a" [,]: string }\nroot R')
     f = s.env["R"].fields[0]
     assert (f.min, f.max) == (0, None)
 
 
-def test_dsl_ex6_empty_cardinality_is_an_error():
+def test_osd_ex6_empty_cardinality_is_an_error():
     with pytest.raises(SchemaError, match="empty cardinality"):
         parse_schema('record R { "a" []: string }\nroot R')
 
 
-def test_dsl_ex7_negative_cardinality_rejected_by_field_not_parser():
+def test_osd_ex7_negative_cardinality_rejected_by_field_not_parser():
     with pytest.raises(SchemaError, match="invalid cardinality"):
         parse_schema('record R { "a" [-1]: string }\nroot R')
 
 
-def test_dsl_ex8_inverted_cardinality_rejected_by_field_not_parser():
+def test_osd_ex8_inverted_cardinality_rejected_by_field_not_parser():
     with pytest.raises(SchemaError, match="invalid cardinality"):
         parse_schema('record R { "a" [1,0]: string }\nroot R')
 
 
-def test_dsl_ex9_fractional_cardinality_is_an_error():
+def test_osd_ex9_fractional_cardinality_is_an_error():
     with pytest.raises(SchemaError, match="whole number"):
         parse_schema('record R { "a" [1.5]: string }\nroot R')
 
 
-def test_dsl_ex10_nullable_scalar():
+def test_osd_ex10_nullable_scalar():
     s = parse_schema('record R { "a": string? }\nroot R')
     f = s.env["R"].fields[0]
     assert f.type.name == "string" and f.type.nullable is True
 
 
-def test_dsl_ex11_nullable_ref_is_rejected():
+def test_osd_ex11_nullable_ref_is_rejected():
     with pytest.raises(SchemaError, match=r"cannot apply to the reference"):
         parse_schema('record S { "x": string }\nrecord R { "a": S? }\nroot R')
 
 
-def test_dsl_ex12_reserved_scalar_name_as_record_name_is_rejected():
+def test_osd_ex12_reserved_scalar_name_as_record_name_is_rejected():
     with pytest.raises(SchemaError, match="reserved scalar name"):
         parse_schema('record string { "a": string }\nroot string')
 
 
-def test_dsl_ex13_duplicate_record_definition_is_rejected():
+def test_osd_ex13_duplicate_record_definition_is_rejected():
     with pytest.raises(SchemaError, match="duplicate definition"):
         parse_schema('record R{"a":string}\nrecord R{"b":string}\nroot R')
 
 
-def test_dsl_ex14_missing_root_is_rejected():
+def test_osd_ex14_missing_root_is_rejected():
     with pytest.raises(SchemaError, match="must declare a root"):
         parse_schema('record R{"a":string}')
 
 
-def test_dsl_ex15_unquoted_label_is_rejected():
+def test_osd_ex15_unquoted_label_is_rejected():
     with pytest.raises(SchemaError, match="quoted field name"):
         parse_schema('record R{a:string}\nroot R')
 
 
-def test_dsl_ex16_trailing_comma_in_record_body_is_accepted():
+def test_osd_ex16_trailing_comma_in_record_body_is_accepted():
     s = parse_schema('record R { "a": string, }\nroot R')
     assert [f.label for f in s.env["R"].fields] == ["a"]
 
 
-def test_dsl_ex17_comments_are_discarded_anywhere():
+def test_osd_ex17_comments_are_discarded_anywhere():
     s = parse_schema(
         '# comment\nrecord R { "a": string } # trailing\nroot R'
     )
     assert [f.label for f in s.env["R"].fields] == ["a"]
 
 
-def test_dsl_ex18_to_dsl_roundtrip():
-    from omnist import to_dsl
+def test_osd_ex18_to_osd_roundtrip():
+    from omnist import to_osd
 
     s = parse_schema('record R { "a" [0,3]: string? }\nroot R')
-    assert to_dsl(s) == 'record R {\n    "a" [0,3]: string?,\n}\nroot R\n'
+    assert to_osd(s) == 'record R {\n    "a" [0,3]: string?,\n}\nroot R\n'

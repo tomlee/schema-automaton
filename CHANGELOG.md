@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.2.10] — Rename `to_dsl`/`dsl.py` to `to_osd`/`osd.py` (Breaking)
+
+`to_dsl()` and `Schema.to_dsl()` are renamed to `to_osd()`/`Schema.to_osd()`,
+and `omnist/canonical/dsl.py` is renamed to `omnist/canonical/osd.py`. This
+finishes the OSD (Omnist Schema Definition) terminology rewrite — `to_dsl`
+was the one writer left following the old name instead of the `to_<format>`
+pattern every other writer uses (`to_oml`, `to_json`, …). No deprecated
+alias is provided, consistent with this project's practice of clean breaks
+over shims (e.g. `obj`/`arr`/`ObjectType` before it).
+
 ## [v0.2.9] — `omnist --version`
 
 Adds `omnist --version` (prints `<prog> <version>`, exit `0`) and a

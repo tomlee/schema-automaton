@@ -24,7 +24,6 @@ lives in :mod:`omnist.canonical`; this module is its public surface.
 
 from .canonical.deserialize import materialize
 from .canonical.document import Doc, doc
-from .canonical.dsl import parse_schema, to_dsl
 from .canonical.formats import (
     check_json,
     check_toml,
@@ -41,6 +40,7 @@ from .canonical.formats import (
 )
 from .canonical.infer import infer
 from .canonical.oml import check_oml, read_oml, write_oml
+from .canonical.osd import parse_schema, to_osd
 from .canonical.registry import Format, formats, get_format, register_format
 from .canonical.report import Adjustment, WriteReport, finish_write
 from .canonical.schema import (
@@ -75,7 +75,7 @@ from .errors import (
     WriteError,
 )
 
-__version__ = "0.2.9"
+__version__ = "0.2.10"
 
 __all__ = [
     # errors
@@ -88,8 +88,8 @@ __all__ = [
     # builders
     "record", "ref", "field", "schema", "nullable", "t",
     "STRING", "INTEGER", "NUMBER", "BOOLEAN", "DATE", "TIME", "DATETIME",
-    # dsl
-    "parse_schema", "to_dsl",
+    # osd
+    "parse_schema", "to_osd",
     # operations (compatible_with / equivalent / normalize are Schema methods)
     "infer", "materialize",
     # codecs

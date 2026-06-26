@@ -8,7 +8,7 @@ described in ``docs/design/model.md``:
 * :mod:`~omnist.canonical.schema` — the Schema as ``Record`` (labels) /
   ``Scalar`` (one of seven, never composed) / ``Ref``, with field
   cardinality, plus conformance.
-* :mod:`~omnist.canonical.dsl` — the ``record`` text syntax.
+* :mod:`~omnist.canonical.osd` — the ``record`` text syntax (OSD).
 * :mod:`~omnist.canonical.operations` — ``compatible_with`` / ``equivalent``
   / ``normalize`` on the new model.
 
@@ -18,7 +18,6 @@ public surface.
 
 from .deserialize import materialize
 from .document import Doc, doc
-from .dsl import parse_schema, to_dsl
 from .formats import (
     check_json,
     check_toml,
@@ -35,6 +34,7 @@ from .formats import (
 )
 from .infer import infer
 from .operations import compatible_with, equivalent, normalize
+from .osd import parse_schema, to_osd
 from .registry import Format, formats, get_format, register_format
 
 # register the four built-in formats
@@ -69,7 +69,7 @@ __all__ = [
     "Schema", "Record", "Scalar", "Ref", "Field", "ValidationResult",
     "record", "ref", "field", "schema", "nullable", "t",
     "STRING", "INTEGER", "NUMBER", "BOOLEAN", "DATE", "TIME", "DATETIME",
-    "parse_schema", "to_dsl",
+    "parse_schema", "to_osd",
     "compatible_with", "equivalent", "normalize", "infer", "materialize",
     "read_json", "read_yaml", "read_toml", "read_xml",
     "write_json", "write_yaml", "write_toml", "write_xml",

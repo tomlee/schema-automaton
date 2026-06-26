@@ -22,7 +22,7 @@ s = parse_schema('record Person { "name": string }\nroot Person')
 s.validate(d).ok    # True
 
 # 4. Infer a schema from example documents instead of writing one by hand
-infer([doc({"name": "Ann"}), doc({"name": "Bo"})]).to_dsl()
+infer([doc({"name": "Ann"}), doc({"name": "Bo"})]).to_osd()
 # 'record Root {\n    "name": string,\n}\nroot Root\n'
 ```
 

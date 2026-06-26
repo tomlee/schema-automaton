@@ -264,7 +264,7 @@ omnist schema format <schema-file> [-o OUTPUT]
 ```
 
 Canonicalizes an OSD ([Omnist Schema Definition](schema.md)) file —
-`parse_schema` then `to_dsl`. Same records, same names, just canonical
+`parse_schema` then `to_osd`. Same records, same names, just canonical
 whitespace/field order; it never changes a schema's structure (contrast
 [`Schema.normalize()`](schema.md#operations-compare-and-infer), which can
 merge structurally-identical records).

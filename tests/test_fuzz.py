@@ -1,4 +1,4 @@
-"""Property-based fuzzing of the Document model, codecs, and the DSL parser.
+"""Property-based fuzzing of the Document model, codecs, and the OSD parser.
 
 Two angles (see issue #64 and the prior fuzzing effort noted in
 CHANGELOG.md, "test: add property-based fuzzing with hypothesis; fix 3 bugs
@@ -382,7 +382,7 @@ def test_parse_schema_never_raises_unexpectedly(text):
         ) from exc
 
 
-# Also fuzz text drawn from a alphabet biased toward OML/DSL syntax
+# Also fuzz text drawn from a alphabet biased toward OML/OSD syntax
 # characters, which is far more likely to reach deep parser states than pure
 # random unicode text.
 _SYNTAX_ALPHABET = st.sampled_from(

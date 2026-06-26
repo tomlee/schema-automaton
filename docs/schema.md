@@ -93,11 +93,11 @@ s.equivalent(s2)      # True -- same schema, built two different ways
 
 Two paths, one result — OSD text and the Python builder both produce an
 ordinary `Schema` object; nothing downstream (`validate`, `compatible_with`,
-`to_dsl`, …) can tell which path built the one it's holding:
+`to_osd`, …) can tell which path built the one it's holding:
 
 ```mermaid
 flowchart LR
-    dsl["OSD text\n(record ... root ...)"] -->|"parse_schema()"| s["Schema"]
+    osd["OSD text\n(record ... root ...)"] -->|"parse_schema()"| s["Schema"]
     builder["Python builder\n(record/field/ref/schema)"] -->|"schema(...)"| s
 ```
 
@@ -106,13 +106,13 @@ flowchart LR
 `t.string` / `t.integer` / `t.number` / `t.boolean` / `t.date` / `t.time` /
 `t.datetime` are ready-to-use `Scalar` instances; `nullable(scalar)` returns
 a nullable copy; `field(label, type, min=1, max=1)`; `record(*fields)`;
-`schema(root_ref, **named_definitions)`. `to_dsl(schema)` serializes a
+`schema(root_ref, **named_definitions)`. `to_osd(schema)` serializes a
 `Schema` built either way back to OSD text:
 
 ```python
-from omnist import to_dsl
+from omnist import to_osd
 
-to_dsl(parse_schema('record Car { "license": string }\nroot Car'))
+to_osd(parse_schema('record Car { "license": string }\nroot Car'))
 # 'record Car {\n    "license": string,\n}\nroot Car\n'
 ```
 
@@ -151,7 +151,7 @@ OSD by hand:
 ```python
 from omnist import infer
 
-print(infer([doc({"host": "b", "port": 80}), doc({"host": "a"})]).to_dsl())
+print(infer([doc({"host": "b", "port": 80}), doc({"host": "a"})]).to_osd())
 # record Root {
 #     "host": string,
 #     "port" [0,1]: integer,

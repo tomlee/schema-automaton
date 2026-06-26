@@ -120,7 +120,7 @@ valid. Defined formally in
 
 - **OSD** (Omnist Schema Definition) — the small text language (`record` /
   `root` syntax) for writing a `Schema`, parsed by `parse_schema()` and
-  produced by `to_dsl()`. See [the schema doc](schema.md#shape).
+  produced by `to_osd()`. See [the schema doc](schema.md#shape).
 - **OML** (Omnist Markup Language) — Omnist's own native format, designed
   so every Document shape round-trips through it with zero adjustments.
   Distinct from OSD: OML is a *data* format (like JSON/YAML/TOML/XML),

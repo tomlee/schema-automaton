@@ -17,7 +17,7 @@ from omnist import (
     read_toml,
     read_xml,
     read_yaml,
-    to_dsl,
+    to_osd,
 )
 
 SCHEMA = """
@@ -37,8 +37,8 @@ root Team
 def main():
     s = parse_schema(SCHEMA)
 
-    print("== schema round-trips through to_dsl ==")
-    print("equivalent:", s.equivalent(parse_schema(to_dsl(s))))
+    print("== schema round-trips through to_osd ==")
+    print("equivalent:", s.equivalent(parse_schema(to_osd(s))))
 
     print("\n== the Team, in OML (omnist's own format) ==")
     o = read_oml('name: "Platform"\n'

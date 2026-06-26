@@ -37,7 +37,7 @@ Changes go through a pull request, not a direct push to `master`:
 - `ruff` is the source of truth (`pyproject.toml`'s `[tool.ruff]`); fix
   whatever it flags rather than arguing with it locally.
 - This codebase uses `;`-joined one-liners and one-line class/def bodies in a
-  few places (notably `dsl.py`) — that's intentional (see the `E701`/`E702`
+  few places (notably `osd.py`) — that's intentional (see the `E701`/`E702`
   ignores in `pyproject.toml`), not something to "clean up" in an unrelated PR.
 - No type checker is wired in yet; `omnist/py.typed` exists so callers'
   type checkers trust the package's hints, but nothing currently verifies the
@@ -47,7 +47,7 @@ Changes go through a pull request, not a direct push to `master`:
 
 - Every new function or fixed bug gets a test. Tests that assert *errors* are
   raised matter as much as tests for the happy path — see
-  `tests/test_canonical.py`'s `TestDslRobustness` and `TestValidation` classes
+  `tests/test_canonical.py`'s `TestOsdRobustness` and `TestValidation` classes
   for the pattern: verify the actual exception type and message against the
   real code before writing the assertion, don't guess at what it "should" say.
 - `examples/*.py` are documentation with executable code, not throwaway

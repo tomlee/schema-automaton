@@ -21,7 +21,7 @@ omnist schema equivalent       <a> <b>        [--result-format text|json|oml]
 ```
 
 `FMT` is one of `json|yaml|toml|xml|oml`. A schema file is always OSD
-(Omnist Schema Definition; `parse_schema`/`to_dsl`) — schema commands take
+(Omnist Schema Definition; `parse_schema`/`to_osd`) — schema commands take
 no `--from`/`--to`.
 
 ## 2. Format handling
@@ -106,7 +106,7 @@ omnist check data.json --from json --to toml --strict
 
 ### `omnist schema format <schema-file> [-o OUTPUT]`
 
-`parse_schema` → `to_dsl`. Safe reformat only — same records, same names,
+`parse_schema` → `to_osd`. Safe reformat only — same records, same names,
 canonical whitespace/field order. No structural change (contrast
 `normalize`).
 

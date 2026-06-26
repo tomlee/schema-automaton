@@ -121,10 +121,10 @@ root User
 Round-tripping back to text:
 
 ```python
-from omnist import parse_schema, to_dsl
+from omnist import parse_schema, to_osd
 
 s = parse_schema('record Car { "license": string }\nroot Car')
-to_dsl(s)                  # prints the schema back as OSD
+to_osd(s)                  # prints the schema back as OSD
 ```
 
 ## Schemas — the Python builder
@@ -263,7 +263,7 @@ Doc.from_format("lines", "1 2 3").to_format("lines")    # '1 2 3'
 from omnist import infer, doc
 
 s = infer([doc({"id": 1, "tags": ["a"]}), doc({"id": 2, "tags": ["b", "c"]})])
-print(s.to_dsl())
+print(s.to_osd())
 # record Root {
 #     "id": integer,
 #     "tags" [0,]: string,

@@ -1,7 +1,7 @@
 """Tests for the canonical (redesigned) Document and Schema models.
 
 Covers the design in docs/design/model.md: edge-list Document, record/Ref
-schema with exactly seven scalars, field cardinality, conformance, the DSL,
+schema with exactly seven scalars, field cardinality, conformance, OSD,
 operations, and codecs.
 """
 import datetime
@@ -41,7 +41,7 @@ from omnist.canonical import (
     register_format,
     schema,
     t,
-    to_dsl,
+    to_osd,
     write_json,
     write_toml,
     write_xml,
@@ -63,10 +63,10 @@ class TestPublicApi:
         import omnist as ds
 
         s = ds.parse_schema('record R { "n": integer, "s": string? }\nroot R')
-        assert ds.__version__ == "0.2.9"
+        assert ds.__version__ == "0.2.10"
         # operations are Schema methods
         assert s.validate(ds.doc({"n": 1, "s": None})).ok
-        assert s.equivalent(ds.parse_schema(ds.to_dsl(s)))
+        assert s.equivalent(ds.parse_schema(ds.to_osd(s)))
         wide = ds.parse_schema('record R { "n": number, "s": string? }\nroot R')
         assert s.compatible_with(wide)
         assert s.normalize().equivalent(s)
@@ -190,9 +190,9 @@ class TestInfer:
         assert absent_first.validate(doc({"host": "x", "port": 1})).ok
 
 
-# ----------------------------------------------------------- DSL + validation
-def valid(dsl, data):
-    return parse_schema(dsl).validate(doc(data))
+# ----------------------------------------------------------- OSD + validation
+def valid(text, data):
+    return parse_schema(text).validate(doc(data))
 
 
 class TestValidation:
@@ -265,8 +265,8 @@ class TestValidation:
             parse_schema('union License { "auto", "manual" }\nrecord R { "a": integer }\nroot R')
 
 
-# ----------------------------------------------------- DSL parser robustness
-class TestDslRobustness:
+# ----------------------------------------------------- OSD parser robustness
+class TestOsdRobustness:
     """Regressions for three real defects found by probing the parser
     against its own grammar: a crash, a broken depth guard, and a silent
     name-shadowing footgun."""
@@ -340,8 +340,8 @@ class TestTemporalBoundary:
         assert not valid(self.DATE, {"v": dt.datetime(2024, 1, 1, 12, 0)}).ok
 
 
-# ----------------------------------------------------------- DSL round-trip
-DSL_CASES = [
+# ----------------------------------------------------------- OSD round-trip
+OSD_CASES = [
     'record R { "n": integer }\nroot R',
     'record R { "n": integer, "s": string? }\nroot R',
     'record R { "status": string }\nroot R',
@@ -355,11 +355,11 @@ DSL_CASES = [
 ]
 
 
-@pytest.mark.parametrize("text", DSL_CASES)
-def test_dsl_round_trip(text):
+@pytest.mark.parametrize("text", OSD_CASES)
+def test_osd_round_trip(text):
     s = parse_schema(text)
-    s2 = parse_schema(to_dsl(s))
-    assert equivalent(s, s2), f"\n{text}\n->\n{to_dsl(s)}"
+    s2 = parse_schema(to_osd(s))
+    assert equivalent(s, s2), f"\n{text}\n->\n{to_osd(s)}"
 
 
 # ----------------------------------------------------------- operations
@@ -796,8 +796,8 @@ class TestWriteReportStr:
         assert "null value dropped" in str(rep)
 
 
-# ----------------------------------------------------------- DSL error paths
-class TestDslErrors:
+# ----------------------------------------------------------- OSD error paths
+class TestOsdErrors:
     """Every distinct error the parser can raise, found by reading the
     grammar against the implementation -- not just the happy path."""
 
@@ -908,8 +908,8 @@ class TestDocumentRobustness:
 
 # --------------------------------------------------------- Schema/builder misuse
 class TestSchemaConstructionErrors:
-    """Defensive validation in the model classes themselves, not just the
-    DSL -- the Python builder is just as much a public surface."""
+    """Defensive validation in the model classes themselves, not just
+    OSD -- the Python builder is just as much a public surface."""
 
     def test_field_type_must_be_ref_or_scalar(self):
         with pytest.raises(SchemaError, match="must be a Ref or Scalar"):
@@ -938,7 +938,7 @@ class TestSchemaConstructionErrors:
 # ----------------------------------------------------------------- dunders
 class TestSchemaModelDunders:
     """__repr__/__eq__/__hash__/__str__/__bool__ on the small model classes
-    -- not exercised by the DSL/validation-focused tests elsewhere."""
+    -- not exercised by the OSD/validation-focused tests elsewhere."""
 
     def test_scalar_unknown_name_raises(self):
         with pytest.raises(SchemaError, match="unknown scalar"):

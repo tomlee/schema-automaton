@@ -1,4 +1,4 @@
-"""The schema text language for the canonical model.
+"""OSD (Omnist Schema Definition) — the text language for the Schema model.
 
 Grammar (informal)::
 
@@ -188,15 +188,15 @@ class _Parser:
 
 
 def parse_schema(text: str) -> Schema:
-    """Parse DSL text into a :class:`~omnist.canonical.schema.Schema`."""
+    """Parse OSD text into a :class:`~omnist.canonical.schema.Schema`."""
     return _Parser(_tokenize(text)).parse()
 
 
 # ---------------------------------------------------------------------------
-# Serialize a Schema back to DSL text
+# Serialize a Schema back to OSD text
 # ---------------------------------------------------------------------------
 
-def to_dsl(schema: Schema) -> str:
+def to_osd(schema: Schema) -> str:
     lines: List[str] = []
     for name, rec in schema.env.items():
         lines.append(_record(name, rec))

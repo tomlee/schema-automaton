@@ -318,9 +318,9 @@ class Schema:
         return normalize(self)
 
     # -- serialization --------------------------------------------------
-    def to_dsl(self) -> str:
-        from .dsl import to_dsl
-        return to_dsl(self)
+    def to_osd(self) -> str:
+        from .osd import to_osd
+        return to_osd(self)
 
     def __repr__(self) -> str:
         return f"Schema(root={self.root!r}, env={list(self.env)})"

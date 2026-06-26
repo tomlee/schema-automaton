@@ -81,8 +81,8 @@ Parse OSD text (`record` / `root`) into a `Schema`. Raises
 `SchemaError` on malformed text or an undefined reference. See the
 [OSD section of the guide](guide.md#schemas--osd).
 
-### `to_dsl(schema) -> str`
-Serialize a `Schema` back to OSD text. `parse_schema(to_dsl(s))` is equivalent
+### `to_osd(schema) -> str`
+Serialize a `Schema` back to OSD text. `parse_schema(to_osd(s))` is equivalent
 to `s`.
 
 ### `infer(samples, root_name="Root") -> Schema`
@@ -134,7 +134,7 @@ names an entry not present in `env`.
 | `.compatible_with(other) -> bool` | every document this accepts, `other` also accepts (backward-compat) |
 | `.equivalent(other) -> bool` | both accept exactly the same documents |
 | `.normalize() -> Schema` | merge structurally-identical named definitions |
-| `.to_dsl() -> str` | serialize back to OSD |
+| `.to_osd() -> str` | serialize back to OSD |
 | `.root`, `.env` | the root `Ref` and the name→record map |
 | `.resolve(t) -> Record` | follow a `Ref` chain to a `Record` |
 

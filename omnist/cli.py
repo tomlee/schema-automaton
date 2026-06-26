@@ -35,7 +35,7 @@ from . import (
     read_toml,
     read_xml,
     read_yaml,
-    to_dsl,
+    to_osd,
     write_json,
     write_oml,
     write_toml,
@@ -181,19 +181,19 @@ def _cmd_infer(args: argparse.Namespace) -> int:
     reader = _READERS[args.from_]
     docs = [Doc(reader(_read_input(p))) for p in args.input]
     s = infer(docs)
-    _write_output(args.output, to_dsl(s))
+    _write_output(args.output, to_osd(s))
     return 0
 
 
 def _cmd_schema_format(args: argparse.Namespace) -> int:
     s = parse_schema(_read_input(args.schema_file))
-    _write_output(args.output, to_dsl(s))
+    _write_output(args.output, to_osd(s))
     return 0
 
 
 def _cmd_schema_normalize(args: argparse.Namespace) -> int:
     s = parse_schema(_read_input(args.schema_file))
-    _write_output(args.output, to_dsl(s.normalize()))
+    _write_output(args.output, to_osd(s.normalize()))
     return 0
 
 

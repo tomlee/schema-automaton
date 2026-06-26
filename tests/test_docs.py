@@ -30,7 +30,7 @@ def test_readme_at_a_glance():
                      'record Team { "name": string, "members" [1,]: Member }\nroot Team')
     assert s.validate(doc({"name": "X",
                            "members": [{"name": "Ann", "role": "dev"}]})).ok
-    assert ds.__version__ == "0.2.9"
+    assert ds.__version__ == "0.2.10"
 
 
 def test_quickstart():
@@ -38,12 +38,12 @@ def test_quickstart():
     s = parse_schema('record Person { "name": string }\nroot Person')
     assert s.validate(d).ok
 
-    assert infer([doc({"name": "Ann"}), doc({"name": "Bo"})]).to_dsl() == (
+    assert infer([doc({"name": "Ann"}), doc({"name": "Bo"})]).to_osd() == (
         'record Root {\n    "name": string,\n}\nroot Root\n')
 
 
 def test_readme_60_second_tour_infer():
-    assert infer([doc({"id": 1, "tags": ["a"]})]).to_dsl() == (
+    assert infer([doc({"id": 1, "tags": ["a"]})]).to_osd() == (
         'record Root {\n    "id": integer,\n    "tags": string,\n}\nroot Root\n')
 
 
@@ -95,8 +95,8 @@ manager: null
     assert node == built.to_data()
 
 
-def test_schema_page_dsl_shape_and_builder_equivalence():
-    DSL = '''
+def test_schema_page_osd_shape_and_builder_equivalence():
+    OSD = '''
     record Address { "street": string, "city": string }
 
     record User {
@@ -108,7 +108,7 @@ def test_schema_page_dsl_shape_and_builder_equivalence():
     }
     root User
     '''
-    s = parse_schema(DSL)
+    s = parse_schema(OSD)
     assert s.validate(doc({"name": "Ann", "emails": ["a@x.com"],
                            "address": {"street": "1 Main", "city": "London"},
                            "note": None})).ok
@@ -126,7 +126,7 @@ def test_schema_page_dsl_shape_and_builder_equivalence():
 
 
 def test_schema_page_validation_errors():
-    DSL = '''
+    OSD = '''
     record Address { "street": string, "city": string }
     record User {
         "name":          string,
@@ -137,7 +137,7 @@ def test_schema_page_validation_errors():
     }
     root User
     '''
-    s = parse_schema(DSL)
+    s = parse_schema(OSD)
     bad = doc({"emails": [], "address": {"street": "x", "city": "y"}})
     msgs = {e.message for e in s.validate(bad).errors}
     assert any("'name' occurs 0 time(s), expected exactly 1" in m for m in msgs)
@@ -151,7 +151,7 @@ def test_schema_page_operations_and_infer():
     assert v1.compatible_with(v2)
     assert not v2.compatible_with(v1)
 
-    assert infer([doc({"host": "b", "port": 80}), doc({"host": "a"})]).to_dsl() == (
+    assert infer([doc({"host": "b", "port": 80}), doc({"host": "a"})]).to_osd() == (
         'record Root {\n    "host": string,\n    "port" [0,1]: integer,\n}\nroot Root\n')
 
 
@@ -163,17 +163,17 @@ def test_guide_editing():
     assert d.to_grouped() == {"name": "Bob"}
 
 
-def test_guide_builder_matches_dsl():
+def test_guide_builder_matches_osd():
     address = record(field("street", t.string), field("city", t.string))
     user = record(field("name", t.string),
                   field("emails", t.string, min=1, max=None),
                   field("address", ref("Address")),
                   field("status", t.string))
     s = schema(ref("User"), User=user, Address=address)
-    dsl = parse_schema('record Address { "street": string, "city": string }\n'
+    osd = parse_schema('record Address { "street": string, "city": string }\n'
                        'record User { "name": string, "emails" [1,]: string, '
                        '"address": Address, "status": string }\nroot User')
-    assert s.equivalent(dsl)
+    assert s.equivalent(osd)
 
 
 def test_guide_validation_error():
@@ -200,7 +200,7 @@ def test_readme_schema_directed_deserialization():
 
 def test_guide_infer():
     s = infer([doc({"id": 1, "tags": ["a"]}), doc({"id": 2, "tags": ["b", "c"]})])
-    assert s.to_dsl() == ('record Root {\n    "id": integer,\n'
+    assert s.to_osd() == ('record Root {\n    "id": integer,\n'
                           '    "tags" [0,]: string,\n}\nroot Root\n')
 
 
@@ -400,7 +400,7 @@ def test_api_docs_format_registry():
 
 
 def test_api_docs_version():
-    assert ds.__version__ == "0.2.9"
+    assert ds.__version__ == "0.2.10"
 
 
 def test_api_docs_schema_raises():

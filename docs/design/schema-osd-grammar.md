@@ -1,7 +1,7 @@
 # OSD formal grammar
 
 This is the formal grammar for **OSD** (Omnist Schema Definition) — the
-small text language parsed by `parse_schema()` and produced by `to_dsl()`
+small text language parsed by `parse_schema()` and produced by `to_osd()`
 — written in ABNF ([RFC 5234](https://www.rfc-editor.org/rfc/rfc5234)). It
 is the normative companion to [the Schema model & OSD page](../schema.md);
 read that first for context and examples, and the
@@ -9,7 +9,7 @@ read that first for context and examples, and the
 cardinality, Scalar, Ref).
 
 Every production below has been exercised against the real implementation
-in [`omnist/canonical/dsl.py`](https://github.com/omnist-dev/omnist/blob/master/omnist/canonical/dsl.py) (the
+in [`omnist/canonical/osd.py`](https://github.com/omnist-dev/omnist/blob/master/omnist/canonical/osd.py) (the
 tokenizer regex and `_Parser` class); see [Worked
 examples](#5-worked-examples) and the conformance tests in
 [`tests/test_grammar_docs.py`](https://github.com/omnist-dev/omnist/blob/master/tests/test_grammar_docs.py).
@@ -17,7 +17,7 @@ examples](#5-worked-examples) and the conformance tests in
 ## 1. Lexical grammar (tokens)
 
 The tokenizer is a single regex alternation
-([`_TOKEN`](https://github.com/omnist-dev/omnist/blob/master/omnist/canonical/dsl.py)) tried left to right at each
+([`_TOKEN`](https://github.com/omnist-dev/omnist/blob/master/omnist/canonical/osd.py)) tried left to right at each
 position; the first alternative that matches wins (Python `re` tries
 alternatives in order and takes the first match, not the longest — but
 because each alternative here is anchored to a disjoint leading character
@@ -66,11 +66,11 @@ newline. See [Worked examples](#5-worked-examples) #1.
 schema      = *( record-def / root-def )
               ; declarations may appear in any order/interleaving; there is
               ; no requirement that `root` come last, though by convention
-              ; (and `to_dsl`'s own output) it does.
+              ; (and `to_osd`'s own output) it does.
 
 record-def  = %s"record" name "{" [field *( "," field ) [","]] "}"
               ; a trailing comma after the last field is allowed (and is
-              ; what `to_dsl` always emits); fields are otherwise comma-
+              ; what `to_osd` always emits); fields are otherwise comma-
               ; separated with no trailing/leading comma permitted between
               ; them.
 
@@ -166,7 +166,7 @@ and a quoted `string` cannot supply a type.
 
 ## 5. Worked examples
 
-Each row was run against `parse_schema`/`to_dsl` to confirm the claimed
+Each row was run against `parse_schema`/`to_osd` to confirm the claimed
 behavior (see `tests/test_grammar_docs.py` for the executable form).
 
 | # | Input | Result |
@@ -188,4 +188,4 @@ behavior (see `tests/test_grammar_docs.py` for the executable form).
 | 15 | `record R{a:string}` (unquoted label) | `SchemaError`: "expected a quoted field name ..., got 'a'" |
 | 16 | `record R { "a": string, }` (trailing comma) | OK — trailing comma after the last field is accepted |
 | 17 | `# comment\nrecord R { "a": string } # trailing\nroot R` | comments anywhere whitespace is valid are discarded; schema parses normally |
-| 18 | `to_dsl(parse_schema('record R { "a" [0,3]: string? }\nroot R'))` | round-trips to `'record R {\n    "a" [0,3]: string?,\n}\nroot R\n'` |
+| 18 | `to_osd(parse_schema('record R { "a" [0,3]: string? }\nroot R'))` | round-trips to `'record R {\n    "a" [0,3]: string?,\n}\nroot R\n'` |
