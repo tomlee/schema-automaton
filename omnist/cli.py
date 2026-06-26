@@ -97,6 +97,40 @@ def _cmd_schema_format(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_schema_normalize(args: argparse.Namespace) -> int:
+    s = parse_schema(_read_input(args.schema_file))
+    _write_output(args.output, to_dsl(s.normalize()))
+    return 0
+
+
+def _encode_bool_result(key: str, value: bool, fmt: str) -> str:
+    """Encode a single boolean result -- shared by schema compatible-with
+    and equivalent."""
+    if fmt == "text":
+        return "true" if value else "false"
+    if fmt == "json":
+        return _json.dumps({key: value})
+    if fmt == "oml":
+        return doc({key: value}).to_oml()
+    raise ValueError(f"unknown result format {fmt!r}")  # unreachable: argparse restricts choices
+
+
+def _cmd_schema_compatible_with(args: argparse.Namespace) -> int:
+    a = parse_schema(_read_input(args.a))
+    b = parse_schema(_read_input(args.b))
+    result = a.compatible_with(b)
+    print(_encode_bool_result("compatible", result, args.result_format))
+    return 0 if result else 1
+
+
+def _cmd_schema_equivalent(args: argparse.Namespace) -> int:
+    a = parse_schema(_read_input(args.a))
+    b = parse_schema(_read_input(args.b))
+    result = a.equivalent(b)
+    print(_encode_bool_result("equivalent", result, args.result_format))
+    return 0 if result else 1
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="omnist")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -124,6 +158,28 @@ def _build_parser() -> argparse.ArgumentParser:
     schema_format_p.add_argument("schema_file", help="OSD file, or - for stdin")
     schema_format_p.add_argument("-o", "--output", help="output file; omit for stdout")
     schema_format_p.set_defaults(func=_cmd_schema_format)
+
+    schema_normalize_p = schema_sub.add_parser(
+        "normalize", help="simplify an OSD schema (may merge structurally-identical records)")
+    schema_normalize_p.add_argument("schema_file", help="OSD file, or - for stdin")
+    schema_normalize_p.add_argument("-o", "--output", help="output file; omit for stdout")
+    schema_normalize_p.set_defaults(func=_cmd_schema_normalize)
+
+    schema_compat_p = schema_sub.add_parser(
+        "compatible-with", help="is every document `a` accepts also accepted by `b`")
+    schema_compat_p.add_argument("a", help="OSD file, or - for stdin")
+    schema_compat_p.add_argument("b", help="OSD file")
+    schema_compat_p.add_argument(
+        "--result-format", choices=RESULT_FORMAT_CHOICES, default="text")
+    schema_compat_p.set_defaults(func=_cmd_schema_compatible_with)
+
+    schema_equiv_p = schema_sub.add_parser(
+        "equivalent", help="do `a` and `b` accept exactly the same documents")
+    schema_equiv_p.add_argument("a", help="OSD file, or - for stdin")
+    schema_equiv_p.add_argument("b", help="OSD file")
+    schema_equiv_p.add_argument(
+        "--result-format", choices=RESULT_FORMAT_CHOICES, default="text")
+    schema_equiv_p.set_defaults(func=_cmd_schema_equivalent)
 
     return parser
 

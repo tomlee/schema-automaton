@@ -219,6 +219,127 @@ class TestSchemaFormat:
         assert exc.value.code == 2
 
 
+class TestSchemaNormalize:
+    def test_merges_structurally_identical_records(self, tmp_path, capsys):
+        p = tmp_path / "in.osd"
+        p.write_text(
+            'record A { "x": integer }\n'
+            'record B { "x": integer }\n'
+            'record R { "a": A, "b": B }\n'
+            'root R\n')
+        code, out, err = run(["schema", "normalize", str(p)], capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert err == ""
+        # A and B are structurally identical -- normalize merges them to one record
+        assert out.count("record ") == 2   # the merged record + R, not 3
+
+    def test_writes_to_output_file(self, tmp_path, capsys):
+        src = tmp_path / "in.osd"
+        src.write_text('record R { "a": integer }\nroot R\n')
+        dst = tmp_path / "out.osd"
+        code, out, err = run(
+            ["schema", "normalize", str(src), "-o", str(dst)], capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert dst.read_text() == 'record R {\n    "a": integer,\n}\nroot R\n'
+
+    def test_invalid_osd_is_a_clean_error(self, tmp_path, capsys):
+        p = tmp_path / "bad.osd"
+        p.write_text('record R { "a": integer }\n')   # no root
+        code, out, err = run(["schema", "normalize", str(p)], capsys=capsys, monkeypatch=None)
+        assert code == 2
+        assert err.startswith("error: ")
+
+
+class TestSchemaCompatibleWith:
+    V1 = 'record R { "host": string }\nroot R\n'
+    V2 = 'record R { "host": string, "port" [0,1]: integer }\nroot R\n'
+
+    def test_compatible_text(self, tmp_path, capsys):
+        a = tmp_path / "v1.osd"
+        a.write_text(self.V1)
+        b = tmp_path / "v2.osd"
+        b.write_text(self.V2)
+        code, out, err = run(
+            ["schema", "compatible-with", str(a), str(b)], capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert out == "true\n"
+
+    def test_incompatible_text(self, tmp_path, capsys):
+        a = tmp_path / "v2.osd"
+        a.write_text(self.V2)
+        b = tmp_path / "v1.osd"
+        b.write_text(self.V1)
+        code, out, err = run(
+            ["schema", "compatible-with", str(a), str(b)], capsys=capsys, monkeypatch=None)
+        assert code == 1
+        assert out == "false\n"
+
+    def test_result_format_json(self, tmp_path, capsys):
+        a = tmp_path / "v1.osd"
+        a.write_text(self.V1)
+        b = tmp_path / "v2.osd"
+        b.write_text(self.V2)
+        code, out, err = run(
+            ["schema", "compatible-with", str(a), str(b), "--result-format", "json"],
+            capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert out == '{"compatible": true}\n'
+
+    def test_result_format_oml(self, tmp_path, capsys):
+        a = tmp_path / "v1.osd"
+        a.write_text(self.V1)
+        b = tmp_path / "v2.osd"
+        b.write_text(self.V2)
+        code, out, err = run(
+            ["schema", "compatible-with", str(a), str(b), "--result-format", "oml"],
+            capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert out == "compatible: true\n"
+
+    def test_malformed_schema_is_a_clean_error(self, tmp_path, capsys):
+        a = tmp_path / "bad.osd"
+        a.write_text('record R { "a": integer }\n')
+        b = tmp_path / "v1.osd"
+        b.write_text(self.V1)
+        code, out, err = run(
+            ["schema", "compatible-with", str(a), str(b)], capsys=capsys, monkeypatch=None)
+        assert code == 2
+        assert err.startswith("error: ")
+
+
+class TestSchemaEquivalent:
+    def test_equivalent_text(self, tmp_path, capsys):
+        a = tmp_path / "a.osd"
+        a.write_text('record R { "x": integer }\nroot R\n')
+        b = tmp_path / "b.osd"
+        b.write_text('record R { "x": integer }\nroot R\n')
+        code, out, err = run(
+            ["schema", "equivalent", str(a), str(b)], capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert out == "true\n"
+
+    def test_not_equivalent_text(self, tmp_path, capsys):
+        a = tmp_path / "a.osd"
+        a.write_text('record R { "x": integer }\nroot R\n')
+        b = tmp_path / "b.osd"
+        b.write_text('record R { "x": integer, "y" [0,1]: string }\nroot R\n')
+        code, out, err = run(
+            ["schema", "equivalent", str(a), str(b)], capsys=capsys, monkeypatch=None)
+        assert code == 1
+        assert out == "false\n"
+
+    def test_result_format_json(self, tmp_path, capsys):
+        a = tmp_path / "a.osd"
+        a.write_text('record R { "x": integer }\nroot R\n')
+        b = tmp_path / "b.osd"
+        b.write_text('record R { "x": integer, "y" [0,1]: string }\nroot R\n')
+        code, out, err = run(
+            ["schema", "equivalent", str(a), str(b), "--result-format", "json"],
+            capsys=capsys, monkeypatch=None)
+        assert code == 1
+        assert out == '{"equivalent": false}\n'
+
+
 class TestTopLevel:
     def test_missing_command_is_argparse_usage_error(self):
         with pytest.raises(SystemExit) as exc:

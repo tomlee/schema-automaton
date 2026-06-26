@@ -73,3 +73,42 @@ omnist schema format messy.osd -o clean.osd
 
 Malformed OSD raises `SchemaError`, printed to stderr as `error: ...`,
 exit code `2`.
+
+## `omnist schema normalize`
+
+```
+omnist schema normalize <schema-file> [-o OUTPUT]
+```
+
+`Schema.normalize()`, written back out as OSD — unlike `schema format`,
+this *can* change a schema's structure (merging separately-named records
+that are structurally identical).
+
+```sh
+omnist schema normalize messy.osd -o normalized.osd
+```
+
+## `omnist schema compatible-with`
+
+```
+omnist schema compatible-with <a> <b> [--result-format text|json|oml]
+```
+
+`a.compatible_with(b)` — true if every Document `a` accepts, `b` also
+accepts (`b` is backward-compatible with `a`). `--result-format` (default
+`text`) prints `true`/`false`, `{"compatible": bool}` (`json`), or the
+same shape OML-encoded. Exit `0` if true, `1` if false, `2` on a parse
+error.
+
+```sh
+omnist schema compatible-with v1.osd v2.osd && echo "safe to ship v2"
+```
+
+## `omnist schema equivalent`
+
+```
+omnist schema equivalent <a> <b> [--result-format text|json|oml]
+```
+
+`a.equivalent(b)` — true if both accept exactly the same Documents. Same
+output/exit convention as `compatible-with`.

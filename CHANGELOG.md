@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.2.5] — `omnist schema normalize`/`compatible-with`/`equivalent`
+
+Adds three more schema CLI commands (see `docs/design/cli-spec.md`):
+
+- `omnist schema normalize <schema-file> [-o OUTPUT]` — `Schema.normalize()`,
+  written back as OSD (may merge structurally-identical records, unlike
+  `schema format`).
+- `omnist schema compatible-with <a> <b> [--result-format text|json|oml]`
+  — `a.compatible_with(b)`.
+- `omnist schema equivalent <a> <b> [--result-format text|json|oml]` —
+  `a.equivalent(b)`.
+
+The latter two print `true`/`false` (`text`, default), `{"compatible":
+bool}`/`{"equivalent": bool}` (`json`), or the same shape OML-encoded
+(`oml`); exit `0` if true, `1` if false.
+
 ## [v0.2.4] — `omnist validate`
 
 Adds `omnist validate <input> --from FMT --schema FILE [--result-format
