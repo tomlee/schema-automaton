@@ -62,72 +62,49 @@ class TestVersionAndHelpExample:
 
 
 class TestFormatExample:
-    def test_messy_oml_reformats(self, capsys):
-        code, out, err = run(["format", "examples/cli/messy.oml"], capsys)
+    def test_messy_person_oml_reformats(self, capsys):
+        code, out, err = run(["format", "examples/cli/messy-person.oml"], capsys)
         assert code == 0
-        assert out == 'a: 1\nb: "x"\n'
+        assert out == 'name: "Ann"\nage: 30\n'
         assert err == ""
 
     def test_pipe_example(self, capsys, monkeypatch):
-        code, out, err = run(["format", "-"], capsys, stdin_text="a:   1", monkeypatch=monkeypatch)
+        code, out, err = run(
+            ["format", "-"], capsys, stdin_text='name:   "Ann"', monkeypatch=monkeypatch)
         assert code == 0
-        assert out == "a: 1\n"
+        assert out == 'name: "Ann"\n'
 
 
 class TestConvertExamples:
-    def test_order_json_to_oml(self, capsys):
+    def test_person_json_to_oml(self, capsys):
         code, out, err = run(
-            ["convert", "examples/cli/order.json", "--from", "json", "--to", "oml"], capsys)
+            ["convert", "examples/cli/person.json", "--from", "json", "--to", "oml"], capsys)
         assert code == 0
-        assert out == (
-            'order: {\n'
-            '  id: "A1"\n'
-            '  status: "shipped"\n'
-            '  total: 29.97\n'
-            '  address: {\n'
-            '    street: "1 Main"\n'
-            '    city: "London"\n'
-            '  }\n'
-            '  items: {\n'
-            '    sku: "W"\n'
-            '    qty: 3\n'
-            '    price: 9.99\n'
-            '  }\n'
-            '  items: {\n'
-            '    sku: "G"\n'
-            '    qty: 1\n'
-            '    price: 9.99\n'
-            '  }\n'
-            '}\n'
-        )
+        assert out == 'person: {\n  name: "Ann"\n  age: 30\n}\n'
 
-    def test_order_xml_to_oml_with_schema(self, capsys):
+    def test_person_xml_to_oml_with_schema(self, capsys):
         code, out, err = run(
-            ["convert", "examples/cli/order.xml", "--from", "xml", "--to", "oml",
-             "--schema", "examples/cli/order.osd"], capsys)
+            ["convert", "examples/cli/person.xml", "--from", "xml", "--to", "oml",
+             "--schema", "examples/cli/person.osd"], capsys)
         assert code == 0
-        assert out.startswith('order: {\n  id: "A1"\n')
+        assert out == 'person: {\n  name: "Ann"\n  age: 30\n}\n'
 
     def test_toml_to_json_via_stdin(self, capsys, monkeypatch):
-        with open("examples/cli/order.toml", encoding="utf-8") as f:
+        with open("examples/cli/person.toml", encoding="utf-8") as f:
             toml_text = f.read()
         code, out, err = run(
             ["convert", "-", "--from", "toml", "--to", "json"], capsys,
             stdin_text=toml_text, monkeypatch=monkeypatch)
         assert code == 0
-        assert out == (
-            '{"order": {"id": "A1", "status": "shipped", "total": 29.97, '
-            '"items": [{"sku": "W", "qty": 3, "price": 9.99}, '
-            '{"sku": "G", "qty": 1, "price": 9.99}], '
-            '"address": {"street": "1 Main", "city": "London"}}}\n'
-        )
+        assert out == '{"person": {"name": "Ann", "age": 30}}\n'
 
     def test_report_on_lossy_json_to_toml(self, capsys):
         code, out, err = run(
             ["convert", "examples/cli/lossy.json", "--from", "json", "--to", "toml", "--report"],
             capsys)
         assert code == 0
-        assert err == "warning: $.a: null value dropped (TOML has no null)\n"
+        assert out == 'name = "Ann"\n'
+        assert err == "warning: $.age: null value dropped (TOML has no null)\n"
 
     def test_strict_on_lossy_json_to_toml(self, capsys):
         code, out, err = run(
@@ -135,7 +112,7 @@ class TestConvertExamples:
             capsys)
         assert code == 1
         assert out == ""
-        assert err == "error: warning: $.a: null value dropped (TOML has no null)\n"
+        assert err == "error: warning: $.age: null value dropped (TOML has no null)\n"
 
 
 class TestCheckExamples:
@@ -143,14 +120,14 @@ class TestCheckExamples:
         code, out, err = run(
             ["check", "examples/cli/lossy.json", "--from", "json", "--to", "toml"], capsys)
         assert code == 0
-        assert out == "warning: $.a: null value dropped (TOML has no null)\n"
+        assert out == "warning: $.age: null value dropped (TOML has no null)\n"
 
     def test_lossy_json_to_toml_strict(self, capsys):
         code, out, err = run(
             ["check", "examples/cli/lossy.json", "--from", "json", "--to", "toml", "--strict"],
             capsys)
         assert code == 1
-        assert out == "warning: $.a: null value dropped (TOML has no null)\n"
+        assert out == "warning: $.age: null value dropped (TOML has no null)\n"
 
 
 class TestInferExample:
@@ -161,51 +138,57 @@ class TestInferExample:
         assert code == 0
         assert out == (
             'record Root {\n'
-            '    "host": string,\n'
-            '    "port" [0,1]: integer,\n'
+            '    "name": string,\n'
+            '    "age" [0,1]: integer,\n'
             '}\n'
             'root Root\n'
         )
 
 
 class TestValidateExamples:
-    def test_order_is_valid(self, capsys):
+    def test_person_is_valid(self, capsys):
         code, out, err = run(
-            ["validate", "examples/cli/order.json", "--from", "json",
-             "--schema", "examples/cli/order.osd"], capsys)
+            ["validate", "examples/cli/person.json", "--from", "json",
+             "--schema", "examples/cli/person.osd"], capsys)
         assert code == 0
         assert out == "valid\n"
 
-    def test_invalid_order_text(self, capsys):
+    def test_invalid_person_text(self, capsys):
         code, out, err = run(
-            ["validate", "examples/cli/invalid-order.json", "--from", "json",
-             "--schema", "examples/cli/order.osd"], capsys)
+            ["validate", "examples/cli/invalid-person.json", "--from", "json",
+             "--schema", "examples/cli/person.osd"], capsys)
         assert code == 1
         assert out == (
             "invalid:\n"
-            "  at $.order.total: expected number, got string ('ten')\n"
-            "  at $.order: field 'items' occurs 0 time(s), expected at least 1\n"
+            "  at $.person.age: expected integer, got string ('thirty')\n"
+            "  at $.person: field 'name' occurs 0 time(s), expected exactly 1\n"
         )
 
-    def test_invalid_order_json(self, capsys):
+    def test_invalid_person_json(self, capsys):
         code, out, err = run(
-            ["validate", "examples/cli/invalid-order.json", "--from", "json",
-             "--schema", "examples/cli/order.osd", "--result-format", "json"], capsys)
+            ["validate", "examples/cli/invalid-person.json", "--from", "json",
+             "--schema", "examples/cli/person.osd", "--result-format", "json"], capsys)
         assert code == 1
         assert out == (
             '{"ok": false, "errors": ['
-            '{"path": "$.order.total", "message": "expected number, got string (\'ten\')"}, '
-            '{"path": "$.order", '
-            '"message": "field \'items\' occurs 0 time(s), expected at least 1"}'
+            '{"path": "$.person.age", "message": "expected integer, got string (\'thirty\')"}, '
+            '{"path": "$.person", '
+            '"message": "field \'name\' occurs 0 time(s), expected exactly 1"}'
             ']}\n'
         )
 
 
 class TestSchemaFormatExample:
-    def test_messy_osd_reformats(self, capsys):
-        code, out, err = run(["schema", "format", "examples/cli/messy.osd"], capsys)
+    def test_messy_person_osd_reformats(self, capsys):
+        code, out, err = run(["schema", "format", "examples/cli/messy-person.osd"], capsys)
         assert code == 0
-        assert out == 'record R {\n    "a": integer,\n    "b": string,\n}\nroot R\n'
+        assert out == (
+            'record Person {\n'
+            '    "name": string,\n'
+            '    "age" [0,1]: integer,\n'
+            '}\n'
+            'root Person\n'
+        )
 
 
 class TestSchemaNormalizeExample:
@@ -214,14 +197,14 @@ class TestSchemaNormalizeExample:
             ["schema", "normalize", "examples/cli/duplicate-records.osd"], capsys)
         assert code == 0
         assert out == (
-            'record A {\n'
-            '    "x": integer,\n'
+            'record Customer {\n'
+            '    "name": string,\n'
             '}\n'
-            'record R {\n'
-            '    "a": A,\n'
-            '    "b": A,\n'
+            'record Company {\n'
+            '    "employee": Customer,\n'
+            '    "customer": Customer,\n'
             '}\n'
-            'root R\n'
+            'root Company\n'
         )
 
 

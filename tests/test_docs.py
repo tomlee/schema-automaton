@@ -361,6 +361,11 @@ sku = "G"
 """) == [("items", [("sku", "W")]), ("items", [("sku", "G")])]
 
 
+def test_formats_xml_docs_opener():
+    d = Doc(read_xml("<person><name>Ann</name><tags>x</tags><tags>y</tags></person>"))
+    assert d.to_json() == '{"person": {"name": "Ann", "tags": ["x", "y"]}}'
+
+
 def test_formats_xml_docs_raw_repeated_element_edge_list():
     assert read_xml('<items><item>x</item><item>y</item></items>') == \
         [("items", [("item", "x"), ("item", "y")])]

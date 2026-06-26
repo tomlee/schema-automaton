@@ -73,14 +73,14 @@ file path or `-` for stdin; `-o`/`--output` is a file path, or omit it for
 stdout.
 
 ```sh
-$ cat examples/cli/messy.oml
-a:   1
-b:"x"
-$ omnist format examples/cli/messy.oml
-a: 1
-b: "x"
-$ echo 'a:   1' | omnist format -
-a: 1
+$ cat examples/cli/messy-person.oml
+name:"Ann"
+age:   30
+$ omnist format examples/cli/messy-person.oml
+name: "Ann"
+age: 30
+$ echo 'name:   "Ann"' | omnist format -
+name: "Ann"
 ```
 
 Malformed OML raises the same `ParseError` `read_oml` would, printed to
@@ -125,74 +125,43 @@ library's `read_xml`/`write_xml` only support a single-rooted Document;
 converting many files is a shell loop).
 
 ```sh
-$ omnist convert examples/cli/order.json --from json --to oml
-order: {
-  id: "A1"
-  status: "shipped"
-  total: 29.97
-  address: {
-    street: "1 Main"
-    city: "London"
-  }
-  items: {
-    sku: "W"
-    qty: 3
-    price: 9.99
-  }
-  items: {
-    sku: "G"
-    qty: 1
-    price: 9.99
-  }
+$ omnist convert examples/cli/person.json --from json --to oml
+person: {
+  name: "Ann"
+  age: 30
 }
 ```
 
-The same order, read from XML this time, upgraded/validated against the
+The same person, read from XML this time, upgraded/validated against the
 schema on the way in:
 
 ```sh
-$ omnist convert examples/cli/order.xml --from xml --to oml --schema examples/cli/order.osd
-order: {
-  id: "A1"
-  status: "shipped"
-  total: 29.97
-  address: {
-    street: "1 Main"
-    city: "London"
-  }
-  items: {
-    sku: "W"
-    qty: 3
-    price: 9.99
-  }
-  items: {
-    sku: "G"
-    qty: 1
-    price: 9.99
-  }
+$ omnist convert examples/cli/person.xml --from xml --to oml --schema examples/cli/person.osd
+person: {
+  name: "Ann"
+  age: 30
 }
 ```
 
 Through stdin/stdout:
 
 ```sh
-$ cat examples/cli/order.toml | omnist convert - --from toml --to json
-{"order": {"id": "A1", "status": "shipped", "total": 29.97, "items": [{"sku": "W", "qty": 3, "price": 9.99}, {"sku": "G", "qty": 1, "price": 9.99}], "address": {"street": "1 Main", "city": "London"}}}
+$ cat examples/cli/person.toml | omnist convert - --from toml --to json
+{"person": {"name": "Ann", "age": 30}}
 ```
 
 `--report`/`--strict`, on a document TOML can't hold losslessly
-(`examples/cli/lossy.json` is `{"a": null}`):
+(`examples/cli/lossy.json` is `{"name": "Ann", "age": null}`):
 
 ```sh
 $ omnist convert examples/cli/lossy.json --from json --to toml --report
-$ # (writes nothing to stdout since there's no -o; the file write below
-$ #  would still happen normally if -o were given)
+name = "Ann"
 # stderr:
-warning: $.a: null value dropped (TOML has no null)
+warning: $.age: null value dropped (TOML has no null)
 
 $ omnist convert examples/cli/lossy.json --from json --to toml --strict
 # exit 1, nothing written, stderr:
-error: warning: $.a: null value dropped (TOML has no null)
+error: warning: $.age: null value dropped (TOML has no null)
 ```
 
 ## `omnist check`
@@ -213,10 +182,10 @@ adjusting, `1` if anything would.
 
 ```sh
 $ omnist check examples/cli/lossy.json --from json --to toml
-warning: $.a: null value dropped (TOML has no null)
+warning: $.age: null value dropped (TOML has no null)
 
 $ omnist check examples/cli/lossy.json --from json --to toml --strict
-warning: $.a: null value dropped (TOML has no null)
+warning: $.age: null value dropped (TOML has no null)
 # exit 1
 ```
 
@@ -233,14 +202,16 @@ from them, written out as OSD.
 ```sh
 $ omnist infer examples/cli/sample1.json examples/cli/sample2.json --from json
 record Root {
-    "host": string,
-    "port" [0,1]: integer,
+    "name": string,
+    "age" [0,1]: integer,
 }
 root Root
 ```
 
-(`sample1.json` is `{"host": "a"}`; `sample2.json` is `{"host": "b", "port": 80}` —
-`port` is absent from the first sample, so `infer` drafts it as optional.)
+(`sample1.json` is `{"name": "Ann"}`; `sample2.json` is `{"name": "Bo", "age": 30}` —
+`age` is absent from the first sample, so `infer` drafts it as optional. This
+is exactly the same `name`/`age` evolution shown in `schema compatible-with`
+below, as data instead of as two schema versions.)
 
 ## `omnist validate`
 
@@ -265,22 +236,22 @@ split, which is what `convert --schema` does instead).
 - `oml` — the same `{ok, errors}` shape, OML-encoded.
 
 ```sh
-$ omnist validate examples/cli/order.json --from json --schema examples/cli/order.osd
+$ omnist validate examples/cli/person.json --from json --schema examples/cli/person.osd
 valid
 ```
 
-A rejected order (`invalid-order.json` has `"total": "ten"` and no `items`
-at all):
+A rejected person (`invalid-person.json` has `"age": "thirty"` — the wrong
+type — and no `name` at all):
 
 ```sh
-$ omnist validate examples/cli/invalid-order.json --from json --schema examples/cli/order.osd
+$ omnist validate examples/cli/invalid-person.json --from json --schema examples/cli/person.osd
 invalid:
-  at $.order.total: expected number, got string ('ten')
-  at $.order: field 'items' occurs 0 time(s), expected at least 1
+  at $.person.age: expected integer, got string ('thirty')
+  at $.person: field 'name' occurs 0 time(s), expected exactly 1
 # exit 1
 
-$ omnist validate examples/cli/invalid-order.json --from json --schema examples/cli/order.osd --result-format json
-{"ok": false, "errors": [{"path": "$.order.total", "message": "expected number, got string ('ten')"}, {"path": "$.order", "message": "field 'items' occurs 0 time(s), expected at least 1"}]}
+$ omnist validate examples/cli/invalid-person.json --from json --schema examples/cli/person.osd --result-format json
+{"ok": false, "errors": [{"path": "$.person.age", "message": "expected integer, got string ('thirty')"}, {"path": "$.person", "message": "field 'name' occurs 0 time(s), expected exactly 1"}]}
 ```
 
 Exit `0` if valid, `1` if invalid, `2` on a read/parse error (malformed
@@ -299,15 +270,15 @@ whitespace/field order; it never changes a schema's structure (contrast
 merge structurally-identical records).
 
 ```sh
-$ cat examples/cli/messy.osd
-record R{"a":integer,"b":string}
-root R
-$ omnist schema format examples/cli/messy.osd
-record R {
-    "a": integer,
-    "b": string,
+$ cat examples/cli/messy-person.osd
+record Person{"name":string,"age" [0,1]:integer}
+root Person
+$ omnist schema format examples/cli/messy-person.osd
+record Person {
+    "name": string,
+    "age" [0,1]: integer,
 }
-root R
+root Person
 ```
 
 Malformed OSD raises `SchemaError`, printed to stderr as `error: ...`,
@@ -321,24 +292,25 @@ omnist schema normalize <schema-file> [-o OUTPUT]
 
 `Schema.normalize()`, written back out as OSD — unlike `schema format`,
 this *can* change a schema's structure (merging separately-named records
-that are structurally identical). `duplicate-records.osd` defines `A` and
-`B` with the exact same shape; normalizing merges them into one:
+that are structurally identical). `duplicate-records.osd` defines `Employee`
+and `Customer` with the exact same shape (just a `name`); normalizing merges
+them into one:
 
 ```sh
 $ cat examples/cli/duplicate-records.osd
-record A { "x": integer }
-record B { "x": integer }
-record R { "a": A, "b": B }
-root R
+record Employee { "name": string }
+record Customer { "name": string }
+record Company  { "employee": Employee, "customer": Customer }
+root Company
 $ omnist schema normalize examples/cli/duplicate-records.osd
-record A {
-    "x": integer,
+record Customer {
+    "name": string,
 }
-record R {
-    "a": A,
-    "b": A,
+record Company {
+    "employee": Customer,
+    "customer": Customer,
 }
-root R
+root Company
 ```
 
 ## `omnist schema compatible-with`
@@ -355,11 +327,11 @@ error.
 
 ```sh
 $ cat examples/cli/v1.osd
-record R { "host": string }
-root R
+record Person { "name": string }
+root Person
 $ cat examples/cli/v2.osd
-record R { "host": string, "port" [0,1]: integer }
-root R
+record Person { "name": string, "age" [0,1]: integer }
+root Person
 $ omnist schema compatible-with examples/cli/v1.osd examples/cli/v2.osd
 true
 ```

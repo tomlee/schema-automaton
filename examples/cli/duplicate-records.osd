@@ -1,4 +1,4 @@
-record A { "x": integer }
-record B { "x": integer }
-record R { "a": A, "b": B }
-root R
+record Employee { "name": string }
+record Customer { "name": string }
+record Company  { "employee": Employee, "customer": Customer }
+root Company

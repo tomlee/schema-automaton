@@ -1,0 +1,2 @@
+record Person{"name":string,"age" [0,1]:integer}
+root Person

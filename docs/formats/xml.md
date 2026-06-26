@@ -8,9 +8,8 @@ standard-library parser is used and `read_xml` emits an `UnsafeXMLWarning`).
 ```python
 from omnist import read_xml, Doc
 
-d = Doc(read_xml("<order><id>A1</id>"
-                 "<item><sku>W</sku></item><item><sku>G</sku></item></order>"))
-d.to_json()    # '{"order": {"id": "A1", "item": [{"sku": "W"}, {"sku": "G"}]}}'
+d = Doc(read_xml("<person><name>Ann</name><tags>x</tags><tags>y</tags></person>"))
+d.to_json()    # '{"person": {"name": "Ann", "tags": ["x", "y"]}}'
 ```
 
 ## How it maps

@@ -1,2 +1,2 @@
-record R { "host": string }
-root R
+record Person { "name": string }
+root Person

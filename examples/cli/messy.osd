@@ -1,2 +1,0 @@
-record R{"a":integer,"b":string}
-root R
