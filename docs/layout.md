@@ -101,6 +101,11 @@ Full test strategy (coverage target, fuzzing approach, CI) is in
   CLI's own error-surfacing path (arbitrary input across every command/
   format combination); doesn't re-fuzz the codecs, already covered by
   `test_fuzz.py`.
+- **`test_cli_examples.py`** -- executes the exact CLI examples shown in
+  [docs/cli.md](cli.md), against the real fixture files in
+  [`examples/cli/`](https://github.com/omnist-dev/omnist/tree/master/examples/cli),
+  so that page can't silently drift from what running it actually
+  produces (same convention as `test_docs.py`, applied to the CLI page).
 
 See also [testing.md](testing.md) for coverage measurement, the fuzzing
 methodology, and what CI runs on every push and PR.

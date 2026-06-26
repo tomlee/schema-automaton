@@ -37,7 +37,8 @@ self-contained formal model (inspired by Lee & Cheung, CIKM 2010):
 - A **Schema** is named `record` definitions (closed named fields, each with a
   cardinality), where every field's type is always exactly one fixed scalar
   (optionally nullable) or one `Ref` to a named record — referenced by name for
-  reuse and recursion. **Validate** a Document, **compare** two schemas for
+  reuse and recursion. Written as **OSD** (Omnist Schema Definition).
+  **Validate** a Document, **compare** two schemas for
   backward-compatibility, or **infer** a schema from examples.
 - **Closed by construction** — records are closed, and scalar types are
   never composed into enums or unions. That is not a constraint bolted on

@@ -1,0 +1,4 @@
+record A { "x": integer }
+record B { "x": integer }
+record R { "a": A, "b": B }
+root R

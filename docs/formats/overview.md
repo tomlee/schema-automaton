@@ -10,6 +10,17 @@ from omnist import Doc
 Doc.from_json('{"name": "Ann", "tags": ["x", "y"]}').to_toml()
 ```
 
+The same conversion from the command line:
+
+```sh
+omnist convert data.json --from json --to toml
+```
+
+See [the CLI docs](../cli.md) for the full command surface (`convert`,
+`check`, `validate`, `infer`, and the `schema *` commands) — every
+capability on this page is available from either the Python API or the
+CLI.
+
 ## How a format becomes a Document
 
 A Document is an ordered list of labeled edges (see the

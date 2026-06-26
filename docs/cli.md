@@ -5,6 +5,13 @@ throughout the rest of these docs; every command maps directly onto one or
 two calls into the public `omnist` API. This page matches
 [the CLI spec](design/cli-spec.md) exactly.
 
+Every example below is real: it's run against the files under
+[`examples/cli/`](https://github.com/omnist-dev/omnist/tree/master/examples/cli)
+in this repo, and the output shown is the exact, verified output of running
+it — see `tests/test_cli_examples.py`, which runs every one of these and
+fails CI if the output ever drifts from what's shown here. Run them
+yourself from the repo root.
+
 ## `omnist format`
 
 ```
@@ -16,9 +23,14 @@ file path or `-` for stdin; `-o`/`--output` is a file path, or omit it for
 stdout.
 
 ```sh
-omnist format messy.oml -o clean.oml
-echo 'a:   1' | omnist format -
-# a: 1
+$ cat examples/cli/messy.oml
+a:   1
+b:"x"
+$ omnist format examples/cli/messy.oml
+a: 1
+b: "x"
+$ echo 'a:   1' | omnist format -
+a: 1
 ```
 
 Malformed OML raises the same `ParseError` `read_oml` would, printed to
@@ -63,12 +75,74 @@ library's `read_xml`/`write_xml` only support a single-rooted Document;
 converting many files is a shell loop).
 
 ```sh
-omnist convert order.json --from json --to oml
-omnist convert order.xml --from xml --to oml --schema order.osd -o order.oml
-cat data.toml | omnist convert - --from toml --to json
+$ omnist convert examples/cli/order.json --from json --to oml
+order: {
+  id: "A1"
+  status: "shipped"
+  total: 29.97
+  address: {
+    street: "1 Main"
+    city: "London"
+  }
+  items: {
+    sku: "W"
+    qty: 3
+    price: 9.99
+  }
+  items: {
+    sku: "G"
+    qty: 1
+    price: 9.99
+  }
+}
+```
 
-omnist convert data.json --from json --to toml --report -o data.toml
-omnist convert data.json --from json --to toml --strict -o data.toml
+The same order, read from XML this time, upgraded/validated against the
+schema on the way in:
+
+```sh
+$ omnist convert examples/cli/order.xml --from xml --to oml --schema examples/cli/order.osd
+order: {
+  id: "A1"
+  status: "shipped"
+  total: 29.97
+  address: {
+    street: "1 Main"
+    city: "London"
+  }
+  items: {
+    sku: "W"
+    qty: 3
+    price: 9.99
+  }
+  items: {
+    sku: "G"
+    qty: 1
+    price: 9.99
+  }
+}
+```
+
+Through stdin/stdout:
+
+```sh
+$ cat examples/cli/order.toml | omnist convert - --from toml --to json
+{"order": {"id": "A1", "status": "shipped", "total": 29.97, "items": [{"sku": "W", "qty": 3, "price": 9.99}, {"sku": "G", "qty": 1, "price": 9.99}], "address": {"street": "1 Main", "city": "London"}}}
+```
+
+`--report`/`--strict`, on a document TOML can't hold losslessly
+(`examples/cli/lossy.json` is `{"a": null}`):
+
+```sh
+$ omnist convert examples/cli/lossy.json --from json --to toml --report
+$ # (writes nothing to stdout since there's no -o; the file write below
+$ #  would still happen normally if -o were given)
+# stderr:
+warning: $.a: null value dropped (TOML has no null)
+
+$ omnist convert examples/cli/lossy.json --from json --to toml --strict
+# exit 1, nothing written, stderr:
+error: warning: $.a: null value dropped (TOML has no null)
 ```
 
 ## `omnist check`
@@ -88,8 +162,12 @@ By default, `check` always exits `0` — it's purely informational.
 adjusting, `1` if anything would.
 
 ```sh
-omnist check data.json --from json --to toml
-omnist check data.json --from json --to toml --strict && echo "safe to convert losslessly"
+$ omnist check examples/cli/lossy.json --from json --to toml
+warning: $.a: null value dropped (TOML has no null)
+
+$ omnist check examples/cli/lossy.json --from json --to toml --strict
+warning: $.a: null value dropped (TOML has no null)
+# exit 1
 ```
 
 ## `omnist infer`
@@ -103,8 +181,16 @@ All inputs must be the same format. Each is read as a `Doc`,
 from them, written out as OSD.
 
 ```sh
-omnist infer samples/*.json --from json -o inferred.osd
+$ omnist infer examples/cli/sample1.json examples/cli/sample2.json --from json
+record Root {
+    "host": string,
+    "port" [0,1]: integer,
+}
+root Root
 ```
+
+(`sample1.json` is `{"host": "a"}`; `sample2.json` is `{"host": "b", "port": 80}` —
+`port` is absent from the first sample, so `infer` drafts it as optional.)
 
 ## `omnist validate`
 
@@ -129,8 +215,22 @@ split, which is what `convert --schema` does instead).
 - `oml` — the same `{ok, errors}` shape, OML-encoded.
 
 ```sh
-omnist validate order.json --from json --schema order.osd
-omnist validate order.json --from json --schema order.osd --result-format json
+$ omnist validate examples/cli/order.json --from json --schema examples/cli/order.osd
+valid
+```
+
+A rejected order (`invalid-order.json` has `"total": "ten"` and no `items`
+at all):
+
+```sh
+$ omnist validate examples/cli/invalid-order.json --from json --schema examples/cli/order.osd
+invalid:
+  at $.order.total: expected number, got string ('ten')
+  at $.order: field 'items' occurs 0 time(s), expected at least 1
+# exit 1
+
+$ omnist validate examples/cli/invalid-order.json --from json --schema examples/cli/order.osd --result-format json
+{"ok": false, "errors": [{"path": "$.order.total", "message": "expected number, got string ('ten')"}, {"path": "$.order", "message": "field 'items' occurs 0 time(s), expected at least 1"}]}
 ```
 
 Exit `0` if valid, `1` if invalid, `2` on a read/parse error (malformed
@@ -149,7 +249,15 @@ whitespace/field order; it never changes a schema's structure (contrast
 merge structurally-identical records).
 
 ```sh
-omnist schema format messy.osd -o clean.osd
+$ cat examples/cli/messy.osd
+record R{"a":integer,"b":string}
+root R
+$ omnist schema format examples/cli/messy.osd
+record R {
+    "a": integer,
+    "b": string,
+}
+root R
 ```
 
 Malformed OSD raises `SchemaError`, printed to stderr as `error: ...`,
@@ -163,10 +271,24 @@ omnist schema normalize <schema-file> [-o OUTPUT]
 
 `Schema.normalize()`, written back out as OSD — unlike `schema format`,
 this *can* change a schema's structure (merging separately-named records
-that are structurally identical).
+that are structurally identical). `duplicate-records.osd` defines `A` and
+`B` with the exact same shape; normalizing merges them into one:
 
 ```sh
-omnist schema normalize messy.osd -o normalized.osd
+$ cat examples/cli/duplicate-records.osd
+record A { "x": integer }
+record B { "x": integer }
+record R { "a": A, "b": B }
+root R
+$ omnist schema normalize examples/cli/duplicate-records.osd
+record A {
+    "x": integer,
+}
+record R {
+    "a": A,
+    "b": A,
+}
+root R
 ```
 
 ## `omnist schema compatible-with`
@@ -182,7 +304,14 @@ same shape OML-encoded. Exit `0` if true, `1` if false, `2` on a parse
 error.
 
 ```sh
-omnist schema compatible-with v1.osd v2.osd && echo "safe to ship v2"
+$ cat examples/cli/v1.osd
+record R { "host": string }
+root R
+$ cat examples/cli/v2.osd
+record R { "host": string, "port" [0,1]: integer }
+root R
+$ omnist schema compatible-with examples/cli/v1.osd examples/cli/v2.osd
+true
 ```
 
 ## `omnist schema equivalent`
@@ -192,4 +321,11 @@ omnist schema equivalent <a> <b> [--result-format text|json|oml]
 ```
 
 `a.equivalent(b)` — true if both accept exactly the same Documents. Same
-output/exit convention as `compatible-with`.
+output/exit convention as `compatible-with`. `v1.osd` and `v2.osd` above
+are compatible but not equivalent (`v2` accepts a document `v1` doesn't):
+
+```sh
+$ omnist schema equivalent examples/cli/v1.osd examples/cli/v2.osd
+false
+# exit 1
+```

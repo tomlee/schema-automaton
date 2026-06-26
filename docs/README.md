@@ -25,11 +25,13 @@ Start here, in roughly this order:
 
 - A **Document** is a *tree*: a node is either a scalar value or an **ordered
   list of labeled edges**. An array is just a label that repeats — so the same
-  Document represents JSON, YAML, TOML, XML, and OML (Omnist's own format).
+  Document represents JSON, YAML, TOML, XML, and **OML** (Omnist Markup
+  Language, Omnist's own format).
 - A **Schema** is named **`record`** definitions (closed named fields, each
   with a cardinality `[min,max]`), where each field's type is always exactly
   one fixed scalar (optionally nullable) or one `Ref` to a named record —
-  referenced by name for reuse and recursion.
+  referenced by name for reuse and recursion. Written as **OSD** (Omnist
+  Schema Definition), Omnist's own schema text syntax.
 - **Validate** a Document against a schema, **compare** two schemas for
   backward-compatibility (`compatible_with`), or **infer** a schema from
   examples.
