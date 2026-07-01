@@ -9,7 +9,7 @@ described in ``docs/design/model.md``:
   ``Scalar`` (one of seven, never composed) / ``Ref``, with field
   cardinality, plus conformance.
 * :mod:`~omnist.canonical.osd` — the ``record`` text syntax (OSD).
-* :mod:`~omnist.canonical.operations` — ``compatible_with`` / ``equivalent``
+* :mod:`~omnist.canonical.ops` — ``compatible_with`` / ``equivalent``
   / ``normalize`` on the new model.
 
 This package is the implementation of the model; ``import omnist`` is its
@@ -33,7 +33,7 @@ from .formats import (
     write_yaml,
 )
 from .infer import infer
-from .operations import compatible_with, equivalent, normalize
+from .ops import compatible_with, equivalent, normalize
 from .osd import parse_schema, to_osd
 from .registry import Format, formats, get_format, register_format
 

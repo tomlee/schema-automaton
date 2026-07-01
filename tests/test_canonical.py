@@ -63,7 +63,7 @@ class TestPublicApi:
         import omnist as ds
 
         s = ds.parse_schema('record R { "n": integer, "s": string? }\nroot R')
-        assert ds.__version__ == "0.2.12"
+        assert ds.__version__ == "0.2.13"
         # operations are Schema methods
         assert s.validate(ds.doc({"n": 1, "s": None})).ok
         assert s.equivalent(ds.parse_schema(ds.to_osd(s)))
@@ -1007,22 +1007,21 @@ class TestSchemaModelDunders:
         s = parse_schema('record R { "a": integer }\nroot R')
         assert repr(s) == "Schema(root=ref(R), env=['R'])"
 
-    def test_resolve_cyclic_reference_raises(self):
-        # check_refs() (run at construction) requires every env value to be
-        # a Record, so resolve()'s while-loop can never naturally see the
-        # same Ref name twice through the public API -- env[name] always
-        # becomes a Record after one hop. The cycle guard is defense in
-        # depth for a caller who mutates .env directly after construction
-        # (env is a plain public dict, not enforced immutable).
-        s = schema(ref("A"), A=record(field("x", ref("A"), min=0, max=1)))
-        s.env["A"] = ref("A")
-        with pytest.raises(SchemaError, match="cyclic reference chain"):
-            s.resolve(ref("A"))
-
     def test_resolve_unknown_type_raises(self):
         s = parse_schema('record R { "a": integer }\nroot R')
         with pytest.raises(SchemaError, match="unknown type 'Ghost'"):
             s.resolve(ref("Ghost"))
+
+    def test_resolve_single_hop_semantics(self):
+        # check_refs() guarantees every env value is a Record, so Ref resolves
+        # in exactly one hop; no chaining or cycles are possible.
+        s = schema(ref("Point"), Point=record(field("x", t.integer), field("y", t.integer)))
+        rec = s.resolve(ref("Point"))
+        assert isinstance(rec, Record)
+        assert rec is s.env["Point"]
+        # unknown-name Ref still raises SchemaError
+        with pytest.raises(SchemaError, match="unknown type 'Nope'"):
+            s.resolve(ref("Nope"))
 
     def test_validate_requires_a_doc(self):
         s = parse_schema('record R { "a": integer }\nroot R')

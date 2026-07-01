@@ -21,8 +21,9 @@ is where the logic actually lives.
 - **`formats.py`** -- the JSON/YAML/TOML/XML codecs (`read_*`/`write_*`/
   `check_*`), each going through the shared grouped/edge-list conversion.
 - **`infer.py`** -- `infer()`: draft a schema from example Documents.
-- **`operations.py`** -- schema comparison: `compatible_with`, `equivalent`,
-  `normalize`.
+- **`ops/`** -- schema operations package: `compatible_with`, `equivalent`,
+  `normalize`; one module per algorithm from the paper (subschema/minimize/
+  signature helpers).
 - **`deserialize.py`** -- `materialize()`: schema-directed upgrading of a
   freshly-read node's leaf values (e.g. ISO string -> `date`) when the
   schema is known and the conversion is value-exact.

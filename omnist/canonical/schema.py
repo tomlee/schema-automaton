@@ -152,21 +152,20 @@ class Field:
 class Record:
     """A closed set of named fields (constrained by its child labels)."""
 
-    __slots__ = ("fields",)
+    __slots__ = ("fields", "_by_label")
 
     def __init__(self, fields: List[Field]) -> None:
         self.fields = list(fields)
+        self._by_label: Dict[str, Field] = {}
         seen = set()
         for f in self.fields:
             if f.label in seen:
                 raise SchemaError(f"duplicate field label {f.label!r} in a record")
             seen.add(f.label)
+            self._by_label[f.label] = f
 
     def field(self, label: str) -> Optional[Field]:
-        for f in self.fields:
-            if f.label == label:
-                return f
-        return None
+        return self._by_label.get(label)
 
     def __repr__(self) -> str:
         return "record{" + ", ".join(repr(f) for f in self.fields) + "}"
@@ -219,19 +218,14 @@ class Schema:
         self.check_refs()
 
     def resolve(self, t: Type) -> Union[Record, Scalar]:
-        """A bare ``Scalar`` resolves to itself; a ``Ref`` chain follows the
-        environment to its concrete ``Record``."""
+        """A bare ``Scalar`` resolves to itself; a ``Ref`` is a single environment
+        lookup -- env values are always Records (enforced by ``check_refs``), so
+        ref chains cannot occur."""
         if isinstance(t, Scalar):
             return t
-        seen = set()
-        while isinstance(t, Ref):
-            if t.name in seen:
-                raise SchemaError(f"cyclic reference chain at {t.name!r}")
-            seen.add(t.name)
-            if t.name not in self.env:
-                raise SchemaError(f"unknown type {t.name!r}")
-            t = self.env[t.name]
-        return t
+        if t.name not in self.env:
+            raise SchemaError(f"unknown type {t.name!r}")
+        return self.env[t.name]
 
     def check_refs(self) -> None:
         for name, rec in self.env.items():
@@ -303,18 +297,18 @@ class Schema:
     def compatible_with(self, other: "Schema") -> bool:
         """True if every document this schema accepts is also accepted by
         ``other`` (this is a subschema; ``other`` is backward-compatible)."""
-        from .operations import compatible_with
+        from .ops import compatible_with
         return compatible_with(self, other)
 
     def equivalent(self, other: "Schema") -> bool:
         """True if both schemas accept exactly the same documents."""
-        from .operations import equivalent
+        from .ops import equivalent
         return equivalent(self, other)
 
     def normalize(self) -> "Schema":
         """An equivalent schema with structurally-identical named records
         merged."""
-        from .operations import normalize
+        from .ops import normalize
         return normalize(self)
 
     # -- serialization --------------------------------------------------

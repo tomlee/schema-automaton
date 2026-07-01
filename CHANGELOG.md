@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.2.13] — Internal refactor: operations package groundwork
+
+Internal refactoring with zero behavior change (full test suite passes
+untouched). `omnist/canonical/operations.py` is now an `ops/` package with
+three modules (subschema/minimize/signature), each implementing one algorithm
+from the Lee & Cheung paper. Additionally, `Schema.resolve()` is simplified
+to a single dictionary lookup (guaranteed by `check_refs()` that env values
+are always Records), and `Record.field()` is now O(1) via a label index
+built during `__init__`. Groundwork for follow-up correctness initiatives
+(prune/is_empty, minimize rewrite, oracle, extract).
+See issue [#138](https://github.com/omnist-dev/omnist/issues/138).
+
 ## [v0.2.12] — Docs: equivalent and normalize in schema reference
 
 Added full examples for `Schema.equivalent()` and `Schema.normalize()` to

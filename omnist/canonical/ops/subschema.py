@@ -1,29 +1,24 @@
-"""Schema operations on the canonical model.
+"""Subschema compatibility and equivalence.
 
-* ``compatible_with(a, b)`` — every document ``a`` accepts is also accepted by
-  ``b`` (``a`` is a subschema / ``b`` is backward-compatible).
-* ``equivalent(a, b)`` — both accept exactly the same documents.
-* ``normalize(s)`` — merge structurally-identical named records.
-
-All checks are structural and order-free, and handle recursion by assuming
-compatibility when a cycle repeats.
+Implements the paper's Algorithm 4 (SubschemaSA) restricted to omnist's
+counting cardinality languages; ``equivalent`` is bidirectional inclusion.
 """
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Optional, Set, Tuple
 
-from .schema import Field, Record, Ref, Scalar, Schema
+from ..schema import Record, Scalar, Schema
 
-# ---------------------------------------------------------------------------
-# compatible_with  /  equivalent
-# ---------------------------------------------------------------------------
 
 def compatible_with(a: Schema, b: Schema) -> bool:
+    """True if every document ``a`` accepts is also accepted by ``b``
+    (``a`` is a subschema / ``b`` is backward-compatible)."""
     return _sub(a, a.root, b, b.root, set())
 
 
 def equivalent(a: Schema, b: Schema) -> bool:
+    """True if both schemas accept exactly the same documents."""
     return compatible_with(a, b) and compatible_with(b, a)
 
 
@@ -79,46 +74,3 @@ def _le(x: Optional[int], y: Optional[int]) -> bool:
     if x is None:
         return False
     return x <= y
-
-
-# ---------------------------------------------------------------------------
-# normalize — merge structurally identical named records
-# ---------------------------------------------------------------------------
-
-def normalize(s: Schema) -> Schema:
-    groups: Dict[tuple, List[str]] = {}
-    for name, rec in s.env.items():
-        groups.setdefault(_struct_key(rec), []).append(name)
-    rep: Dict[str, str] = {}
-    for names in groups.values():
-        keep = sorted(names)[0]
-        for n in names:
-            rep[n] = keep
-    new_env: Dict[str, Any] = {}
-    for name, rec in s.env.items():
-        if rep[name] == name:
-            new_env[name] = _remap(rec, rep)
-    new_root = Ref(rep.get(s.root.name, s.root.name))
-    return Schema(new_root, new_env)
-
-
-def _struct_key(rec: Record) -> tuple:
-    fields = tuple((f.label, f.min, f.max, _type_key(f.type)) for f in rec.fields)
-    return ("record", fields)
-
-
-def _type_key(t) -> tuple:
-    if isinstance(t, Ref):
-        return ("ref", t.name)
-    return ("scalar", t.name, t.nullable)
-
-
-def _remap(rec: Record, rep: Dict[str, str]) -> Record:
-    return Record([Field(f.label, _remap_type(f.type, rep), f.min, f.max)
-                   for f in rec.fields])
-
-
-def _remap_type(t, rep: Dict[str, str]):
-    if isinstance(t, Ref):
-        return Ref(rep.get(t.name, t.name))
-    return t
