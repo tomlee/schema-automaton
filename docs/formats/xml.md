@@ -146,10 +146,38 @@ Doc.of({"order": {"id": "A1"}}).to_xml()
 > See [adjustment reports](../api.md#adjustment-reports-lossy-writes) to
 > inspect any of these, or `strict=True` to raise instead of adjusting.
 
+## Mixed content is rejected
+
+**Mixed content** — non-whitespace text alongside child elements (either the
+element's own leading text, or a child's trailing "tail" text) — is outside
+the data-XML profile. `read_xml` raises `ParseError`, naming the element,
+rather than silently discarding the text (which is what it used to do):
+
+```python
+from omnist import read_xml, ParseError
+
+try:
+    read_xml("<p>Hello <b>world</b></p>")   # text before a child element
+except ParseError as e:
+    print(e)   # $: mixed content (text alongside child elements) ...
+
+try:
+    read_xml("<p><b>world</b> tail</p>")    # text after a child element
+except ParseError as e:
+    print(e)   # $.b: mixed content ...
+```
+
+Whitespace-only text/tail — the shape pretty-printed XML has, including
+`write_xml`'s own output — is unaffected and still parses:
+
+```python
+read_xml("<p>\n  <b>world</b>\n</p>")   # [('p', [('b', 'world')])]
+```
+
 ## Notes
 
-- **Not supported** (outside the data-XML profile): attributes, mixed text and
-  elements, and CDATA. A namespace prefix is stripped (`<n:a>` reads as `a`).
+- **Not supported** (outside the data-XML profile): attributes and CDATA. A
+  namespace prefix is stripped (`<n:a>` reads as `a`).
 - See [the comparison table](overview.md#special-features-mapped-to-oml) for
   how XML's attribute- and namespace-dropping stack up against the other
   formats.
