@@ -56,6 +56,13 @@ def read_json(text: str, *, schema: Optional["Schema"] = None) -> Any:
         node = build_node(_json.loads(text))
     except _json.JSONDecodeError as exc:
         raise ParseError(f"invalid JSON: {exc}") from exc
+    except ValueError as exc:
+        # json.loads converts integer literals to `int` while parsing, so an
+        # over-digit-limit literal trips CPython's int-string-conversion
+        # guard here -- before build_node ever sees a value -- as a bare
+        # ValueError, not a JSONDecodeError.  Translate it like any other
+        # parse-time failure.
+        raise ParseError(f"invalid JSON: {exc}") from exc
     return _materialize(node, schema)
 
 
@@ -94,6 +101,10 @@ def read_yaml(text: str, *, schema: Optional["Schema"] = None) -> Any:
     try:
         node = build_node(yaml.safe_load(text))
     except yaml.YAMLError as exc:
+        raise ParseError(f"invalid YAML: {exc}") from exc
+    except ValueError as exc:
+        # Same int-string-conversion guard as read_json (see its comment):
+        # PyYAML converts an integer scalar to `int` while loading.
         raise ParseError(f"invalid YAML: {exc}") from exc
     return _materialize(node, schema)
 
@@ -178,6 +189,10 @@ def read_toml(text: str, *, schema: Optional["Schema"] = None) -> Any:
     try:
         node = build_node(tomllib.loads(text))
     except tomllib.TOMLDecodeError as exc:
+        raise ParseError(f"invalid TOML: {exc}") from exc
+    except ValueError as exc:
+        # Same int-string-conversion guard as read_json (see its comment):
+        # tomllib converts an integer literal to `int` while loading.
         raise ParseError(f"invalid TOML: {exc}") from exc
     return _materialize(node, schema)
 

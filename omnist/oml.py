@@ -23,10 +23,10 @@ import re as _re
 from dataclasses import dataclass
 from typing import Any, List, Optional, Tuple
 
+from .document import _MAX_INT_DIGITS
 from .errors import ParseError
 
 _MAX_DEPTH = 200          # matches Document's own nesting bound (document.py)
-_MAX_INT_DIGITS = 4300    # matches CPython's default sys.get_int_max_str_digits()
 
 
 # ---------------------------------------------------------------------------

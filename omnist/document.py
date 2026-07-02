@@ -32,6 +32,10 @@ if TYPE_CHECKING:
     from .schema import Schema
 
 _MAX_DEPTH = 200
+_MAX_INT_DIGITS = 4300    # matches CPython's default sys.get_int_max_str_digits();
+                          # shared with oml.py, which imports this constant so the
+                          # reader and the model enforce exactly the same cap.
+_MAX_INT_MAGNITUDE = 10 ** _MAX_INT_DIGITS
 
 Edge = Tuple[str, Any]   # (label, node)
 
@@ -39,6 +43,24 @@ Edge = Tuple[str, Any]   # (label, node)
 def _is_scalar(v: Any) -> bool:
     # bool is an int subclass and datetime a date subclass — both are fine here.
     return isinstance(v, (str, int, float, _dt.date, _dt.time, _dt.datetime)) or v is None
+
+
+def _check_int_digits(v: Any, path: str) -> None:
+    """Reject ints beyond CPython's str-conversion digit cap.
+
+    Compared as an int (``abs(v) >= 10**_MAX_INT_DIGITS``), never via
+    ``str(v)`` -- str-converting an out-of-range int is exactly the
+    superlinear operation this guard exists to avoid triggering.  ``bool``
+    is an ``int`` subclass but is always 0 or 1, so it can never trip this.
+    """
+    if not isinstance(v, int) or isinstance(v, bool):
+        return
+    if -_MAX_INT_MAGNITUDE < v < _MAX_INT_MAGNITUDE:
+        return
+    raise DocumentError(
+        f"{path}: integer has more than {_MAX_INT_DIGITS} digits, exceeding "
+        "the digit limit (security: unbounded-digit int-to-str conversion "
+        "is superlinear)")
 
 
 # ---------------------------------------------------------------------------
@@ -73,6 +95,7 @@ def build_node(value: Any, path: str = "$", depth: int = 0,
         raise DocumentError(f"{path}: a bare array has no labeled-edge form "
                             "(arrays appear only as a repeated field)")
     if _is_scalar(value):
+        _check_int_digits(value, path)
         return value
     raise DocumentError(f"{path}: {type(value).__name__} is not a Document value")
 
@@ -206,14 +229,23 @@ class Doc:
         return self
 
     def set(self, label: str, value: Any) -> "Doc":
-        """Replace the (single) child under ``label``, or add it if absent."""
+        """Replace all edges under ``label`` with a single new edge (positioned
+        at the first old occurrence); ``set`` = ``remove`` + ``add``."""
         self._require_internal("set")
         new = build_node(value, f"{self.path}.{label}")
-        for i, (lbl, _) in enumerate(self._node):
+        first = None
+        kept: List[Edge] = []
+        for lbl, child in self._node:
             if lbl == label:
-                self._node[i] = (label, new)
-                return self
-        self._node.append((label, new))
+                if first is None:
+                    first = len(kept)
+                    kept.append((label, new))
+                # later duplicates are dropped
+            else:
+                kept.append((lbl, child))
+        if first is None:
+            kept.append((label, new))
+        self._node[:] = kept
         return self
 
     def _require_internal(self, op: str) -> None:

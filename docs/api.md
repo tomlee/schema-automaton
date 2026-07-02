@@ -52,7 +52,7 @@ A guarded handle on a Document node — either a **leaf** (a scalar value) or an
 | | |
 |---|---|
 | `.add(label, value)` | append an edge — a repeated label is how an array grows |
-| `.set(label, value)` | replace the single child under `label`, or add it |
+| `.set(label, value)` | replace all edges under `label` with a single new edge (positioned at the first old occurrence); `set` = `remove` + `add` |
 | `.remove(label)` | drop every edge under `label` |
 
 **Export**

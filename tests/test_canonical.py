@@ -45,7 +45,7 @@ from omnist import (
     write_yaml,
 )
 from omnist.errors import DocumentError, ParseError, SchemaError, WriteError
-from omnist.oml import check_oml
+from omnist.oml import check_oml, write_oml
 from omnist.ops import compatible_with, equivalent, is_empty, normalize, prune
 from omnist.schema import matches_kind, value_kind
 
@@ -61,7 +61,7 @@ class TestPublicApi:
         import omnist as ds
 
         s = ds.parse_schema('record R { "n": integer, "s": string? }\nroot R')
-        assert ds.__version__ == "0.2.21"
+        assert ds.__version__ == "0.2.22"
         # operations are Schema methods
         assert s.validate(ds.doc({"n": 1, "s": None})).ok
         assert s.equivalent(ds.parse_schema(ds.to_osd(s)))
@@ -131,6 +131,59 @@ class TestDocument:
         d2 = doc({"addr": {"city": "X"}})
         d2.child("addr").set("city", "Y")
         assert d2.to_grouped() == {"addr": {"city": "Y"}}
+
+    # -- set() replace-all semantics (issue #156, B4) --------------------
+    def test_set_on_absent_label_appends(self):
+        d = doc({"a": 1})
+        d.set("b", 2)
+        assert d.to_data() == [("a", 1), ("b", 2)]
+
+    def test_set_on_single_label_unchanged_behavior(self):
+        d = doc({"a": 1, "b": 2})
+        d.set("a", 99)
+        assert d.to_data() == [("a", 99), ("b", 2)]
+        assert d.count("a") == 1
+        assert d.get_one("a").value == 99
+
+    def test_set_on_repeated_label_collapses_to_one_at_first_position(self):
+        d = doc({"a": 1})
+        d.add("a", 2)
+        d.add("b", 9)
+        d.set("a", 99)
+        assert d.to_data() == [("a", 99), ("b", 9)]
+        assert d.count("a") == 1
+        assert d.get_one("a").value == 99
+
+    def test_set_preserves_first_occurrence_position_among_other_labels(self):
+        # 'a' first occurs before 'b'; after set(), the single surviving
+        # 'a' edge must still sit at that same (first-occurrence) slot.
+        d = doc({"a": 1, "b": 2})
+        d.add("a", 3)
+        d.set("a", 99)
+        assert d.to_data() == [("a", 99), ("b", 2)]
+
+    def test_set_after_remove_appends(self):
+        d = doc({"a": 1})
+        d.add("a", 2)
+        d.remove("a")
+        assert d.count("a") == 0
+        d.set("a", 7)
+        assert d.to_data() == [("a", 7)]
+
+    def test_set_replace_all_matches_remove_then_add_docstring_contract(self):
+        # "set = remove + add" -- construct the same document both ways.
+        d1 = doc({"a": 1})
+        d1.add("a", 2).add("b", 9)
+        d1.set("a", 99)
+
+        d2 = doc({"a": 1})
+        d2.add("a", 2).add("b", 9)
+        d2.remove("a").add("a", 99)
+        # remove+add appends at the END (after 'b'), unlike set(), which
+        # keeps the FIRST occurrence's position -- documenting the one
+        # difference between set() and a literal remove()+add().
+        assert d1.to_data() == [("a", 99), ("b", 9)]
+        assert d2.to_data() == [("b", 9), ("a", 99)]
 
 
 class TestInfer:
@@ -706,6 +759,19 @@ class TestMalformedInput:
         with pytest.raises(ParseError, match="invalid XML"):
             read_xml("<unclosed>")
 
+    def test_check_oml_never_sees_an_unwritable_node(self):
+        # Before issue #156 (B2), build_node accepted ints past CPython's
+        # str-conversion digit cap, so check_oml's "always an empty report"
+        # guarantee and write_oml's "the write always succeeds exactly"
+        # guarantee were both silently false for such a node -- the crash
+        # only surfaced later, in write_oml/write_json/repr(). Now the cap
+        # is enforced at construction, so any node build_node accepts is
+        # guaranteed writable: check_oml is empty and write_oml succeeds.
+        big_ok = int("9" * 4300)   # at the cap -- the largest build_node accepts
+        node = doc({"a": big_ok, "b": [1, 2], "c": {"d": "x"}}).to_data()
+        assert list(check_oml(node)) == []
+        write_oml(node)   # must not raise
+
 
 class TestCodecs:
     SCHEMA = ('record Member { "name": string, "role": string }\n'
@@ -1228,6 +1294,74 @@ class TestDocumentRobustness:
             leaf.set("x", 1)
         with pytest.raises(DocumentError, match="cannot remove on a leaf"):
             leaf.remove("x")
+
+    # -- 4300-digit int cap at construction (issue #156, B2) --------------
+    # A too-big literal can't be spelled with int('9' * 4301) directly --
+    # CPython's own guard fires on that str->int conversion first. Build it
+    # via arithmetic (int->int, never string) instead, exactly as a
+    # legitimately-computed huge int would arrive in practice.
+    _BIG_OK = int("9" * 4300)
+    _BIG_BAD = _BIG_OK * 10 + 9   # one more digit, no string conversion involved
+
+    def test_int_at_digit_cap_boundary_is_accepted_end_to_end(self):
+        d = doc({"a": self._BIG_OK})
+        assert d.get_one("a").value == self._BIG_OK
+        d.to_oml()          # must not raise
+        d.to_json()         # must not raise
+        repr(d)              # must not raise
+
+    def test_int_one_past_digit_cap_rejected_by_doc(self):
+        with pytest.raises(DocumentError, match="more than 4300 digits"):
+            doc({"a": self._BIG_BAD})
+
+    def test_int_one_past_digit_cap_rejected_by_add(self):
+        d = doc({})
+        with pytest.raises(DocumentError, match="more than 4300 digits"):
+            d.add("a", self._BIG_BAD)
+        # rejected before mutation -- the edge list is untouched
+        assert d.to_data() == []
+
+    def test_int_one_past_digit_cap_rejected_by_set(self):
+        d = doc({})
+        with pytest.raises(DocumentError, match="more than 4300 digits"):
+            d.set("a", self._BIG_BAD)
+        assert d.to_data() == []
+
+    def test_negative_int_one_past_digit_cap_rejected(self):
+        with pytest.raises(DocumentError, match="more than 4300 digits"):
+            doc({"a": -self._BIG_BAD})
+
+    def test_negative_int_at_digit_cap_boundary_accepted(self):
+        doc({"a": -self._BIG_OK}).to_oml()   # must not raise
+
+    def test_bools_never_trip_the_digit_cap(self):
+        # bool is an int subclass; make sure the guard special-cases it
+        # rather than trying (and failing) to compare it against the cap.
+        d = doc({"t": True, "f": False})
+        d.add("t2", True)
+        d.set("t", False)
+        assert d.to_data() == [("t", False), ("f", False), ("t2", True)]
+
+    def test_oversized_int_from_read_json_raises_cleanly(self):
+        # json.loads converts the integer literal to `int` while parsing --
+        # before build_node ever runs -- so this exercises a different code
+        # path than doc()/add()/set(). It must not leak CPython's raw
+        # ValueError; formats.py translates it to ParseError like any other
+        # parse-time failure (the readers' existing convention: syntax/
+        # conversion errors during read -> ParseError).
+        text = '{"a": ' + ("9" * 4301) + "}"
+        with pytest.raises(ParseError):
+            read_json(text)
+
+    def test_oversized_int_from_read_yaml_raises_cleanly(self):
+        text = "a: " + ("9" * 4301)
+        with pytest.raises(ParseError):
+            read_yaml(text)
+
+    def test_oversized_int_from_read_toml_raises_cleanly(self):
+        text = "a = " + ("9" * 4301)
+        with pytest.raises(ParseError):
+            read_toml(text)
 
     def test_eq_against_non_document_value(self):
         assert doc({"a": 1}) != {1, 2, 3}    # a set has no Document form

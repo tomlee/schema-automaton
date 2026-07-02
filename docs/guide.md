@@ -65,10 +65,15 @@ Edit through the guarded API (a repeated `add` is how an array grows):
 
 ```python
 d.add("tag", "z")          # append an edge
-d.set("name", "Bob")       # replace the single 'name'
+d.set("name", "Bob")       # replace all 'name' edges with one ('set' = 'remove' + 'add')
 d.remove("tag")            # drop every 'tag' edge
 d.child("name")            # a cursor to the single child
 ```
+
+`set(label, value)` removes every edge under `label`, then inserts a single
+new edge at the position of the first old occurrence (or appends, if `label`
+wasn't present). On a label that occurs once, this is exactly "replace it in
+place"; on a repeated label, every duplicate collapses into that one edge.
 
 ## OML — the native format
 
