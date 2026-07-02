@@ -60,10 +60,11 @@ omnist/__init__.py                   12      0   100%
 omnist/canonical/__init__.py         12      0   100%
 omnist/canonical/deserialize.py      75      0   100%
 omnist/canonical/document.py        202      0   100%
-omnist/canonical/ops/__init__.py      3      0   100%
-omnist/canonical/ops/minimize.py     25      0   100%
+omnist/canonical/ops/__init__.py      4      0   100%
+omnist/canonical/ops/isomorphic.py   27      0   100%
+omnist/canonical/ops/minimize.py     55      0   100%
 omnist/canonical/ops/signature.py    10      0   100%
-omnist/canonical/ops/subschema.py    48      0   100%
+omnist/canonical/ops/subschema.py    56      0   100%
 omnist/canonical/osd.py             149      0   100%
 omnist/canonical/formats.py         217      0   100%
 omnist/canonical/infer.py            77      0   100%
@@ -170,6 +171,46 @@ is the standalone invocation. Hypothesis settings are tuned for CI in the
 module-level `_SUPPRESS` settings object (`deadline=None`, `max_examples=150`,
 `HealthCheck.too_slow` suppressed) and apply automatically to every test
 in the file.
+
+### The dual-algorithm oracle
+
+Most of this suite tests behavior against examples: a schema and a document,
+worked out by hand, checked against the expected result. `equivalent()`'s
+property tests (#141) do something stronger, and it's worth calling out why.
+
+`omnist`'s public `Schema.equivalent()` is defined as bidirectional
+`compatible_with()` — the paper's Algorithm 4 (SubschemaSA) run in both
+directions. That's the cheap, single algorithm the public API commits to.
+But the paper also proves a separate result, Theorem 4: two schemas are
+equivalent *iff* their minimized forms (`normalize()`, Algorithm 2) are
+isomorphic (Algorithm 3's isomorphism-testing step). Isomorphism testing —
+implemented privately as `omnist.canonical.ops.isomorphic._isomorphic`, not
+part of the public API — is a structurally unrelated computation: it walks
+both schemas' already-minimized environments in parallel, building a name
+bijection and comparing `local_signature` at each matched record pair,
+rather than doing anything resembling subschema inclusion checking.
+
+`tests/test_fuzz.py` runs both procedures against the same generated
+schema pairs and asserts they always agree:
+`s.equivalent(t) == _isomorphic(s.normalize(), t.normalize())`. Because two
+independently-random schemas are almost always inequivalent, a second set
+of generators builds pairs that are equivalent *by construction* — a
+record rename, a field reorder, an added unreachable record, an added
+`max == 0` field, all provably language-preserving — so the property is
+also exercised on its harder, less common "True" branch. Companion
+properties check that `normalize()` never changes a schema's language
+(`normalize(s).equivalent(s)`) and that it's idempotent.
+
+This is the "boringly correct" idea applied concretely: the value isn't
+that `equivalent()` passes a pile of example-based tests (any
+implementation, buggy or not, can be made to pass hand-picked examples by
+construction), it's that its result is cross-checked, on every property-test
+run, against a second implementation of a completely different theorem in
+the same paper. If `compatible_with` and `_isomorphic` were to ever
+disagree, that would mean either the paper's Theorem 4 doesn't hold under
+omnist's counting-cardinality restriction (unlikely — it's proved for the
+general model omnist restricts), or one of the two algorithms has a bug —
+and property testing, not a hand-picked example, is what would catch it.
 
 ## CI
 

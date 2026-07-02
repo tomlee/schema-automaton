@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.2.16] — Internal equivalence oracle + property suite (#141)
+
+**Added:** an internal, non-public second decision procedure for schema
+equivalence, `omnist.canonical.ops.isomorphic._isomorphic`, implementing
+the paper's Algorithm 3 step 3 (isomorphism testing between two already-
+normalized schemas). This gives `equivalent()` (bidirectional
+`compatible_with`, Algorithm 4) an algorithm-independent oracle: the
+paper's Theorem 4 says two schemas are equivalent iff their minimized
+forms are isomorphic, and a new Hypothesis property suite in
+`tests/test_fuzz.py` asserts the two procedures always agree, both on
+random pairs and on pairs deliberately constructed to be equivalent
+(rename, field reorder, added unreachable record, added `max == 0`
+field). `_isomorphic` is not exported from `omnist` or
+`omnist.canonical` -- `equivalent()` stays the cheaper, single public
+algorithm; the second one exists purely as a testing oracle. See
+`docs/testing.md` for the "dual-algorithm oracle" writeup.
+
 ## [v0.2.15] — Rewrite `normalize()` as partition-refinement minimization (canonical minimal form)
 
 **Changed (behavior-affecting):** `Schema.normalize()` was a single

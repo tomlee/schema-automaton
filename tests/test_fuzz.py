@@ -474,3 +474,178 @@ def test_is_empty_implies_compatible_with_anything(s, t):
     schema, no matter what ``t`` looks like."""
     if s.is_empty():
         assert s.compatible_with(t)
+
+
+# ---------------------------------------------------------------------------
+# 6. Equivalence oracle (issue #141) -- the paper's Theorem 4: two schemas
+# are equivalent iff their minimized (normalized) forms are isomorphic. That
+# gives two structurally independent decision procedures for schema
+# equality -- bidirectional ``compatible_with`` (``ops/subschema.py``,
+# Algorithm 4) vs minimize-then-isomorphism-test (``ops/minimize.py``
+# Algorithm 2 + ``ops/isomorphic.py`` Algorithm 3 step 3) -- and this
+# section asserts they never disagree. See ``docs/testing.md``, "the
+# dual-algorithm oracle", for why this is the strongest correctness check
+# in the suite: it isn't testing behavior against examples, it's testing
+# one implementation against an independently-derived second one.
+# ---------------------------------------------------------------------------
+
+from omnist.canonical.ops.isomorphic import _isomorphic  # noqa: E402
+from omnist.canonical.ops.signature import local_signature  # noqa: E402
+
+
+@_SUPPRESS
+@given(s=schemas(), t=schemas())
+def test_equivalent_agrees_with_normalize_and_isomorphic(s, t):
+    """Theorem 4, directly: ``equivalent`` (bidirectional subschema
+    inclusion) and ``_isomorphic(normalize(s), normalize(t))`` (an
+    unrelated algorithm) must always agree, for arbitrary random pairs --
+    including the common case where they're simply not equivalent at all."""
+    assert s.equivalent(t) == _isomorphic(s.normalize(), t.normalize())
+
+
+@_SUPPRESS
+@given(s=schemas())
+def test_normalize_is_equivalent_to_original(s):
+    """``normalize`` must never change a schema's language."""
+    assert s.normalize().equivalent(s)
+
+
+@_SUPPRESS
+@given(s=schemas())
+def test_normalize_is_idempotent(s):
+    """Normalizing an already-normalized schema changes nothing further --
+    the fixpoint of partition refinement is reached in one call."""
+    once = s.normalize()
+    twice = once.normalize()
+    assert set(once.env) == set(twice.env)
+    assert once.root.name == twice.root.name
+    for name, rec in once.env.items():
+        other = twice.env[name]
+        assert local_signature(rec) == local_signature(other)
+
+
+# -- biased-toward-equivalent pair generation --------------------------------
+#
+# Two independently-random schemas are almost always inequivalent (the state
+# space is far too large for `s == t` structurally, let alone semantically),
+# so the oracle property above would rarely exercise the "True" branch of
+# either algorithm without help. These strategies build a *second* schema
+# that's deliberately equivalent to the first by construction, so both
+# procedures are also exercised on the interesting (and harder to get
+# right) case.
+
+_RENAME_POOL = ("A", "B", "C", "X", "Y", "Z")
+
+
+@st.composite
+def _renamed(draw, s: Schema) -> Schema:
+    """A copy of ``s`` with every env record given a fresh name (a pure
+    rename never changes a schema's language)."""
+    names = list(s.env)
+    pool = [n for n in _RENAME_POOL]
+    draw(st.permutations(pool))  # just to consume some entropy for variety
+    new_names = draw(st.permutations(pool[: len(names)])) if names else []
+    rename = dict(zip(names, new_names))
+    new_env = {
+        rename[n]: Record([
+            Field(f.label,
+                  Ref(rename[f.type.name]) if isinstance(f.type, Ref) else f.type,
+                  f.min, f.max)
+            for f in rec.fields
+        ])
+        for n, rec in s.env.items()
+    }
+    return Schema(Ref(rename[s.root.name]), new_env)
+
+
+@st.composite
+def _reordered(draw, s: Schema) -> Schema:
+    """A copy of ``s`` with each record's fields declared in a shuffled
+    order -- validation ignores field order, so this never changes the
+    schema's language (see ``ops/signature.py``'s docstring)."""
+    new_env = {}
+    for name, rec in s.env.items():
+        order = draw(st.permutations(list(range(len(rec.fields))))) if rec.fields else []
+        new_env[name] = Record([rec.fields[i] for i in order])
+    return Schema(Ref(s.root.name), new_env)
+
+
+@st.composite
+def _with_unreachable_record(draw, s: Schema) -> Schema:
+    """A copy of ``s`` plus one extra env record no field ever points to --
+    unreachable records are dropped by ``prune()`` and so never affect the
+    language."""
+    extra_name = next(n for n in ("U1", "U2", "U3") if n not in s.env)
+    extra = Record(draw(_fields()))
+    new_env = dict(s.env)
+    new_env[extra_name] = extra
+    return Schema(Ref(s.root.name), new_env)
+
+
+@st.composite
+def _with_max_zero_field(draw, s: Schema) -> Schema:
+    """A copy of ``s`` with one extra never-emittable (``max == 0``) field
+    added to some record -- such a field is dropped by ``prune()`` and so
+    never affects the language."""
+    if not s.env:
+        return s
+    name = draw(st.sampled_from(sorted(s.env)))
+    rec = s.env[name]
+    extra_label = next(
+        lbl for lbl in ("z0", "z1", "z2") if rec.field(lbl) is None
+    )
+    ftype = draw(_field_types)
+    extra = Field(extra_label, ftype, 0, 0)
+    new_env = dict(s.env)
+    new_env[name] = Record(list(rec.fields) + [extra])
+    return Schema(s.root, new_env)
+
+
+_equivalent_transform = st.sampled_from(
+    ["rename", "reorder", "unreachable", "max_zero"]
+)
+
+
+@st.composite
+def _equivalent_pair(draw):
+    """``(s, t)`` where ``t`` is built from ``s`` by a language-preserving
+    transform -- both decision procedures must say True for every one of
+    these, which is the harder direction of Theorem 4 to get right (it's
+    easy to accidentally break either algorithm in a way that only shows up
+    on cases designed to actually be equivalent)."""
+    s = draw(schemas())
+    kind = draw(_equivalent_transform)
+    if kind == "rename":
+        t = draw(_renamed(s))
+    elif kind == "reorder":
+        t = draw(_reordered(s))
+    elif kind == "unreachable":
+        t = draw(_with_unreachable_record(s))
+    else:
+        t = draw(_with_max_zero_field(s))
+    return s, t
+
+
+@_SUPPRESS
+@given(pair=_equivalent_pair())
+def test_equivalent_pairs_agree_as_isomorphic(pair):
+    """Pairs built to be equivalent by construction: both the
+    ``equivalent`` oracle and ``_isomorphic`` must say True, and they must
+    still agree with each other (Theorem 4 on the case that actually
+    exercises the "True" branch)."""
+    s, t = pair
+    assert s.equivalent(t)
+    assert _isomorphic(s.normalize(), t.normalize())
+
+
+def test_isomorphic_false_on_mismatch_found_only_by_recursing_into_a_ref():
+    """A regression/coverage case the property generators above are
+    unlikely to hit reliably: two schemas whose *root* records have equal
+    ``local_signature`` (so the top-level check alone can't distinguish
+    them), but whose ref-typed field targets diverge once the traversal
+    recurses into them. ``_isomorphic`` must walk into refs, not just
+    compare the root pair, to catch this."""
+    a = parse_schema('record R { "x": B }\nrecord B { "y": integer }\nroot R')
+    b = parse_schema('record R2 { "x": B2 }\nrecord B2 { "y": string }\nroot R2')
+    assert not _isomorphic(a.normalize(), b.normalize())
+    assert not a.equivalent(b)
