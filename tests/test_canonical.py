@@ -61,7 +61,7 @@ class TestPublicApi:
         import omnist as ds
 
         s = ds.parse_schema('record R { "n": integer, "s": string? }\nroot R')
-        assert ds.__version__ == "0.2.20"
+        assert ds.__version__ == "0.2.21"
         # operations are Schema methods
         assert s.validate(ds.doc({"n": 1, "s": None})).ok
         assert s.equivalent(ds.parse_schema(ds.to_osd(s)))
@@ -1164,6 +1164,32 @@ class TestDocumentRobustness:
             value = {"x": value}
         with pytest.raises(DocumentError, match="nesting exceeds the maximum depth"):
             doc(value)
+
+    def test_xml_at_the_depth_boundary_still_parses(self):
+        # 200 levels of nesting is the documented limit -- same boundary as
+        # build_node's own guard (issue #155, B3).
+        s = "<v>1</v>"
+        for _ in range(200):
+            s = f"<a>{s}</a>"
+        read_xml(s)  # must not raise
+
+    def test_xml_one_past_the_depth_boundary_raises_cleanly(self):
+        s = "<v>1</v>"
+        for _ in range(201):
+            s = f"<a>{s}</a>"
+        with pytest.raises(DocumentError, match="nesting exceeds the maximum depth"):
+            read_xml(s)
+
+    def test_xml_deeply_nested_input_raises_cleanly_not_recursionerror(self):
+        # _xml_to_node used to recurse with no depth guard at all, so
+        # deeply-nested XML died with a raw RecursionError instead of the
+        # clean DocumentError every other reader gives via build_node's
+        # _MAX_DEPTH (issue #155, B3).
+        s = "<v>1</v>"
+        for _ in range(1000):
+            s = f"<a>{s}</a>"
+        with pytest.raises(DocumentError, match="nesting exceeds the maximum depth"):
+            read_xml(s)
 
     def test_self_referential_dict_raises_cleanly(self):
         d = {}

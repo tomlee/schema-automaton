@@ -148,39 +148,43 @@ class _Scanner:
             self._advance(1)
             return Token(Tok.COLON, ":", pos=line, col=col)
 
-        rest = self.s[self.i:]
-
-        m = _DATETIME_RE.match(rest)
+        m = _DATETIME_RE.match(self.s, self.i)
         if m:
             return self._emit_datetime(m, line, col)
-        m = _DATE_RE.match(rest)
-        if m and not (m.end() < len(rest) and rest[m.end()] == "T"
-                      and _TIME_RE.match(rest[m.end() + 1:])):
+        m = _DATE_RE.match(self.s, self.i)
+        if m and not (m.end() < self.n and self.s[m.end()] == "T"
+                      and _TIME_RE.match(self.s, m.end() + 1)):
             return self._emit_date(m, line, col)
-        m = _TIME_RE.match(rest)
+        m = _TIME_RE.match(self.s, self.i)
         if m:
             return self._emit_time(m, line, col)
-        m = _NUMDEC_RE.match(rest) or _NUMEXP_RE.match(rest)
+        m = _NUMDEC_RE.match(self.s, self.i) or _NUMEXP_RE.match(self.s, self.i)
         if m:
             return self._emit_number(m, line, col)
-        if rest.startswith("-inf") and not rest[4:5].isalnum():
+        if self.s.startswith("-inf", self.i) and not self._alnum_at(self.i + 4):
             self._advance(4)
             return Token(Tok.NUMBER, "-inf", value=float("-inf"), pos=line, col=col)
-        if rest.startswith("nan") and not rest[3:4].isalnum() and rest[3:4] != "-":
+        if (self.s.startswith("nan", self.i) and not self._alnum_at(self.i + 3)
+                and self.s[self.i + 3:self.i + 4] != "-"):
             self._advance(3)
             return Token(Tok.NUMBER, "nan", value=float("nan"), pos=line, col=col)
-        if rest.startswith("inf") and not rest[3:4].isalnum() and rest[3:4] != "-":
+        if (self.s.startswith("inf", self.i) and not self._alnum_at(self.i + 3)
+                and self.s[self.i + 3:self.i + 4] != "-"):
             self._advance(3)
             return Token(Tok.NUMBER, "inf", value=float("inf"), pos=line, col=col)
-        m = _INTEGER_RE.match(rest)
+        m = _INTEGER_RE.match(self.s, self.i)
         if m:
             return self._emit_integer(m, line, col)
-        m = _IDENT_RE.match(rest)
+        m = _IDENT_RE.match(self.s, self.i)
         if m:
-            self._advance(m.end())
+            self._advance(m.end() - self.i)
             return Token(Tok.IDENT, m.group(), pos=line, col=col)
 
         raise self.error(f"stray character {ch!r}")
+
+    def _alnum_at(self, i: int) -> bool:
+        ch = self.s[i:i + 1]
+        return bool(ch) and ch.isalnum()
 
     # -- numeric / temporal emission ----------------------------------
     def _emit_integer(self, m, line, col) -> Token:
@@ -191,17 +195,17 @@ class _Scanner:
                 f"integer literal has {len(digits)} digits, exceeding the "
                 f"{_MAX_INT_DIGITS}-digit limit (security: unbounded-digit "
                 "int-to-str conversion is superlinear)")
-        self._advance(m.end())
+        self._advance(m.end() - m.start())
         return Token(Tok.INTEGER, text, value=int(text), pos=line, col=col)
 
     def _emit_number(self, m, line, col) -> Token:
         text = m.group()
-        self._advance(m.end())
+        self._advance(m.end() - m.start())
         return Token(Tok.NUMBER, text, value=float(text), pos=line, col=col)
 
     def _emit_date(self, m, line, col) -> Token:
         text = m.group()
-        self._advance(m.end())
+        self._advance(m.end() - m.start())
         try:
             value = _dt.date.fromisoformat(text)
         except ValueError as exc:
@@ -210,7 +214,7 @@ class _Scanner:
 
     def _emit_time(self, m, line, col) -> Token:
         text = m.group()
-        self._advance(m.end())
+        self._advance(m.end() - m.start())
         try:
             value = _dt.time.fromisoformat(text)
         except ValueError as exc:
@@ -219,7 +223,7 @@ class _Scanner:
 
     def _emit_datetime(self, m, line, col) -> Token:
         text = m.group()
-        self._advance(m.end())
+        self._advance(m.end() - m.start())
         try:
             value = _dt.datetime.fromisoformat(text)
         except ValueError as exc:

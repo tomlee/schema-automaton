@@ -447,6 +447,43 @@ def test_nesting_depth_limit():
 
 
 # ---------------------------------------------------------------------------
+# Performance: the scanner must be near-linear, not O(n^2) (issue #155, B1)
+# ---------------------------------------------------------------------------
+
+def _edges_source(n: int) -> str:
+    return "\n".join(f"k{i}: {i}" for i in range(n))
+
+
+def test_tokenizer_scales_near_linearly_not_quadratically():
+    """``_Scanner._next`` used to slice ``self.s[self.i:]`` per token, an
+    O(n^2) copy that made 4x the input take ~16x the time. A ratio bound
+    (not a wall-clock ceiling) keeps this deterministic under CI load: an
+    O(n) scanner should see 4x input take roughly 4x as long; a quadratic
+    scanner would take roughly 16x. We allow generous headroom (6x) so the
+    test only fails on genuine superlinear regressions, not noise."""
+    import time
+
+    n = 15000
+    small = _edges_source(n)
+    large = _edges_source(n * 4)
+
+    # Warm up (import/regex-compile costs shouldn't count against either leg).
+    read_oml(_edges_source(200))
+
+    t0 = time.perf_counter()
+    read_oml(small)
+    t_small = time.perf_counter() - t0
+
+    t0 = time.perf_counter()
+    read_oml(large)
+    t_large = time.perf_counter() - t0
+
+    assert t_large < t_small * 6, (
+        f"4x input took {t_large / t_small:.2f}x as long "
+        f"(small={t_small:.3f}s, large={t_large:.3f}s) -- looks superlinear")
+
+
+# ---------------------------------------------------------------------------
 # BOM / encoding
 # ---------------------------------------------------------------------------
 
@@ -482,6 +519,70 @@ def test_full_document_round_trip_lossless():
     assert read_oml(text) == node
     # OML never needs an adjustment -- check_oml is always empty
     assert list(check_oml(node)) == []
+
+
+# A fixed source string exercising every token kind the scanner produces:
+# STRING (plain, with escapes), STRING via raw ('...') and multiline ("""),
+# INTEGER (incl. negative), NUMBER (decimal and exponent forms, incl. -inf/
+# nan/inf), DATE, TIME, DATETIME, IDENT (true/false/null and a bare label),
+# nested braces, comments, and semicolon separators.  This is the "golden"
+# regression fixture for the B1 tokenizer rewrite (issue #155): the exact
+# parsed value is pinned so a scanner change that shifts even one token
+# boundary (e.g. an off-by-one in the ``pos=`` conversion) is caught.
+_GOLDEN_OML = r'''# a comment before anything else
+plain: "hello \"world\"\n"; raw: 'C:\no\escapes'
+multi: """
+line one
+line two"""
+neg-int: -42; big-int: 4300
+dec: -3.14; exp: 6.02e23; special: nan; pos-inf: inf; neg-inf: -inf
+d: 2024-06-01
+t: 09:30:00
+dt: 2024-06-01T09:30:00
+flags: { on: true; off: false; nothing: null }
+nested: { a: { b: { c: "deep" } } }
+'''
+
+_GOLDEN_NODE = [
+    ("plain", 'hello "world"\n'),
+    ("raw", r"C:\no\escapes"),
+    ("multi", "line one\nline two"),
+    ("neg-int", -42),
+    ("big-int", 4300),
+    ("dec", -3.14),
+    ("exp", 6.02e23),
+    ("special", float("nan")),
+    ("pos-inf", float("inf")),
+    ("neg-inf", float("-inf")),
+    ("d", datetime.date(2024, 6, 1)),
+    ("t", datetime.time(9, 30, 0)),
+    ("dt", datetime.datetime(2024, 6, 1, 9, 30, 0)),
+    ("flags", [("on", True), ("off", False), ("nothing", None)]),
+    ("nested", [("a", [("b", [("c", "deep")])])]),
+]
+
+
+def test_golden_mixed_token_round_trip():
+    """Byte-identical (modulo NaN) golden fixture covering every token kind --
+    the safety net for the B1 O(n^2) tokenizer fix (issue #155)."""
+    node = read_oml(_GOLDEN_OML)
+    # NaN != NaN, so compare piecewise: everything but the "special" edge
+    # compares equal, and "special" is checked separately for nan-ness.
+    for (lbl, val), (glbl, gval) in zip(node, _GOLDEN_NODE):
+        assert lbl == glbl
+        if lbl == "special":
+            assert isinstance(val, float) and val != val  # nan
+        else:
+            assert val == gval
+    # Canonical writer output is stable and re-parses to the exact same node.
+    rewritten = write_oml(node)
+    reparsed = read_oml(rewritten)
+    for (lbl, val), (glbl, gval) in zip(reparsed, node):
+        assert lbl == glbl
+        if lbl == "special":
+            assert isinstance(val, float) and val != val
+        else:
+            assert val == gval
 
 
 def test_doc_to_oml_and_from_oml_methods():

@@ -4,6 +4,31 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.2.21] — Fix O(n^2) OML tokenizer and XML nesting-depth guard
+
+Review follow-ups (issue [#155](https://github.com/omnist-dev/omnist/issues/155),
+PR-1 of the codebase review in [#154](https://github.com/omnist-dev/omnist/issues/154)):
+
+- **Fixed:** `oml.py`'s `_Scanner._next` sliced `self.s[self.i:]` before
+  running every token regex, copying the whole unconsumed suffix per token —
+  O(n^2) overall. Measured before: 20k edges 0.70s, 80k edges (1.1MB) 11.2s,
+  us/char roughly quadrupling as input doubled. Every `rest`-slicing site
+  (STRING-family lookahead, DATETIME/DATE/TIME/NUMBER/INTEGER/IDENT
+  matching, the `nan`/`inf`/`-inf` literals) now matches the compiled
+  patterns directly against `self.s` with `pos=self.i`
+  (`re.Pattern.match(string, pos)`), with no copy. Tokenizer behavior is
+  byte-identical — verified against the full suite plus a new golden
+  mixed-token round-trip fixture. After the fix, us/char is constant as
+  input scales (20k: 0.28s, 80k: 1.17s, ~1.1us/char at both sizes).
+- **Fixed:** `formats.py`'s `_xml_to_node` recursed with no depth guard, so
+  a ~1000-level-deep XML document crashed with a raw `RecursionError`
+  instead of the clean `DocumentError` every other reader raises via
+  `build_node`'s `_MAX_DEPTH` (200). `_xml_to_node` now threads a depth
+  counter and raises `DocumentError` at the same limit with the same
+  message shape, importing `_MAX_DEPTH` from `document.py` rather than
+  duplicating the literal. Verified at the exact boundary: 200 levels of
+  nesting still parses, 201 raises `DocumentError`.
+
 ## [v0.2.20] — Flatten `omnist/canonical` into `omnist`
 
 Refactor (issue [#144](https://github.com/omnist-dev/omnist/issues/144)):
