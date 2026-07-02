@@ -130,3 +130,29 @@ def test_schema_extract_never_crashes_on_syntax_like_input(capsys, monkeypatch, 
         lambda: main(["schema", "extract", "-", "--keep", keep]),
         text=text, label="schema extract")
     capsys.readouterr()
+
+
+# ---------------------------------------------------------------------------
+# ``schema prune`` / ``schema is-empty`` (issue #151) -- same crash-freedom
+# contract as every other command: arbitrary/malformed OSD text must always
+# come back as a clean exit code, never a traceback.
+# ---------------------------------------------------------------------------
+
+@_SUPPRESS
+@given(text=_text)
+def test_schema_prune_never_crashes_on_arbitrary_input(capsys, monkeypatch, text):
+    monkeypatch.setattr("sys.stdin", io.StringIO(text))
+    _assert_clean_exit(
+        lambda: main(["schema", "prune", "-"]),
+        text=text, label="schema prune")
+    capsys.readouterr()
+
+
+@_SUPPRESS
+@given(text=_text)
+def test_schema_is_empty_never_crashes_on_arbitrary_input(capsys, monkeypatch, text):
+    monkeypatch.setattr("sys.stdin", io.StringIO(text))
+    _assert_clean_exit(
+        lambda: main(["schema", "is-empty", "-"]),
+        text=text, label="schema is-empty")
+    capsys.readouterr()

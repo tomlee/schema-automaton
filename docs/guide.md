@@ -298,6 +298,12 @@ print(s.to_osd())
 # root Root
 ```
 
+`infer` returns the raw mechanical inference — it does **not** normalize.
+Nested-record names stay 1:1 with the sample's labels, so structurally-
+identical shapes under different labels come out as duplicate records.
+Call `.normalize()` on the result where a canonical minimal schema is
+wanted: `infer(samples).normalize()`.
+
 ## A real-life example
 
 An order schema combining named records, a required array, an optional

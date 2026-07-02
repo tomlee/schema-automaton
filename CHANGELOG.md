@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.2.19] — CLI prune/is-empty, infer/normalize doc note
+
+Follow-ups from the user's review of the schema-operations initiative
+(issue [#151](https://github.com/omnist-dev/omnist/issues/151)):
+
+- **Added:** `omnist schema prune` (writes `Schema.prune()`'s result as OSD;
+  `--compact`/`-o` as elsewhere) and `omnist schema is-empty` (prints
+  `true`/`false` per `--result-format`, exit `0` if empty / `1` if not,
+  mirroring `compatible-with`/`equivalent`) — CLI parity for the operations
+  added in v0.2.14.
+- **Changed (docs only):** decided and documented that `infer()` does
+  **not** auto-normalize — the raw result keeps record names 1:1 with
+  sample labels; call `.normalize()` on the result where a canonical
+  minimal schema is wanted. Stated in the infer docstring, guide, and
+  schema page with a test-backed example. `docs/layout.md`'s ops package
+  description updated to list all six modules.
+
 ## [v0.2.18] — Consistency audit, validation error codes, 100% coverage restored
 
 Closes out the schema-operations initiative with a sweep pass

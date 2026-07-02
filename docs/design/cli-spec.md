@@ -16,6 +16,8 @@ omnist check      <input>   --from FMT --to FMT [--strict] [--result-format text
 
 omnist schema format           <schema-file>  [--compact] [-o OUTPUT]
 omnist schema normalize        <schema-file>  [--compact] [-o OUTPUT]
+omnist schema prune            <schema-file>  [--compact] [-o OUTPUT]
+omnist schema is-empty         <schema-file>  [--result-format text|json|oml]
 omnist schema extract          <schema-file>  --keep label1,label2,... [--compact] [-o OUTPUT]
 omnist schema compatible-with  <a> <b>        [--result-format text|json|oml]
 omnist schema equivalent       <a> <b>        [--result-format text|json|oml]
@@ -32,9 +34,10 @@ no `--from`/`--to`.
 - `--from` is always required wherever it appears, file or stream alike —
   no extension-based inference.
 - `--to` is always required on `convert`/`check` — no defaulting.
-- `format`/`schema format`/`schema normalize`/`schema extract`/
-  `schema compatible-with`/`schema equivalent` take no `--from`/`--to`:
-  each reads/writes exactly one format (OML or OSD).
+- `format`/`schema format`/`schema normalize`/`schema prune`/
+  `schema is-empty`/`schema extract`/`schema compatible-with`/
+  `schema equivalent` take no `--from`/`--to`: each reads/writes exactly
+  one format (OML or OSD).
 - Schema files conventionally use `.osd`; not enforced.
 
 ## 3. Commands
@@ -128,6 +131,22 @@ omnist schema format messy.osd --compact
 equivalent schema (partition refinement, fewest env records, unique up to
 naming) — a structural change, unlike `schema format`. `--compact` emits a
 single-line schema, same as `schema format`.
+
+### `omnist schema prune <schema-file> [--compact] [-o OUTPUT]`
+
+`Schema.prune()`, written back as OSD. Removes everything that can never
+match — unreachable records, never-emittable (`max == 0`) fields, and
+optional fields whose type is an unsatisfiable record — without ever
+merging records (that's `normalize`'s job; `normalize` runs `prune` as its
+own first step). `--compact` as elsewhere.
+
+### `omnist schema is-empty <schema-file> [--result-format text|json|oml]`
+
+`Schema.is_empty()` — True iff the schema accepts no documents at all
+(unsatisfiable root, e.g. a mandatory ref cycle). Prints `true`/`false`
+(`text`, default), `{"empty": bool}` (`json`), or the same shape
+OML-encoded (`oml`). Exit `0` if empty, `1` if not — the same
+boolean-result convention as `compatible-with`/`equivalent`.
 
 ### `omnist schema extract <schema-file> --keep label1,label2,... [--compact] [-o OUTPUT]`
 

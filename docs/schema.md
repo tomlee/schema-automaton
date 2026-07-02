@@ -221,6 +221,18 @@ print(infer([doc({"host": "b", "port": 80}), doc({"host": "a"})]).to_osd())
 # root Root
 ```
 
+`infer` deliberately does **not** normalize its result: record names stay
+1:1 with the sample's labels (easier to read and hand-edit), so two labels
+whose objects happen to have the same shape come out as *duplicate* record
+definitions. Call `.normalize()` on the result where you want the canonical
+minimal schema instead:
+
+```python
+s = infer([doc({"home": {"city": "London"}, "work": {"city": "Leeds"}})])
+sorted(s.env)                     # ['Home', 'Root', 'Work'] -- raw: one record per label
+sorted(s.normalize().env)         # ['Home', 'Root']         -- canonical: duplicates merged
+```
+
 See [the guide](guide.md#operations) for additional detail on all four
 operations and [the guide's inference section](guide.md#inferring-a-schema)
 for `infer`'s exact cardinality and nullability rules.

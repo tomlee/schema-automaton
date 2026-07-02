@@ -754,6 +754,59 @@ class TestSchemaCompatibleWith:
         assert err.startswith("error: ")
 
 
+class TestSchemaPrune:
+    def test_prune_drops_unreachable_and_dead(self, tmp_path, capsys):
+        p = tmp_path / "in.osd"
+        p.write_text('record R { "x": integer, "ghost" [0,0]: string }\n'
+                     'record Orphan { "y": string }\nroot R\n')
+        code, out, err = run(
+            ["schema", "prune", str(p)], capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert "Orphan" not in out and "ghost" not in out and '"x": integer' in out
+
+    def test_prune_compact(self, tmp_path, capsys):
+        p = tmp_path / "in.osd"
+        p.write_text('record R { "x": integer }\nroot R\n')
+        code, out, err = run(
+            ["schema", "prune", str(p), "--compact"], capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert "\n" not in out.strip()
+
+    def test_prune_invalid_osd_exit_2(self, tmp_path, capsys):
+        p = tmp_path / "in.osd"
+        p.write_text("this is not osd")
+        code, out, err = run(
+            ["schema", "prune", str(p)], capsys=capsys, monkeypatch=None)
+        assert code == 2
+
+
+class TestSchemaIsEmpty:
+    def test_empty_schema_true_exit_0(self, tmp_path, capsys):
+        p = tmp_path / "in.osd"
+        p.write_text('record A { "x": B }\nrecord B { "y": A }\nroot A\n')
+        code, out, err = run(
+            ["schema", "is-empty", str(p)], capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert out == "true\n"
+
+    def test_satisfiable_schema_false_exit_1(self, tmp_path, capsys):
+        p = tmp_path / "in.osd"
+        p.write_text('record R { "x": integer }\nroot R\n')
+        code, out, err = run(
+            ["schema", "is-empty", str(p)], capsys=capsys, monkeypatch=None)
+        assert code == 1
+        assert out == "false\n"
+
+    def test_is_empty_json_result_format(self, tmp_path, capsys):
+        p = tmp_path / "in.osd"
+        p.write_text('record R { "x": integer }\nroot R\n')
+        code, out, err = run(
+            ["schema", "is-empty", str(p), "--result-format", "json"],
+            capsys=capsys, monkeypatch=None)
+        assert code == 1
+        assert out.strip() == '{"empty": false}'
+
+
 class TestSchemaEquivalent:
     def test_equivalent_text(self, tmp_path, capsys):
         a = tmp_path / "a.osd"

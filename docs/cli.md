@@ -22,6 +22,8 @@ yourself from the repo root.
 - [`omnist validate`](#omnist-validate)
 - [`omnist schema format`](#omnist-schema-format)
 - [`omnist schema normalize`](#omnist-schema-normalize)
+- [`omnist schema prune`](#omnist-schema-prune)
+- [`omnist schema is-empty`](#omnist-schema-is-empty)
 - [`omnist schema extract`](#omnist-schema-extract)
 - [`omnist schema compatible-with`](#omnist-schema-compatible-with)
 - [`omnist schema equivalent`](#omnist-schema-equivalent)
@@ -338,6 +340,44 @@ root Company
 
 `--compact` emits the same merged schema on a single line instead
 (`to_osd(schema, indent=None)`).
+
+## `omnist schema prune`
+
+```
+omnist schema prune <schema-file> [--compact] [-o OUTPUT]
+```
+
+`Schema.prune()`, written back out as OSD — removes everything that can
+never match: records unreachable from root, never-emittable (`max == 0`)
+fields, and optional fields whose type is an unsatisfiable record (see
+[the schema doc](schema.md#operations-compare-and-infer)). Unlike
+`normalize` it never merges records — it only deletes dead weight:
+
+```sh
+$ printf 'record R { "x": integer, "ghost" [0,0]: string }\nrecord Orphan { "y": string }\nroot R\n' \
+    | omnist schema prune -
+record R {
+    "x": integer,
+}
+root R
+```
+
+## `omnist schema is-empty`
+
+```
+omnist schema is-empty <schema-file> [--result-format text|json|oml]
+```
+
+`Schema.is_empty()` — does the schema accept no documents at all (an
+unsatisfiable root, e.g. a mandatory ref cycle)? Prints `true`/`false`
+(`text`, default), `{"empty": bool}` (`json`), or the same shape
+OML-encoded (`oml`); exit `0` if empty, `1` if not — mirroring
+`compatible-with`/`equivalent`'s exit convention:
+
+```sh
+$ printf 'record A { "x": B }\nrecord B { "y": A }\nroot A\n' | omnist schema is-empty -
+true
+```
 
 ## `omnist schema extract`
 

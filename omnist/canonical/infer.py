@@ -14,9 +14,13 @@ them:
 * object children become a nested, named ``record`` (recursively).
 
 Since the model has no inline records, nested records are given generated
-names derived from their label. (See ``Schema.normalize()`` for the canonical
-form computation via partition refinement; the question of whether ``infer``
-should call it automatically is deferred.)
+names derived from their label.
+
+``infer`` deliberately does **not** auto-normalize: the raw result keeps a
+1:1 correspondence between sample labels and generated record names, which
+is easier to read and hand-edit, and may therefore contain structurally-
+identical duplicate records. Call ``.normalize()`` on the result where a
+canonical minimal schema is wanted (decided in issues #143/#151).
 """
 
 from __future__ import annotations

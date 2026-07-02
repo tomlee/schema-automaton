@@ -203,6 +203,27 @@ class TestSchemaFormatExample:
         assert out == 'record Person { "name": string, "age" [0,1]: integer } root Person\n'
 
 
+class TestSchemaPruneExample:
+    def test_prune_stdin_example(self, capsys, monkeypatch):
+        code, out, err = run(
+            ["schema", "prune", "-"], capsys,
+            stdin_text='record R { "x": integer, "ghost" [0,0]: string }\n'
+                       'record Orphan { "y": string }\nroot R\n',
+            monkeypatch=monkeypatch)
+        assert code == 0
+        assert out == 'record R {\n    "x": integer,\n}\nroot R\n'
+
+
+class TestSchemaIsEmptyExample:
+    def test_is_empty_stdin_example(self, capsys, monkeypatch):
+        code, out, err = run(
+            ["schema", "is-empty", "-"], capsys,
+            stdin_text='record A { "x": B }\nrecord B { "y": A }\nroot A\n',
+            monkeypatch=monkeypatch)
+        assert code == 0
+        assert out == "true\n"
+
+
 class TestSchemaNormalizeExample:
     def test_merges_duplicate_records(self, capsys):
         code, out, err = run(

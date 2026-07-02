@@ -74,10 +74,10 @@ omnist/canonical/osd.py                149      0   100%
 omnist/canonical/registry.py            32      0   100%
 omnist/canonical/report.py              35      0   100%
 omnist/canonical/schema.py             250      0   100%
-omnist/cli.py                          198      0   100%
+omnist/cli.py                          216      0   100%
 omnist/errors.py                        10      0   100%
 --------------------------------------------------------
-TOTAL                                 2021      0   100%
+TOTAL                                 2039      0   100%
 ```
 
 The few `# pragma: no cover` exclusions in the package are limited to

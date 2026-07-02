@@ -202,6 +202,19 @@ def _cmd_schema_normalize(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_schema_prune(args: argparse.Namespace) -> int:
+    s = parse_schema(_read_input(args.schema_file))
+    _write_output(args.output, to_osd(s.prune(), indent=None if args.compact else 4))
+    return 0
+
+
+def _cmd_schema_is_empty(args: argparse.Namespace) -> int:
+    s = parse_schema(_read_input(args.schema_file))
+    result = s.is_empty()
+    print(_encode_bool_result("empty", result, args.result_format))
+    return 0 if result else 1
+
+
 def _cmd_schema_extract(args: argparse.Namespace) -> int:
     s = parse_schema(_read_input(args.schema_file))
     labels = [lbl for lbl in args.keep.split(",") if lbl]
@@ -339,6 +352,26 @@ def _build_parser() -> argparse.ArgumentParser:
         help="single-line, machine-oriented output instead of pretty-printed")
     schema_normalize_p.add_argument("-o", "--output", help="output file; omit for stdout")
     schema_normalize_p.set_defaults(func=_cmd_schema_normalize)
+
+    schema_prune_p = schema_sub.add_parser(
+        "prune",
+        help="remove everything that can never match: unreachable records, "
+             "never-emittable fields, optional fields with unsatisfiable types")
+    schema_prune_p.add_argument("schema_file", help="OSD file, or - for stdin")
+    schema_prune_p.add_argument(
+        "--compact", action="store_true",
+        help="single-line, machine-oriented output instead of pretty-printed")
+    schema_prune_p.add_argument("-o", "--output", help="output file; omit for stdout")
+    schema_prune_p.set_defaults(func=_cmd_schema_prune)
+
+    schema_is_empty_p = schema_sub.add_parser(
+        "is-empty",
+        help="does the schema accept no documents at all "
+             "(unsatisfiable root, e.g. a mandatory ref cycle)")
+    schema_is_empty_p.add_argument("schema_file", help="OSD file, or - for stdin")
+    schema_is_empty_p.add_argument(
+        "--result-format", choices=RESULT_FORMAT_CHOICES, default="text")
+    schema_is_empty_p.set_defaults(func=_cmd_schema_is_empty)
 
     schema_extract_p = schema_sub.add_parser(
         "extract",
