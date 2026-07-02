@@ -86,6 +86,17 @@ _strings = st.text(max_size=20)
 # Integers: include values near the digit-count guard's neighborhood without
 # actually tripping it (that's exercised by the crash-freedom text fuzzing
 # below, not by values that must round-trip).
+#
+# NOTE (issue #156, B2): 2**64 is ~20 digits, nowhere near the 4300-digit
+# construction cap that document.py now enforces in build_node/Doc.add/
+# Doc.set -- this strategy cannot generate a huge int, so it never exercises
+# that guard (or its DocumentError) on its own. That's intentional here: this
+# generator's job is round-trip values, not boundary/error values, and a
+# 4300+-digit int would also make every generated document far more
+# expensive to shrink/print for very little added coverage. The boundary
+# itself (4300 digits OK, 4301 raises) is covered directly by targeted tests
+# in tests/test_canonical.py (TestDocumentRobustness) and tests/test_oml.py,
+# not by widening this strategy.
 _integers = st.one_of(
     st.integers(min_value=-(2 ** 64), max_value=2 ** 64),
     st.just(0),

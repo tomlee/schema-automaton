@@ -4,6 +4,47 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.2.22] — Enforce the int-digit cap at construction; `Doc.set` replace-all semantics
+
+Review follow-ups (issue [#156](https://github.com/omnist-dev/omnist/issues/156),
+PR-2 of the codebase review in [#154](https://github.com/omnist-dev/omnist/issues/154)):
+
+- **Fixed (breaking-adjacent):** `build_node` (and therefore `doc()`, every
+  format reader, `Doc.add`, and `Doc.set`) used to accept Python ints beyond
+  CPython's 4300-digit str-conversion guard. `check_oml` reported an empty
+  (all-clear) report for such a document, and `write_oml`/`write_json`/
+  `Doc.__repr__` then crashed with CPython's raw `ValueError` — silently
+  breaking `write_oml`'s "the write always succeeds exactly" and
+  `check_oml`'s "always an empty report" guarantees. The reader (`oml.py`)
+  already enforced the 4300-digit cap on parse; the model now enforces the
+  same cap at every construction/mutation path, raising a clean
+  `DocumentError` whose message mirrors the OML reader's existing
+  `_MAX_INT_DIGITS` error. The limit is defined once, in `document.py`
+  (`_MAX_INT_DIGITS`); `oml.py` imports it rather than duplicating the
+  literal. Detection compares the value as an int against `10**4300` —
+  never via `str()`, since str-converting an out-of-range int is exactly the
+  superlinear operation this guard exists to avoid triggering. `bool` (an
+  `int` subclass, always `0`/`1`) is unaffected.
+  Also fixed in passing: `read_json`/`read_yaml`/`read_toml` handed an
+  over-limit integer literal straight to the standard library's own
+  int-string conversion during parsing (`json.loads`/`yaml.safe_load`/
+  `tomllib.loads` all convert a numeric literal to `int` while they parse),
+  tripping the same CPython guard as a bare `ValueError` that wasn't a
+  `JSONDecodeError`/`YAMLError`/`TOMLDecodeError` and so wasn't caught by
+  the existing translation to `ParseError`. All three readers now catch that
+  `ValueError` too and translate it to `ParseError`, consistent with every
+  other parse-time failure.
+- **Changed (breaking-adjacent):** `Doc.set(label, value)` used to replace
+  only the *first* edge under a repeated label and silently leave later
+  duplicates in place (`count()` still returned 2+, `get_one()` still
+  raised). `set` now has replace-all semantics: it removes every edge under
+  `label`, then inserts one new edge at the position of the first old
+  occurrence (or appends, if `label` was absent) — `set` = `remove` + `add`.
+  On a label that occurs once this is unchanged (replace it in place); on a
+  repeated label, every duplicate now collapses into the one new edge.
+  Docstring and `docs/api.md`/`docs/guide.md` updated to state the contract
+  explicitly.
+
 ## [v0.2.21] — Fix O(n^2) OML tokenizer and XML nesting-depth guard
 
 Review follow-ups (issue [#155](https://github.com/omnist-dev/omnist/issues/155),
