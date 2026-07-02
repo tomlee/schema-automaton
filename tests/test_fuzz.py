@@ -231,12 +231,17 @@ def test_json_round_trip_modulo_documented_adjustments(node):
     assert {a.code for a in rep} <= _ALLOWED_CODES["json"], rep
     text = write_json(node)
     back = read_json(text)
-    # temporal values come back as strings (date/time -> str); float.special
-    # (NaN/Infinity) is JSON's own non-standard extension and round-trips as
-    # the same float -- both are documented adjustments, safe to compare
-    # through the grouped projection (which also accepts the temporal
-    # stringification since str != date is expected for those leaves only).
-    if not any(a.code == "temporal.stringified" for a in rep):
+    # temporal values come back as strings (date/time -> str) -- a documented
+    # adjustment, safe to compare through the grouped projection (which also
+    # accepts the temporal stringification since str != date is expected for
+    # those leaves only). float.special (NaN/Infinity) is *not* identity
+    # either, as of #157/S1: lenient write_json now substitutes `null` at
+    # those leaves (rather than emitting the non-standard `NaN`/`Infinity`
+    # tokens Python's own json.loads used to read back as the same float), so
+    # a document containing one no longer round-trips to an equal value --
+    # skip the comparison for it too, same as temporal.stringified.
+    codes = {a.code for a in rep}
+    if not (codes & {"temporal.stringified", "float.special"}):
         assert nan_safe_equal_grouped(back, node), \
             f"JSON round-trip mismatch: {node!r} -> {back!r}"
 

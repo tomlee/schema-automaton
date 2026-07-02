@@ -61,7 +61,7 @@ class TestPublicApi:
         import omnist as ds
 
         s = ds.parse_schema('record R { "n": integer, "s": string? }\nroot R')
-        assert ds.__version__ == "0.2.22"
+        assert ds.__version__ == "0.2.23"
         # operations are Schema methods
         assert s.validate(ds.doc({"n": 1, "s": None})).ok
         assert s.equivalent(ds.parse_schema(ds.to_osd(s)))
@@ -848,6 +848,40 @@ class TestCodecs:
         d = read_xml("<r><a></a><b>true</b><c>false</c></r>")
         assert d == [("r", [("a", ""), ("b", True), ("c", False)])]
 
+    def test_xml_mixed_content_text_before_children_raises(self):
+        # #157/S2: elem.text alongside child elements used to be silently
+        # discarded -- the only place data vanished on *read* with no
+        # check_* even in principle. Now it's a ParseError naming the
+        # element, not a silent drop.
+        with pytest.raises(ParseError, match="mixed content"):
+            read_xml("<p>Hello <b>w</b></p>")
+
+    def test_xml_mixed_content_tail_after_child_raises(self):
+        # a child's .tail (text between a child close-tag and the next
+        # sibling/parent close) is the other place mixed content hides.
+        with pytest.raises(ParseError, match="mixed content"):
+            read_xml("<p><b>w</b> tail</p>")
+
+    def test_xml_mixed_content_error_names_the_element(self):
+        with pytest.raises(ParseError) as exc:
+            read_xml("<p>Hello <b>w</b></p>")
+        assert "$" in str(exc.value)
+
+    def test_xml_whitespace_only_text_and_tail_still_parse(self):
+        # pretty-printed XML (the shape write_xml itself produces) has
+        # whitespace-only text/tail around child elements -- that must
+        # remain accepted, not be mistaken for mixed content.
+        assert read_xml("<p>\n  <b>w</b>\n</p>") == [("p", [("b", "w")])]
+        assert read_xml("<p>  <b>w</b>  <c>x</c>  </p>") == \
+            [("p", [("b", "w"), ("c", "x")])]
+
+    def test_xml_own_write_output_still_reads_back(self):
+        # write_xml's pretty-printer inserts exactly this whitespace-only
+        # text/tail shape -- the new mixed-content check must not reject
+        # omnist's own round trip.
+        d = [("team", [("name", "P"), ("member", "x"), ("member", "y")])]
+        assert read_xml(write_xml(d)) == d
+
     def test_xml_parser_falls_back_to_stdlib_without_defusedxml(self):
         # When defusedxml isn't installed, read_xml() must still work, via the
         # standard library parser, with a warning about the XXE risk.
@@ -992,6 +1026,48 @@ class TestDeserialize:
         node = read_xml("<t><d>2024-01-01</d></t>", schema=s)
         assert dict(dict(node)["t"])["d"] == datetime.date(2024, 1, 1)
 
+    # -- #157/S3: narrowed temporal spellings -----------------------------
+    # `datetime.fromisoformat` accepts more than the docs promise (ISO 8601
+    # basic format like "20240101"/"120000", week dates like "2024-W01-1").
+    # materialize() now shape-checks against the documented hyphenated/colon
+    # forms *before* calling fromisoformat, so a numeric-looking string no
+    # longer silently becomes a date/time under a temporal schema.
+
+    def test_documented_spellings_still_upgrade(self):
+        s = parse_schema('record R { "d": date, "t": time, "dt": datetime }\nroot R')
+        node = materialize(
+            [("d", "2024-01-01"), ("t", "12:00:00"), ("dt", "2024-01-01T12:00:00")], s)
+        values = dict(node)
+        assert values["d"] == datetime.date(2024, 1, 1)
+        assert values["t"] == datetime.time(12, 0, 0)
+        assert values["dt"] == datetime.datetime(2024, 1, 1, 12, 0, 0)
+
+    def test_basic_format_date_rejected(self):
+        s = parse_schema('record R { "d": date }\nroot R')
+        with pytest.raises(ParseError, match="not a value-exact conversion"):
+            materialize([("d", "20240101")], s)
+
+    def test_week_date_rejected(self):
+        s = parse_schema('record R { "d": date }\nroot R')
+        with pytest.raises(ParseError):
+            materialize([("d", "2024-W01-1")], s)
+
+    def test_basic_format_time_rejected(self):
+        s = parse_schema('record R { "t": time }\nroot R')
+        with pytest.raises(ParseError):
+            materialize([("t", "120000")], s)
+
+    def test_basic_format_datetime_rejected(self):
+        s = parse_schema('record R { "dt": datetime }\nroot R')
+        with pytest.raises(ParseError):
+            materialize([("dt", "20240101T120000")], s)
+
+    def test_space_separated_datetime_rejected(self):
+        # fromisoformat also accepts a space instead of 'T' as the
+        # date/time separator; the documented form requires 'T'.
+        s = parse_schema('record R { "dt": datetime }\nroot R')
+        with pytest.raises(ParseError):
+            materialize([("dt", "2024-01-01 12:00:00")], s)
 
     def test_materialize_null_scalar_paths(self):
         # non-nullable scalar receiving null -> null-not-allowed (deserialize.py)
@@ -1067,6 +1143,38 @@ class TestReports:
         rep2 = check_json(node2)
         assert [a.code for a in rep2] == ["float.special"]
         assert rep2.errors
+
+    def test_json_lenient_write_substitutes_null_for_special_floats(self):
+        # #157/S1: lenient (default) write_json used to emit the literal,
+        # non-standard tokens NaN/Infinity/-Infinity -- invalid JSON per the
+        # spec, even though check_json already flagged them error-severity.
+        # It now substitutes `null` at those leaves, same as XML substitutes
+        # U+FFFD for an illegal character: the output stays well-formed and
+        # the report still names the problem.
+        import json as _json
+        for value in (float("inf"), float("-inf"), float("nan")):
+            node = [("a", value)]
+            text = write_json(node)
+            assert text == '{"a": null}'
+            _json.loads(text)                     # must be valid under strict stdlib json
+            rep = check_json(node)
+            assert [a.code for a in rep] == ["float.special"]
+            assert rep.errors
+            (adj,) = rep.adjustments
+            assert "null" in adj.message           # message notes the substitution
+
+    def test_json_strict_still_refuses_special_floats(self):
+        # strict=True is unchanged: it raises rather than substituting, and
+        # never emits the (invalid) raw Infinity/NaN token either.
+        node = [("a", float("inf"))]
+        with pytest.raises(WriteError):
+            write_json(node, strict=True)
+
+    def test_json_special_float_nested_in_object(self):
+        # the substitution walks nested structure, not just top-level leaves
+        node = [("r", [("x", float("inf")), ("y", 1)])]
+        text = write_json(node)
+        assert text == '{"r": {"x": null, "y": 1}}'
 
     def test_xml_null_omitted(self):
         node = doc({"a": None}).to_data()
@@ -1537,6 +1645,76 @@ class TestMatchesKindAndValueKind:
         # to SCALAR_NAMES -- so an unrecognized name can't arrive through
         # the public API. This guards the function's own contract directly.
         assert matches_kind("anything", "not-a-real-scalar-name") is False
+
+    # -- #157/S3: matches_kind narrowed to the documented spellings too ----
+    # validate() (via matches_kind/_is_iso) had the same wide-acceptance
+    # issue as materialize(): both now reject ISO 8601 basic format and
+    # week dates, not just the hyphenated/colon forms.
+
+    def test_matches_kind_rejects_basic_format_date(self):
+        assert not matches_kind("20240101", "date")
+
+    def test_matches_kind_rejects_week_date(self):
+        assert not matches_kind("2024-W01-1", "date")
+
+    def test_matches_kind_rejects_basic_format_time(self):
+        assert not matches_kind("120000", "time")
+
+    def test_matches_kind_rejects_basic_format_datetime(self):
+        assert not matches_kind("20240101T120000", "datetime")
+
+    def test_matches_kind_still_accepts_documented_spellings(self):
+        assert matches_kind("2024-01-01", "date")
+        assert matches_kind("12:00:00", "time")
+        assert matches_kind("2024-01-01T12:00:00", "datetime")
+
+    def test_matches_kind_rejects_shape_valid_but_calendar_invalid_strings(self):
+        # right shape (matches _DATE_RE/_TIME_RE) but not an actual
+        # calendar date/time -- fromisoformat itself raises ValueError for
+        # these, exercising _is_iso's except branch, not the regex.
+        assert not matches_kind("2024-13-01", "date")     # month 13
+        assert not matches_kind("2024-02-30", "date")     # Feb 30 never exists
+        assert not matches_kind("25:00:00", "time")       # hour 25
+
+
+# ------------------------------------- validate()/materialize() agreement
+class TestValidateMaterializeAgreement:
+    """#157/S3: 'a doc that validates must materialize and vice versa.'
+
+    validate() (Schema._conform_scalar -> matches_kind/_is_iso) and
+    materialize() (deserialize._materialize_temporal) used to disagree at
+    the ISO-8601-basic-format/week-date boundary: fromisoformat's wider
+    acceptance leaked into materialize() but matches_kind already narrowed
+    validate() only partially. Both now share the exact same shape check
+    (schema.py's _DATE_RE/_TIME_RE/_DATETIME_RE, adapted from oml.py), so
+    they must agree on every spelling -- asserted directly here rather than
+    just observed to happen to agree."""
+
+    BOUNDARY_SPELLINGS = [
+        "2024-01-01",          # documented date -- both accept
+        "20240101",            # ISO basic format -- both must reject
+        "2024-W01-1",          # ISO week date -- both must reject
+        "12:00:00",            # documented time, but not a `date`
+        "120000",               # ISO basic format time -- both must reject
+        "2024-01-01T12:00:00",  # documented datetime, but not a bare `date`
+        "20240101T120000",      # ISO basic format datetime -- both must reject
+        "2024-01-01 12:00:00",  # space-separated -- fromisoformat accepts, docs don't
+        "not-a-date-at-all",
+    ]
+
+    @pytest.mark.parametrize("kind", ["date", "time", "datetime"])
+    def test_validate_and_materialize_agree_on_every_boundary_spelling(self, kind):
+        s = parse_schema(f'record R {{ "v": {kind} }}\nroot R')
+        for spelling in self.BOUNDARY_SPELLINGS:
+            validates = s.validate(doc({"v": spelling})).ok
+            try:
+                materialize([("v", spelling)], s)
+                materializes = True
+            except ParseError:
+                materializes = False
+            assert validates == materializes, (
+                f"{kind} / {spelling!r}: validate()={validates} but "
+                f"materialize()={materializes} -- disagreement")
 
 
 # ----------------------------------------------------------- infer() errors
