@@ -4,6 +4,9 @@ A deliberately narrow **data-XML** profile: elements only, used to carry the
 same Documents as the other formats. Install `pip install defusedxml` so
 parsing is hardened against entity-expansion / XXE attacks (without it, the
 standard-library parser is used and `read_xml` emits an `UnsafeXMLWarning`).
+Element nesting is also capped at 200 levels, the same `_MAX_DEPTH` bound
+every other reader enforces via `build_node` — deeper input raises a clean
+`DocumentError` naming the limit rather than exhausting the call stack.
 
 ```python
 from omnist import read_xml, Doc

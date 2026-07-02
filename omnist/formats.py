@@ -21,8 +21,8 @@ import re as _re
 import warnings
 from typing import TYPE_CHECKING, Any, Optional
 
-from .document import _grouped, build_node
-from .errors import ParseError, UnsafeXMLWarning, WriteError
+from .document import _MAX_DEPTH, _grouped, build_node
+from .errors import DocumentError, ParseError, UnsafeXMLWarning, WriteError
 from .report import WriteReport, finish_write
 
 if TYPE_CHECKING:
@@ -239,14 +239,17 @@ def read_xml(text: str, *, schema: Optional["Schema"] = None) -> Any:
         root = ET.fromstring(text)
     except Exception as exc:
         raise ParseError(f"invalid XML: {exc}") from exc
-    node = [(_local(root.tag), _xml_to_node(root))]
+    node = [(_local(root.tag), _xml_to_node(root, "$", 0))]
     return _materialize(node, schema)
 
 
-def _xml_to_node(elem) -> Any:
+def _xml_to_node(elem, path: str, depth: int) -> Any:
+    if depth > _MAX_DEPTH:
+        raise DocumentError(f"{path}: nesting exceeds the maximum depth ({_MAX_DEPTH})")
     children = list(elem)
     if children:
-        return [(_local(c.tag), _xml_to_node(c)) for c in children]
+        return [(_local(c.tag), _xml_to_node(c, f"{path}.{_local(c.tag)}", depth + 1))
+                for c in children]
     return _coerce(elem.text or "")
 
 
