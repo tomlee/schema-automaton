@@ -16,7 +16,15 @@ No pytest marker infrastructure is used: at well under a second, this
 belongs in the normal test run, not a slow/opt-in lane.
 """
 
-from tools.semantic_oracle import (
+import sys
+from pathlib import Path
+
+# tools/ is repo-root-relative, not an installed package; bare `pytest -q`
+# (as CI runs it) does not put the repo root on sys.path the way
+# `python -m pytest` does, so add it explicitly before the import.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from tools.semantic_oracle import (  # noqa: E402
     OracleResult,
     build_universe,
     check_compatible_with,
