@@ -41,6 +41,11 @@ All tests live in `tests/`, run with `pytest`.
 - **`tests/test_fuzz.py`** — property-based fuzzing with
   [Hypothesis](https://hypothesis.readthedocs.io/), added in #64. See
   [Fuzzing](#fuzzing) below.
+- **`tests/test_semantic_oracle.py`** — a bounded, deterministic run of the
+  brute-force semantic oracle (`tools/semantic_oracle.py`, #158): the
+  schema algebra checked against enumerated set-theoretic ground truth
+  rather than another algorithm. See
+  [The triple-checked algebra](#the-triple-checked-algebra) below.
 
 ## Coverage
 
@@ -180,11 +185,18 @@ module-level `_SUPPRESS` settings object (`deadline=None`, `max_examples=150`,
 `HealthCheck.too_slow` suppressed) and apply automatically to every test
 in the file.
 
-### The dual-algorithm oracle
+### The triple-checked algebra
 
 Most of this suite tests behavior against examples: a schema and a document,
 worked out by hand, checked against the expected result. `equivalent()`'s
-property tests (#141) do something stronger, and it's worth calling out why.
+property tests (#141) and the brute-force semantic oracle (#158) do
+something stronger, and it's worth calling out why. Between them, the core
+schema algebra is checked three independent ways: `compatible_with`'s own
+Algorithm 4 inclusion test, a minimize-then-isomorphism-test decision
+procedure for the same question (Theorem 4), and brute-force enumeration
+against set-theoretic ground truth. Any two of these sharing a bug would
+require the bug to survive three structurally unrelated computations at
+once.
 
 `omnist`'s public `Schema.equivalent()` is defined as bidirectional
 `compatible_with()` — the paper's Algorithm 4 (SubschemaSA) run in both
@@ -219,6 +231,51 @@ disagree, that would mean either the paper's Theorem 4 doesn't hold under
 omnist's counting-cardinality restriction (unlikely — it's proved for the
 general model omnist restricts), or one of the two algorithms has a bug —
 and property testing, not a hand-picked example, is what would catch it.
+
+**The third check: brute-force enumeration against ground truth.** Both of
+the above are algorithms cross-checked against each other — powerful, but
+it's conceivable (however unlikely) that a bug in the shared conceptual
+model behind both survives in a way that makes them agree while both are
+wrong. `tools/semantic_oracle.py` (issue #158, the strongest tool from the
+full-codebase review in #154) removes that possibility by not using an
+algorithm as the reference at all. It enumerates a finite universe `U` of
+documents — root edge-lists over labels `{a, b}`, leaves `{1, "x", None}`,
+children either a leaf or a nested depth-1 edge list, plus an extended
+universe adding higher-cardinality shapes — and a family of schemas
+(systematic single-record schemas covering every scalar x cardinality
+combination, a few structural schemas, plus seeded-random two-record
+schemas). For each schema `s`, the ground-truth language is computed
+directly: `L(s) = {d in U : s.validate(Doc(d)).ok}` — no algorithm
+involved, just the same `validate()` every other test in this suite already
+trusts. Five checks then compare the algebra's answers against that ground
+truth:
+
+1. `compatible_with(a, b)` **True** must mean `L(a)` is a subset of `L(b)`
+   — any counterexample here is an unambiguous bug (this is the direction
+   an unconditional "yes" claim can be definitively wrong).
+2. `compatible_with(a, b)` **False** answers are *vindicated*: first
+   against the extended universe (a witness the base universe was simply
+   too small to contain), then against a family of targeted minimal
+   witnesses built from `a`'s own cardinality and type requirements. A
+   `False` answer that no witness at any size can substantiate is reported
+   as needs-manual-review rather than failing the run — a known,
+   documented limitation of checking against a *finite* universe, not an
+   algebra bug (the review hand-verified its own small residual set of
+   these and confirmed each was correct).
+3. `is_empty(s)` **True** must mean `L(s)` is empty.
+4. `L(normalize(s)) == L(s)` and `L(prune(s)) == L(s)` **exactly** — both
+   operations must be language-preserving, not just size-reducing.
+5. `L(extract(s, keep)) == {d in L(s) : labels(d) subset keep}`, both
+   directions — `extract`'s label-restriction contract, checked directly
+   against enumeration rather than against `extract`'s own reasoning about
+   which records it invalidates.
+
+`tests/test_semantic_oracle.py` runs the same five checks over a much
+smaller, seeded-deterministic universe and schema family so it fits in the
+normal test suite (about a second); `tools/semantic_oracle.py` runs the
+full-size version (documents in the tens of thousands, roughly a couple of
+minutes) as a standalone script — see `tools/README.md`. As of the #158
+run, both find zero definite bugs.
 
 ## CI
 

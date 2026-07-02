@@ -4,6 +4,42 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.2.24] — Brute-force semantic oracle for the schema algebra
+
+Review follow-up (issue [#158](https://github.com/omnist-dev/omnist/issues/158),
+PR-4 of the codebase review in [#154](https://github.com/omnist-dev/omnist/issues/154)).
+
+### Added
+
+- **`tools/semantic_oracle.py`** — a brute-force semantic oracle: enumerates
+  a finite universe of documents, builds a family of schemas (systematic
+  single-record schemas covering every scalar x cardinality combination,
+  a few structural schemas -- an empty record, a known-empty mandatory
+  cycle, optional self-recursion -- plus seeded-random two-record
+  schemas), computes each schema's ground-truth language directly via
+  `Schema.validate()`, and checks `compatible_with`, `is_empty`,
+  `normalize`, `prune`, and `extract` against that ground truth. This is a
+  *third* independent correctness check on the schema algebra, alongside
+  `compatible_with`'s own Algorithm 4 inclusion test and the
+  minimize+isomorphism Theorem-4 oracle (`omnist/ops/isomorphic.py`,
+  cross-checked in `tests/test_fuzz.py`) -- brute-force enumeration against
+  `validate()` itself cannot share a bug with either algorithm, since
+  `validate()` is the ground-truth definition of a schema's language.
+  `False` answers from `compatible_with` are vindicated against an
+  extended (larger-cardinality) universe and, failing that, a family of
+  targeted minimal witnesses built from the schema's own cardinality/type
+  requirements; any pair still unresolved is reported as
+  needs-manual-review rather than failing the run (a bounded-universe
+  artifact, not a bug). Run it directly with `python3
+  tools/semantic_oracle.py`; see `tools/README.md`.
+- **`tests/test_semantic_oracle.py`** — a bounded, deterministic version of
+  the same five checks over a much smaller universe and schema family, so
+  it runs as part of the normal test suite (a little over a second) rather
+  than as a separate slow lane.
+- `docs/testing.md` now documents the algebra as checked three independent
+  ways: Algorithm 4 inclusion, Theorem-4 minimize+isomorphism, and
+  brute-force enumeration against ground truth.
+
 ## [v0.2.23] — Strictness/self-consistency alignments: JSON `Infinity`->`null`, XML mixed-content `ParseError`, narrowed temporal spellings
 
 Review follow-ups (issue [#157](https://github.com/omnist-dev/omnist/issues/157),
