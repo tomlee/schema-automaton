@@ -220,6 +220,38 @@ class TestSchemaNormalizeExample:
         )
 
 
+class TestSchemaExtractExample:
+    def test_quote_order_extract_drops_order_side(self, capsys):
+        code, out, err = run(
+            ["schema", "extract", "examples/cli/quote-order.osd",
+             "--keep", "quote,line,desc,price"], capsys)
+        assert code == 0
+        assert out == (
+            'record Line {\n'
+            '    "desc": string,\n'
+            '    "price": number,\n'
+            '}\n'
+            'record Quote {\n'
+            '    "line" [1,]: Line,\n'
+            '}\n'
+            'record Root {\n'
+            '    "quote" [0,1]: Quote,\n'
+            '}\n'
+            'root Root\n'
+        )
+
+    def test_mandatory_deletion_error_via_stdin(self, capsys, monkeypatch):
+        code, out, err = run(
+            ["schema", "extract", "-", "--keep", "opt"], capsys,
+            stdin_text='record R { "must": integer, "opt" [0,1]: string }\nroot R\n',
+            monkeypatch=monkeypatch)
+        assert code == 1
+        assert out == ""
+        assert err == (
+            "error: no valid subschema: removing label 'must' deletes a "
+            "mandatory field of record 'R'\n")
+
+
 class TestSchemaCompatibleWithExample:
     def test_v1_compatible_with_v2(self, capsys):
         code, out, err = run(

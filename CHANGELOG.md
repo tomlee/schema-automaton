@@ -4,6 +4,26 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.2.17] — Subschema extraction (#142)
+
+**Added:** `Schema.extract(*labels)` / `omnist.canonical.ops.extract.extract(schema, keep)`,
+implementing the paper's Algorithm 5 (ExtractSubschema) -- given a
+permissible label set, produces the minimal subschema that only recognizes
+documents built from those labels. This is the paper's headline
+application: trimming a large shared schema (xCBL, in the paper) down to
+just what a single document type needs. Fields whose label isn't kept are
+deleted; deleting a *mandatory* (`min >= 1`) field invalidates the record
+that had it, invalidation propagates transitively through mandatory refs,
+and if the root itself is invalidated `extract` raises `SchemaError`
+naming the first offending label and record rather than silently loosening
+cardinality (a deliberate design decision -- see `ops/extract.py`'s
+docstring). The result is `prune()`d and `normalize()`d before being
+returned, same as Algorithm 5's own final MakeUseful + Minimize step. New
+CLI subcommand: `omnist schema extract SCHEMA_FILE --keep label1,label2,...`
+(`--compact`/`-o` supported like `schema format`/`schema normalize`;
+mandatory-deletion failure is a definite "no" -- stderr + exit 1, not the
+generic exit 2 for parse/usage errors).
+
 ## [v0.2.16] — Internal equivalence oracle + property suite (#141)
 
 **Added:** an internal, non-public second decision procedure for schema

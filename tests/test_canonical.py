@@ -65,7 +65,7 @@ class TestPublicApi:
         import omnist as ds
 
         s = ds.parse_schema('record R { "n": integer, "s": string? }\nroot R')
-        assert ds.__version__ == "0.2.16"
+        assert ds.__version__ == "0.2.17"
         # operations are Schema methods
         assert s.validate(ds.doc({"n": 1, "s": None})).ok
         assert s.equivalent(ds.parse_schema(ds.to_osd(s)))
@@ -432,6 +432,81 @@ class TestOperations:
         n = normalize(s)
         assert len(n.env) < len(s.env)
         assert equivalent(s, n)
+
+
+class TestExtract:
+    """Subschema extraction (issue #142, paper Algorithm 5, ExtractSubschema)."""
+
+    def test_paper_worked_example_quote_order(self):
+        # Paper Listings 1-2 / Figs 6-7 translated to OSD: a shared Root
+        # that can hold either a Quote (mandatory Line items with desc/
+        # price) or an Order (mandatory OrderLine items with a nested
+        # mandatory Product plus qty). Extracting the Quote-side labels
+        # drops "order" (not kept, optional -> just removed) which makes
+        # Order/OrderLine/Product unreachable, so prune() removes them.
+        quote_order = parse_schema('''
+            record Root { "quote" [0,1]: Quote, "order" [0,1]: Order }
+            record Quote { "line" [1,]: Line }
+            record Order { "line" [1,]: OrderLine }
+            record Line { "desc": string, "price": number }
+            record OrderLine { "product" [1,]: Product, "qty": integer }
+            record Product { "desc": string, "price": number }
+            root Root
+        ''')
+        ex = quote_order.extract("quote", "line", "desc", "price")
+        assert sorted(ex.env) == ["Line", "Quote", "Root"]
+        assert ex.compatible_with(quote_order)
+
+    def test_mandatory_deletion_raises_with_label_and_record(self):
+        s = parse_schema('record R { "must": integer, "opt" [0,1]: string }\nroot R')
+        with pytest.raises(SchemaError) as exc:
+            s.extract("opt")
+        assert "must" in str(exc.value)
+        assert "R" in str(exc.value)
+
+    def test_full_label_extract_equals_normalize(self):
+        s = parse_schema(
+            'record A { "x": integer }\nrecord B { "x": integer }\n'
+            'record Root { "a": A, "b": B }\nroot Root')
+        assert len(s.extract("a", "b", "x").env) == len(s.normalize().env)
+
+    def test_extract_free_function_matches_method(self):
+        from omnist.canonical.ops import extract
+        s = parse_schema('record R { "a": integer, "b" [0,1]: string }\nroot R')
+        assert extract(s, ["a"]).equivalent(s.extract("a"))
+
+    def test_optional_field_deletion_does_not_invalidate(self):
+        s = parse_schema('record R { "must": integer, "opt" [0,1]: string }\nroot R')
+        ex = s.extract("must")
+        assert ex.env[ex.root.name].field("opt") is None
+        assert ex.compatible_with(s)
+
+    def test_propagation_invalidates_transitively(self):
+        # C loses its mandatory "z" (not kept) -> C invalidated.
+        # B's mandatory field "c" points at C -> B invalidated.
+        # A's mandatory field "b" points at B -> A invalidated (root).
+        s = parse_schema(
+            'record A { "b": B }\nrecord B { "c": C }\nrecord C { "z": integer }\n'
+            'root A')
+        with pytest.raises(SchemaError) as exc:
+            s.extract()
+        # some (label, record) pair along the mandatory chain A->B->C is
+        # named; step-1 deletions and step-3 propagation can both be the
+        # first offender found depending on env iteration order, so this
+        # only asserts the message is one of the three legitimate reasons
+        # rather than pinning an order-dependent exact choice.
+        msg = str(exc.value)
+        assert any(f"'{label}'" in msg and f"'{rec}'" in msg
+                   for label, rec in [("b", "A"), ("c", "B"), ("z", "C")])
+
+    def test_deleted_ref_field_no_longer_in_result(self):
+        s = parse_schema(
+            'record R { "keep": integer, "drop" [0,1]: Other }\n'
+            'record Other { "v": string }\nroot R')
+        ex = s.extract("keep")
+        assert ex.root.name == "R"
+        assert ex.env["R"].field("drop") is None
+        assert "Other" not in ex.env
 
 
 class TestNormalizePartitionRefinement:

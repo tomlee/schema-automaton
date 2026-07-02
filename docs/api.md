@@ -137,6 +137,7 @@ names an entry not present in `env`.
 | `.normalize() -> Schema` | canonical minimal equivalent schema — fewest env records, unique up to record naming (partition refinement, i.e. `prune()` then merge equivalent records) |
 | `.is_empty() -> bool` | `True` iff the root record is unsatisfiable — no finite document conforms (e.g. a mandatory ref cycle) |
 | `.prune() -> Schema` | an equivalent schema with unreachable records, never-emittable (`max == 0`) fields, and optional-but-unsatisfiable fields removed |
+| `.extract(*labels) -> Schema` | minimal subschema recognizing only documents built from `labels` (paper Algorithm 5); raises `SchemaError` if dropping a non-kept label deletes a mandatory field with no valid subschema left — see [the schema doc](schema.md#subschema-extraction) |
 | `.to_osd(*, indent=4) -> str` | serialize back to OSD; `indent=None` for a single-line, compact form |
 | `.root`, `.env` | the root `Ref` and the name→record map |
 | `.resolve(t) -> Record` | follow a `Ref` chain to a `Record` |

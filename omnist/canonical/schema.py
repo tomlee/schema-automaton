@@ -324,6 +324,17 @@ class Schema:
         from .ops import prune
         return prune(self)
 
+    def extract(self, *labels: str) -> "Schema":
+        """The minimal subschema that only recognizes documents built from
+        ``labels`` (paper Algorithm 5, ExtractSubschema). Fields whose label
+        isn't in ``labels`` are dropped; if that deletes a mandatory
+        (``min >= 1``) field, the record that had it -- and transitively
+        anything that mandatorily depends on it -- is invalidated. Raises
+        :class:`~omnist.SchemaError` if the root itself ends up invalidated
+        (no valid subschema exists for this label set)."""
+        from .ops import extract
+        return extract(self, labels)
+
     # -- serialization --------------------------------------------------
     def to_osd(self, *, indent: Optional[int] = 4) -> str:
         from .osd import to_osd

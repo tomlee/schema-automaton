@@ -610,6 +610,82 @@ class TestSchemaNormalize:
         assert out == 'record R { "a": integer } root R\n'
 
 
+class TestSchemaExtract:
+    def test_happy_path(self, tmp_path, capsys):
+        p = tmp_path / "in.osd"
+        p.write_text(
+            'record R { "must": integer, "opt" [0,1]: string }\nroot R\n')
+        code, out, err = run(
+            ["schema", "extract", str(p), "--keep", "must"], capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert err == ""
+        assert out == 'record R {\n    "must": integer,\n}\nroot R\n'
+
+    def test_multiple_keep_labels(self, tmp_path, capsys):
+        p = tmp_path / "in.osd"
+        p.write_text(
+            'record R { "a": integer, "b": string, "c" [0,1]: integer }\nroot R\n')
+        code, out, err = run(
+            ["schema", "extract", str(p), "--keep", "a,b"], capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert out == 'record R {\n    "a": integer,\n    "b": string,\n}\nroot R\n'
+
+    def test_compact_flag_emits_single_line_output(self, tmp_path, capsys):
+        p = tmp_path / "in.osd"
+        p.write_text('record R { "a": integer }\nroot R\n')
+        code, out, err = run(
+            ["schema", "extract", str(p), "--keep", "a", "--compact"],
+            capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert out == 'record R { "a": integer } root R\n'
+
+    def test_writes_to_output_file(self, tmp_path, capsys):
+        src = tmp_path / "in.osd"
+        src.write_text('record R { "a": integer }\nroot R\n')
+        dst = tmp_path / "out.osd"
+        code, out, err = run(
+            ["schema", "extract", str(src), "--keep", "a", "-o", str(dst)],
+            capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert out == ""
+        assert dst.read_text() == 'record R {\n    "a": integer,\n}\nroot R\n'
+
+    def test_mandatory_deletion_is_exit_1_not_2(self, tmp_path, capsys):
+        p = tmp_path / "in.osd"
+        p.write_text(
+            'record R { "must": integer, "opt" [0,1]: string }\nroot R\n')
+        code, out, err = run(
+            ["schema", "extract", str(p), "--keep", "opt"], capsys=capsys, monkeypatch=None)
+        assert code == 1
+        assert out == ""
+        assert err == (
+            "error: no valid subschema: removing label 'must' deletes a "
+            "mandatory field of record 'R'\n")
+
+    def test_missing_keep_is_argparse_usage_error(self, tmp_path):
+        p = tmp_path / "in.osd"
+        p.write_text('record R { "a": integer }\nroot R\n')
+        with pytest.raises(SystemExit) as exc:
+            main(["schema", "extract", str(p)])
+        assert exc.value.code == 2
+
+    def test_invalid_osd_is_a_clean_error(self, tmp_path, capsys):
+        p = tmp_path / "bad.osd"
+        p.write_text('record R { "a": integer }\n')   # no root
+        code, out, err = run(
+            ["schema", "extract", str(p), "--keep", "a"], capsys=capsys, monkeypatch=None)
+        assert code == 2
+        assert err.startswith("error: ")
+
+    def test_empty_keep_extracts_nothing(self, tmp_path, capsys):
+        p = tmp_path / "in.osd"
+        p.write_text('record R { "opt" [0,1]: string }\nroot R\n')
+        code, out, err = run(
+            ["schema", "extract", str(p), "--keep", ""], capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert out == 'record R {\n}\nroot R\n'
+
+
 class TestSchemaCompatibleWith:
     V1 = 'record R { "host": string }\nroot R\n'
     V2 = 'record R { "host": string, "port" [0,1]: integer }\nroot R\n'

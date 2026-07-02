@@ -223,6 +223,61 @@ See [the guide](guide.md#operations) for additional detail on all four
 operations and [the guide's inference section](guide.md#inferring-a-schema)
 for `infer`'s exact cardinality and nullability rules.
 
+### Subschema extraction
+
+`extract(*labels)` returns the minimal subschema that only recognizes
+documents built from `labels` — the paper's Algorithm 5 (ExtractSubschema),
+whose headline application is trimming a large shared schema (the paper
+uses xCBL) down to just what one document type actually needs, reported
+there as a 6-32% size reduction. Fields whose label isn't in the kept set
+are deleted:
+
+```python
+quote_order = parse_schema('''
+record Root  { "quote" [0,1]: Quote, "order" [0,1]: Order }
+record Quote { "line" [1,]: Line }
+record Order { "line" [1,]: OrderLine }
+record Line  { "desc": string, "price": number }
+record OrderLine { "product" [1,]: Product, "qty": integer }
+record Product   { "desc": string, "price": number }
+root Root
+''')
+
+ex = quote_order.extract("quote", "line", "desc", "price")
+print(sorted(ex.env))                        # ['Line', 'Quote', 'Root']
+ex.compatible_with(quote_order)              # True
+```
+
+`"order"` isn't in the kept label set, so the `order` field is dropped from
+`Root`; that makes `Order`/`OrderLine`/`Product` unreachable, and `prune()`
+(run automatically as the last step) removes them. The result is always
+`compatible_with` the original — every document the extract accepts, the
+original accepts too, since extraction can only narrow what's accepted,
+never widen it.
+
+**Deleting a *mandatory* field is an error, not silently allowed.** If the
+dropped field had `min >= 1`, the record that had it can no longer be
+built at all — the paper calls this "state removed." That invalidation
+propagates: a record with a mandatory field typed to an invalidated record
+is itself invalidated, and so on. If this reaches the root, there is no
+valid subschema for that label set, and `extract` raises `SchemaError`
+naming the first offending label and record, rather than quietly making
+the field optional:
+
+```python
+s = parse_schema('record R { "must": integer, "opt" [0,1]: string }\nroot R')
+s.extract("opt")
+# SchemaError: no valid subschema: removing label 'must' deletes a
+# mandatory field of record 'R'
+```
+
+This is a deliberate design decision: silently relaxing cardinality would
+mean the result no longer matches what the caller's `keep` set actually
+describes, and it would hide what's far more often a mistake in that
+`keep` set than an intentional relaxation. Extracting with every label the
+schema uses is equivalent to `normalize()` (nothing is dropped, so only
+the minimization step has any effect).
+
 ### Empty schemas
 
 A schema can describe **no finite document at all** — the empty language —

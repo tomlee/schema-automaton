@@ -5,6 +5,7 @@ import omnist as ds
 from omnist import (
     Doc,
     Format,
+    SchemaError,
     WriteError,
     WriteReport,
     doc,
@@ -31,7 +32,7 @@ def test_readme_at_a_glance():
                      'record Team { "name": string, "members" [1,]: Member }\nroot Team')
     assert s.validate(doc({"name": "X",
                            "members": [{"name": "Ann", "role": "dev"}]})).ok
-    assert ds.__version__ == "0.2.16"
+    assert ds.__version__ == "0.2.17"
 
 
 def test_quickstart():
@@ -156,6 +157,29 @@ def test_schema_page_empty_schemas():
     p = s.prune()
     assert p.to_osd() == 'record R {\n}\nroot R\n'
     assert s.equivalent(parse_schema(to_osd(s, indent=None)))
+
+
+def test_schema_page_extract():
+    quote_order = parse_schema('''
+    record Root  { "quote" [0,1]: Quote, "order" [0,1]: Order }
+    record Quote { "line" [1,]: Line }
+    record Order { "line" [1,]: OrderLine }
+    record Line  { "desc": string, "price": number }
+    record OrderLine { "product" [1,]: Product, "qty": integer }
+    record Product   { "desc": string, "price": number }
+    root Root
+    ''')
+
+    ex = quote_order.extract("quote", "line", "desc", "price")
+    assert sorted(ex.env) == ["Line", "Quote", "Root"]
+    assert ex.compatible_with(quote_order)
+
+    s = parse_schema('record R { "must": integer, "opt" [0,1]: string }\nroot R')
+    with pytest.raises(SchemaError) as exc:
+        s.extract("opt")
+    assert str(exc.value) == (
+        "no valid subschema: removing label 'must' deletes a mandatory "
+        "field of record 'R'")
 
 
 def test_schema_page_validation_errors():
@@ -455,7 +479,7 @@ def test_api_docs_format_registry():
 
 
 def test_api_docs_version():
-    assert ds.__version__ == "0.2.16"
+    assert ds.__version__ == "0.2.17"
 
 
 def test_api_docs_schema_raises():

@@ -22,6 +22,7 @@ yourself from the repo root.
 - [`omnist validate`](#omnist-validate)
 - [`omnist schema format`](#omnist-schema-format)
 - [`omnist schema normalize`](#omnist-schema-normalize)
+- [`omnist schema extract`](#omnist-schema-extract)
 - [`omnist schema compatible-with`](#omnist-schema-compatible-with)
 - [`omnist schema equivalent`](#omnist-schema-equivalent)
 
@@ -337,6 +338,62 @@ root Company
 
 `--compact` emits the same merged schema on a single line instead
 (`to_osd(schema, indent=None)`).
+
+## `omnist schema extract`
+
+```
+omnist schema extract <schema-file> --keep label1,label2,... [--compact] [-o OUTPUT]
+```
+
+`Schema.extract(*labels)`, written back out as OSD — the minimal subschema
+recognizing only documents built from `--keep`'s comma-separated labels
+(paper Algorithm 5, ExtractSubschema; see
+[the schema doc](schema.md#subschema-extraction)). Fields whose label
+isn't kept are dropped, and anything they made unreachable is pruned away
+too:
+
+```sh
+$ cat examples/cli/quote-order.osd
+record Root  { "quote" [0,1]: Quote, "order" [0,1]: Order }
+record Quote { "line" [1,]: Line }
+record Order { "line" [1,]: OrderLine }
+record Line  { "desc": string, "price": number }
+record OrderLine { "product" [1,]: Product, "qty": integer }
+record Product   { "desc": string, "price": number }
+root Root
+$ omnist schema extract examples/cli/quote-order.osd --keep quote,line,desc,price
+record Line {
+    "desc": string,
+    "price": number,
+}
+record Quote {
+    "line" [1,]: Line,
+}
+record Root {
+    "quote" [0,1]: Quote,
+}
+root Root
+```
+
+`"order"` wasn't kept, so `Order`/`OrderLine`/`Product` are gone too, once
+unreachable. `--compact` emits a single-line form, same as `schema
+format`/`schema normalize`.
+
+If dropping a label would delete a *mandatory* field and there's no way to
+still build the record that had it (see the schema doc's
+[design decision](schema.md#subschema-extraction) on why this errors
+rather than silently loosening cardinality), the error goes to stderr and
+the exit code is `1` — a definite "no valid subschema," not a parse/usage
+failure:
+
+```sh
+$ echo 'record R { "must": integer, "opt" [0,1]: string }
+root R' | omnist schema extract - --keep opt
+error: no valid subschema: removing label 'must' deletes a mandatory field of record 'R'
+# exit 1
+```
+
+Malformed OSD or a missing `--keep` is a usage/parse error, exit code `2`.
 
 ## `omnist schema compatible-with`
 

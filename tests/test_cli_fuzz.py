@@ -99,3 +99,34 @@ def test_convert_strict_never_crashes(capsys, monkeypatch, text, from_fmt, to_fm
         lambda: main(["convert", "-", "--from", from_fmt, "--to", to_fmt, "--strict"]),
         text=text, label="convert --strict")
     capsys.readouterr()
+
+
+# ---------------------------------------------------------------------------
+# `schema extract` (issue #142) -- arbitrary/malformed OSD text and arbitrary
+# --keep label lists must always come back as a clean exit code (0/1/2),
+# never an uncaught traceback. SchemaError's new "no valid subschema" path
+# isn't exercised by test_fuzz.py's parse_schema-only crash-freedom fuzzing,
+# since that never calls extract() afterward.
+# ---------------------------------------------------------------------------
+
+_keep_text = st.text(alphabet=st.sampled_from(list('abcXYZ,')), max_size=20)
+
+
+@_SUPPRESS
+@given(text=_text, keep=_keep_text)
+def test_schema_extract_never_crashes_on_arbitrary_input(capsys, monkeypatch, text, keep):
+    monkeypatch.setattr("sys.stdin", io.StringIO(text))
+    _assert_clean_exit(
+        lambda: main(["schema", "extract", "-", "--keep", keep]),
+        text=text, label="schema extract")
+    capsys.readouterr()
+
+
+@_SUPPRESS
+@given(text=_syntax_like_text, keep=_keep_text)
+def test_schema_extract_never_crashes_on_syntax_like_input(capsys, monkeypatch, text, keep):
+    monkeypatch.setattr("sys.stdin", io.StringIO(text))
+    _assert_clean_exit(
+        lambda: main(["schema", "extract", "-", "--keep", keep]),
+        text=text, label="schema extract")
+    capsys.readouterr()

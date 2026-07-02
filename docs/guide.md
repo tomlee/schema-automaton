@@ -182,6 +182,19 @@ v1.equivalent(v2)          # False
 v1.normalize()             # canonical minimal equivalent schema (fewest records)
 ```
 
+`extract(*labels)` does **subschema extraction** — it computes the minimal
+subschema recognizing only documents built from `labels`, dropping any
+field whose label isn't kept (and anything that field's deletion makes
+unreachable). Deleting a *mandatory* field is an error, not silently
+allowed:
+
+```python
+v2.extract("host")         # subschema with only "host" -- "port" dropped
+```
+
+See [the Schema model & OSD: Subschema extraction](schema.md#subschema-extraction)
+for the full algorithm and the mandatory-deletion error.
+
 A schema can also describe **no** documents at all -- a mandatory ref cycle
 with no base case. `is_empty()` detects this; `prune()` strips out
 never-emittable fields and unreachable records, returning an equivalent

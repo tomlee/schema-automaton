@@ -40,7 +40,8 @@ self-contained formal model (inspired by Lee & Cheung, CIKM 2010):
   (optionally nullable) or one `Ref` to a named record — referenced by name for
   reuse and recursion. Written as **OSD** (Omnist Schema Definition).
   **Validate** a Document, **compare** two schemas for
-  backward-compatibility, or **infer** a schema from examples.
+  backward-compatibility, **infer** a schema from examples, or **extract**
+  the minimal subschema for a subset of labels (paper Algorithm 5).
 - **Closed by construction** — records are closed, and scalar types are
   never composed into enums or unions. That is not a constraint bolted on
   top; it is what makes `compatible_with`, `equivalent`, `normalize`, and

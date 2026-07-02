@@ -147,6 +147,16 @@ valid. Defined formally in
   to record naming (paper Theorems 3-4). Two equivalent schemas normalize
   to isomorphic results. See
   [model spec §13](design/model.md#13-minimization-and-canonical-form).
+- **subschema extraction** / **`Schema.extract(*labels)`** — the paper's
+  Algorithm 5 (ExtractSubschema): given a set of permissible labels,
+  produces the minimal subschema recognizing only documents built from
+  them. Fields whose label isn't kept are dropped; dropping a *mandatory*
+  field invalidates the record that had it, invalidation propagates
+  through mandatory refs, and if it reaches the root, `extract` raises
+  `SchemaError` rather than silently loosening cardinality. Ends with the
+  same `prune()` + `normalize()` as Algorithm 5's own MakeUseful +
+  Minimize step. See
+  [the schema doc](schema.md#subschema-extraction).
 
 ## OML / OSD format terms
 

@@ -477,6 +477,28 @@ def test_is_empty_implies_compatible_with_anything(s, t):
 
 
 # ---------------------------------------------------------------------------
+# 5b. extract() (issue #142, paper Algorithm 5) -- for random schemas over
+# the same small fixed-name env as `schemas()` above, and random label
+# subsets drawn from the labels that generator can actually produce
+# (`f0`/`f1` -- see `_fields()`), whenever extraction succeeds it must
+# produce a subschema: every document the extract accepts, the original
+# schema accepts too.
+# ---------------------------------------------------------------------------
+
+_extract_labels = st.frozensets(st.sampled_from(["f0", "f1"]))
+
+
+@_SUPPRESS
+@given(s=schemas(), keep=_extract_labels)
+def test_extract_result_is_compatible_with_original(s, keep):
+    try:
+        extracted = s.extract(*keep)
+    except SchemaError:
+        return  # "no valid subschema" for this keep set -- not this property's concern
+    assert extracted.compatible_with(s)
+
+
+# ---------------------------------------------------------------------------
 # 6. Equivalence oracle (issue #141) -- the paper's Theorem 4: two schemas
 # are equivalent iff their minimized (normalized) forms are isomorphic. That
 # gives two structurally independent decision procedures for schema

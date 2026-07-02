@@ -16,6 +16,7 @@ omnist check      <input>   --from FMT --to FMT [--strict] [--result-format text
 
 omnist schema format           <schema-file>  [--compact] [-o OUTPUT]
 omnist schema normalize        <schema-file>  [--compact] [-o OUTPUT]
+omnist schema extract          <schema-file>  --keep label1,label2,... [--compact] [-o OUTPUT]
 omnist schema compatible-with  <a> <b>        [--result-format text|json|oml]
 omnist schema equivalent       <a> <b>        [--result-format text|json|oml]
 ```
@@ -31,9 +32,9 @@ no `--from`/`--to`.
 - `--from` is always required wherever it appears, file or stream alike —
   no extension-based inference.
 - `--to` is always required on `convert`/`check` — no defaulting.
-- `format`/`schema format`/`schema normalize`/`schema compatible-with`/
-  `schema equivalent` take no `--from`/`--to`: each reads/writes exactly
-  one format (OML or OSD).
+- `format`/`schema format`/`schema normalize`/`schema extract`/
+  `schema compatible-with`/`schema equivalent` take no `--from`/`--to`:
+  each reads/writes exactly one format (OML or OSD).
 - Schema files conventionally use `.osd`; not enforced.
 
 ## 3. Commands
@@ -127,6 +128,30 @@ omnist schema format messy.osd --compact
 equivalent schema (partition refinement, fewest env records, unique up to
 naming) — a structural change, unlike `schema format`. `--compact` emits a
 single-line schema, same as `schema format`.
+
+### `omnist schema extract <schema-file> --keep label1,label2,... [--compact] [-o OUTPUT]`
+
+`Schema.extract(*labels)`, written back as OSD (paper Algorithm 5,
+ExtractSubschema). The minimal subschema recognizing only documents built
+from `--keep`'s comma-separated labels: fields whose label isn't kept are
+dropped, and anything they make unreachable is pruned away too (`prune()`
++ `normalize()` is the algorithm's own final step). `--compact` emits a
+single-line schema, same as `schema format`/`schema normalize`.
+
+If deleting a non-kept label would remove a *mandatory* (`min >= 1`)
+field, the record that had it -- and transitively anything mandatorily
+depending on it -- is invalidated; deliberately an error rather than a
+silent relaxation to optional (see `docs/schema.md`'s "Subschema
+extraction" section for the rationale). If that invalidation reaches the
+root, there is no valid subschema for this `--keep` set: `SchemaError`
+naming the first offending label and record, printed to stderr as
+`error: ...`, exit `1` (a definite "no," like `compatible-with`'s False --
+not the generic exit `2` for parse/usage errors).
+
+```sh
+omnist schema extract order.osd --keep quote,line,desc,price
+omnist schema extract order.osd --keep quote,line,desc,price --compact
+```
 
 ### `omnist schema compatible-with <a> <b> [--result-format text|json|oml]`
 

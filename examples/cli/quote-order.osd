@@ -1,0 +1,7 @@
+record Root  { "quote" [0,1]: Quote, "order" [0,1]: Order }
+record Quote { "line" [1,]: Line }
+record Order { "line" [1,]: OrderLine }
+record Line  { "desc": string, "price": number }
+record OrderLine { "product" [1,]: Product, "qty": integer }
+record Product   { "desc": string, "price": number }
+root Root

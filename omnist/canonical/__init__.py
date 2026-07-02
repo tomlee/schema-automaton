@@ -10,7 +10,7 @@ described in ``docs/design/model.md``:
   cardinality, plus conformance.
 * :mod:`~omnist.canonical.osd` — the ``record`` text syntax (OSD).
 * :mod:`~omnist.canonical.ops` — ``compatible_with`` / ``equivalent``
-  / ``normalize`` / ``is_empty`` / ``prune`` on the new model.
+  / ``normalize`` / ``is_empty`` / ``prune`` / ``extract`` on the new model.
 
 This package is the implementation of the model; ``import omnist`` is its
 public surface.
@@ -33,7 +33,7 @@ from .formats import (
     write_yaml,
 )
 from .infer import infer
-from .ops import compatible_with, equivalent, is_empty, normalize, prune
+from .ops import compatible_with, equivalent, extract, is_empty, normalize, prune
 from .osd import parse_schema, to_osd
 from .registry import Format, formats, get_format, register_format
 
@@ -70,7 +70,7 @@ __all__ = [
     "record", "ref", "field", "schema", "nullable", "t",
     "STRING", "INTEGER", "NUMBER", "BOOLEAN", "DATE", "TIME", "DATETIME",
     "parse_schema", "to_osd",
-    "compatible_with", "equivalent", "normalize", "is_empty", "prune",
+    "compatible_with", "equivalent", "normalize", "is_empty", "prune", "extract",
     "infer", "materialize",
     "read_json", "read_yaml", "read_toml", "read_xml",
     "write_json", "write_yaml", "write_toml", "write_xml",

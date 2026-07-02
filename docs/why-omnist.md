@@ -37,8 +37,20 @@ comparison below for the `compatible_with` row, and the
 | Type-exact schema-directed deserialization | partial (validates types but doesn't convert/upgrade values) | no (PyYAML's loader infers types itself, not from a schema) | no (`tomllib` likewise infers types itself, not schema-directed) | partial (XSD types validate; bindings to native types need a separate codegen tool, e.g. `xmlschema`/`xsdata`) | yes (`schema=` upgrades leaves only when value-exact) |
 | Native lossless round-trip | yes (within JSON's own type system) | yes (within YAML's own type system) | yes (within TOML's own type system) | no (attributes/namespaces/mixed content not modeled by Omnist; see non-goals) | yes (OML only -- JSON/YAML/TOML/XML round-trip within *their own* type systems, same as the other columns) |
 | Multi-format read/write (one model, many formats) | no (`jsonschema` only ever speaks JSON) | no (PyYAML only speaks YAML) | no (`tomllib` only speaks TOML, and is read-only) | no (XML tooling only speaks XML) | yes (`read_*`/`write_*` for JSON/YAML/TOML/XML/OML all target one Document model) |
+| Subschema extraction (minimal schema for a label subset) | no (no packaged operation in `jsonschema`/the JSON Schema spec; `$ref`/`$defs` can be hand-pruned, not derived) | no (no schema concept) | no (no schema concept) | no (no standard XSD tool computes this; component reuse via `xs:include`/`xs:import` is manual) | yes (`Schema.extract()`, paper Algorithm 5) |
 
 Notes on cells double-checked while writing this table:
+
+- **Subschema extraction row, hedged deliberately.** This check is against
+  general-purpose JSON Schema/XSD tooling, not the whole schema-technology
+  landscape -- Avro and Protobuf don't really have an analogous "trim to a
+  label subset" operation either (their compatibility tooling is about
+  reader/writer schema evolution, not extraction), and CUE's `cue export`/
+  unification *can* narrow a value to a subset of fields but that's value
+  extraction against a concrete instance, not deriving a minimal schema
+  purely from a permissible label set the way Algorithm 5 does. If there's
+  a packaged tool that does exactly this and this claim turns out wrong,
+  that's a documentation bug -- open an issue.
 
 - **PyYAML and `tomllib` have no schema concept whatsoever** -- confirmed by
   inspecting their public APIs (`yaml.safe_load`/`dump` and

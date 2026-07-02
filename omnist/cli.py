@@ -200,6 +200,21 @@ def _cmd_schema_normalize(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_schema_extract(args: argparse.Namespace) -> int:
+    s = parse_schema(_read_input(args.schema_file))
+    labels = [lbl for lbl in args.keep.split(",") if lbl]
+    try:
+        extracted = s.extract(*labels)
+    except SchemaError as exc:
+        # A definite "no valid subschema" -- a schema-algebra result, not a
+        # usage/parse failure, so exit 1 (like compatible-with's False), not
+        # the generic exit 2 main() gives uncaught SchemaErrors.
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    _write_output(args.output, to_osd(extracted, indent=None if args.compact else 4))
+    return 0
+
+
 def _encode_bool_result(key: str, value: bool, fmt: str) -> str:
     """Encode a single boolean result -- shared by schema compatible-with
     and equivalent."""
@@ -319,6 +334,19 @@ def _build_parser() -> argparse.ArgumentParser:
         help="single-line, machine-oriented output instead of pretty-printed")
     schema_normalize_p.add_argument("-o", "--output", help="output file; omit for stdout")
     schema_normalize_p.set_defaults(func=_cmd_schema_normalize)
+
+    schema_extract_p = schema_sub.add_parser(
+        "extract",
+        help="the minimal subschema recognizing only documents built from --keep labels")
+    schema_extract_p.add_argument("schema_file", help="OSD file, or - for stdin")
+    schema_extract_p.add_argument(
+        "--keep", required=True,
+        help="comma-separated list of labels to keep, e.g. label1,label2,...")
+    schema_extract_p.add_argument(
+        "--compact", action="store_true",
+        help="single-line, machine-oriented output instead of pretty-printed")
+    schema_extract_p.add_argument("-o", "--output", help="output file; omit for stdout")
+    schema_extract_p.set_defaults(func=_cmd_schema_extract)
 
     schema_compat_p = schema_sub.add_parser(
         "compatible-with", help="is every document `a` accepts also accepted by `b`")
