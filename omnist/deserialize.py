@@ -34,7 +34,7 @@ import datetime as _dt
 from typing import Any
 
 from .errors import ParseError
-from .schema import Record, Scalar, Schema, ValidationResult
+from .schema import Record, Scalar, Schema, ValidationResult, _is_iso
 
 _TEMPORAL_CLASS = {"date": _dt.date, "time": _dt.time, "datetime": _dt.datetime}
 
@@ -128,20 +128,19 @@ def _materialize_temporal(value: Any, name: str) -> Any:
         if name == "date" and isinstance(value, _dt.datetime):
             return _SENTINEL               # datetime is a date subclass -- not this kind
         return value
-    if not isinstance(value, str):
+    # Shape-check against the documented hyphenated/colon spellings *before*
+    # converting -- `fromisoformat` on its own is wider (basic format like
+    # "20240101", week dates like "2024-W01-1", ...) than anything the docs
+    # or OML's grammar define, and `matches_kind` (schema.py, used by
+    # `validate()`) applies the exact same shape check via `_is_iso`, so the
+    # two stay in agreement: a string only ever materializes here if
+    # `validate()` would also have accepted it.
+    #
+    # This shape check is also what keeps "a bare date string is not a
+    # datetime" true without a separate sentinel case: schema.py's
+    # _DATETIME_RE requires a literal 'T' separator that _DATE_RE never has,
+    # so no string can ever fullmatch both -- "2024-01-01" fails _is_iso(...,
+    # datetime) outright, it never reaches fromisoformat here at all.
+    if not _is_iso(value, cls):
         return _SENTINEL
-    try:
-        parsed = cls.fromisoformat(value)
-    except ValueError:
-        return _SENTINEL
-    if name == "datetime" and _is_iso(value, _dt.date):
-        return _SENTINEL                  # a bare date string is not a datetime
-    return parsed
-
-
-def _is_iso(value: str, cls) -> bool:
-    try:
-        cls.fromisoformat(value)
-        return True
-    except ValueError:
-        return False
+    return cls.fromisoformat(value)

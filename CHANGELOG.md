@@ -4,6 +4,78 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.2.23] — Strictness/self-consistency alignments: JSON `Infinity`->`null`, XML mixed-content `ParseError`, narrowed temporal spellings
+
+Review follow-ups (issue [#157](https://github.com/omnist-dev/omnist/issues/157),
+PR-3 of the codebase review in [#154](https://github.com/omnist-dev/omnist/issues/154)).
+Three behavior alignments, all choosing strictness/self-consistency over
+silent permissiveness (user-approved in review):
+
+- **Changed:** `write_json`'s lenient (default) mode used to emit the
+  literal, non-standard tokens `Infinity`/`-Infinity`/`NaN` at a
+  `float('inf')`/`float('nan')` leaf — text that isn't valid JSON per the
+  spec, even though `check_json` already flagged it an error-severity
+  `float.special` adjustment (every *other* error-severity adjustment
+  mutates the output to stay well-formed, e.g. XML's illegal-char ->
+  U+FFFD substitution). Lenient mode now substitutes `null` at those
+  leaves instead, so `write_json`'s output always parses under a strict
+  JSON parser; the adjustment entry stays error-severity, with its message
+  now noting the substitution (`"... is not valid JSON; wrote null"`).
+  `strict=True` is unchanged: it still refuses via `WriteError` rather than
+  writing anything. `docs/formats/json.md` and `docs/formats/overview.md`'s
+  comparison row, which documented the old raw-emission behavior, are
+  updated to match.
+  **Test-suite note:** `tests/test_fuzz.py`'s
+  `test_json_round_trip_modulo_documented_adjustments` asserted that a
+  `float.special` leaf round-trips to an *equal* value (true under the old
+  behavior, since Python's own lenient `json.loads` reads the raw
+  `Infinity`/`NaN` tokens back as the same float). That's no longer true —
+  the leaf now round-trips to `None`, not the original float — so the
+  property's round-trip comparison is skipped for `float.special` the same
+  way it already was for `temporal.stringified`, with the reasoning
+  recorded in the test itself.
+- **Changed (breaking):** `read_xml`'s `_xml_to_node` used to silently
+  discard non-whitespace `elem.text` and any child's `.tail` when an
+  element also has child elements (XML "mixed content") — the only place
+  in the library where data vanished on *read* with no `check_*` even in
+  principle to surface it. It now raises `ParseError` naming the element
+  ("mixed content ... is outside the data-XML profile") instead. Pretty-
+  printed XML — whitespace-only text/tail around child elements, which is
+  exactly the shape `write_xml`'s own indenter produces — is unaffected and
+  still parses. `docs/formats/xml.md`'s mixed-content row is updated from
+  "not supported" (silently dropped) to "rejected with `ParseError`".
+- **Changed (breaking):** schema-directed deserialization accepted a wider
+  set of temporal string spellings than documented or than OML's own
+  grammar defines, because it delegated straight to
+  `datetime.fromisoformat`, which (beyond the documented hyphenated-date /
+  colon-time / `T`-joined-datetime forms) also parses ISO 8601 basic format
+  (`"20240101"`, `"120000"`), week dates (`"2024-W01-1"`), and a
+  space-separated datetime — so a numeric-looking or otherwise
+  undocumented-shaped string could silently become a `date`/`time`/
+  `datetime` under a temporal schema. `materialize` (`deserialize.py`) now
+  checks a candidate string's shape against the documented spellings
+  *before* calling `fromisoformat`, rejecting anything else via the normal
+  not-value-exact `ParseError` path. `Schema.validate`'s `matches_kind`/
+  `_is_iso` (`schema.py`) had the identical wide-acceptance gap and is
+  narrowed the same way, so `validate()` and `materialize()` agree exactly
+  on every string — a document that validates is now guaranteed to
+  materialize, and vice versa (asserted directly by a new parametrized
+  test, `TestValidateMaterializeAgreement`, across the boundary spellings
+  for all three temporal kinds).
+  **Implementation note (judgment call):** the documented spellings were
+  already defined once, as `_DATE_RE`/`_TIME_RE`/`_DATETIME_RE` in
+  `oml.py` (OML's own tokenizer). Rather than duplicate them, that single
+  definition now lives in `schema.py` and is imported into both `oml.py`
+  and `deserialize.py`. `schema.py` was chosen as the home over leaving
+  them in `oml.py` (or introducing a new module) by reading the actual
+  import graph: `schema.py` only imports `errors.py` at module level (its
+  one `document.py` use, inside `Schema.validate`, is a lazy in-function
+  import), so it already sits below both `oml.py` and `deserialize.py` in
+  the dependency order — adding `schema.py` as a module-level dependency of
+  `oml.py` introduces no cycle, and `schema.py` already owned
+  `matches_kind`/`_is_iso`, the other half of this same "what counts as a
+  temporal string" concern.
+
 ## [v0.2.22] — Enforce the int-digit cap at construction; `Doc.set` replace-all semantics
 
 Review follow-ups (issue [#156](https://github.com/omnist-dev/omnist/issues/156),

@@ -161,13 +161,29 @@ Omnist is not trying to be a bigger hammer than it is. Specifically:
   its namespace binding both vanish, with no warning. Omnist's Document
   model has no edge shape for attributes, mixed text+element content, or
   namespace-qualified names, so none of the three survive a round trip. If
-  your XML relies on attributes, namespaces, or interleaved text and
-  elements as meaningful data (not just structure), Omnist will silently
-  lose it -- use a real XML library (`lxml`, `xml.etree`) for that data
-  instead. This is a genuine, named limitation, not a hedge: nothing in
-  Omnist currently detects or warns about it. (A separate issue may exist
-  to track making this loss visible at read/check time; this page only
-  documents the current behavior.)
+  your XML relies on attributes or namespaces as meaningful data (not just
+  structure), Omnist will silently lose it -- use a real XML library
+  (`lxml`, `xml.etree`) for that data instead. This is a genuine, named
+  limitation for attributes and namespaces specifically: nothing in Omnist
+  currently detects or warns about either being dropped. (A separate issue
+  may exist to track making that loss visible at read/check time; this page
+  only documents the current behavior.)
+
+  **Mixed content is the one exception: it's rejected, not silently
+  dropped.** As of `read_xml` in v0.2.23+, non-whitespace text alongside
+  child elements raises `ParseError` naming the element, rather than being
+  discarded:
+
+  ```python
+  from omnist import read_xml, ParseError
+
+  try:
+      read_xml("<p>Hello <b>world</b></p>")
+  except ParseError as e:
+      print(e)   # $: mixed content (text alongside child elements) ...
+  ```
+
+  See [the XML format page](formats/xml.md#mixed-content-is-rejected).
 - **No structureless escape hatches, by design, not by oversight.** There's
   no `Any` type and no open/wildcard record. This isn't a missing feature
   on the roadmap -- it's the property that makes `compatible_with`,

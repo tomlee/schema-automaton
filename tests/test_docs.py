@@ -32,7 +32,7 @@ def test_readme_at_a_glance():
                      'record Team { "name": string, "members" [1,]: Member }\nroot Team')
     assert s.validate(doc({"name": "X",
                            "members": [{"name": "Ann", "role": "dev"}]})).ok
-    assert ds.__version__ == "0.2.22"
+    assert ds.__version__ == "0.2.23"
 
 
 def test_quickstart():
@@ -495,7 +495,7 @@ def test_api_docs_format_registry():
 
 
 def test_api_docs_version():
-    assert ds.__version__ == "0.2.22"
+    assert ds.__version__ == "0.2.23"
 
 
 def test_api_docs_schema_raises():
@@ -634,6 +634,11 @@ def test_formats_json_writing():
     assert Doc.of({"tag": ["x", "y"]}).to_json() == '{"tag": ["x", "y"]}'
 
 
+def test_formats_json_docs_special_float_substitution():
+    from omnist import write_json
+    assert write_json([("a", float("inf"))]) == '{"a": null}'
+
+
 def test_formats_yaml_reading_no_schema():
     import datetime
     node = read_yaml("d: 2024-01-01")
@@ -704,6 +709,23 @@ def test_formats_xml_writing():
     from omnist import write_xml
     assert write_xml([("order", [("id", "A1")])]) == "<order>\n  <id>A1</id>\n</order>\n"
     assert Doc.of({"order": {"id": "A1"}}).to_xml() == "<order>\n  <id>A1</id>\n</order>\n"
+
+
+def test_formats_xml_docs_mixed_content_rejected():
+    from omnist import ParseError
+    try:
+        read_xml("<p>Hello <b>world</b></p>")
+        assert False, "expected ParseError"
+    except ParseError as e:
+        assert "mixed content" in str(e)
+
+    try:
+        read_xml("<p><b>world</b> tail</p>")
+        assert False, "expected ParseError"
+    except ParseError as e:
+        assert "mixed content" in str(e)
+
+    assert read_xml("<p>\n  <b>world</b>\n</p>") == [("p", [("b", "world")])]
 
 
 def test_formats_oml_reading_no_schema():

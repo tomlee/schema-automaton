@@ -22,11 +22,28 @@ with cardinality ``max > 1``.  Validation ignores order.
 from __future__ import annotations
 
 import datetime as _dt
+import re as _re
 from typing import Any, Dict, List, NamedTuple, Optional, Union
 
 from .errors import SchemaError
 
 SCALAR_NAMES = {"string", "integer", "number", "boolean", "date", "time", "datetime"}
+
+# The one definition of the documented temporal spellings (hyphenated date,
+# colon time, 'T'-joined datetime) shared by every consumer that needs to
+# tell "is this string shaped like a date/time/datetime" from "is it merely
+# something `datetime.fromisoformat` happens to also accept" -- OML's own
+# tokenizer (``oml.py``) and schema-directed deserialization (``deserialize.py``)
+# both import these rather than each defining their own copy.  `fromisoformat`
+# is deliberately wider than this: it also admits ISO 8601 basic format
+# (``20240101``), week dates (``2024-W01-1``), and other spellings the docs
+# never promise, so a shape check against these patterns must run *before*
+# handing the string to `fromisoformat` for conversion -- see `_is_iso` below
+# and `deserialize._materialize_temporal`.
+_DATE_RE = _re.compile(r"\d{4}-\d{2}-\d{2}")
+_TIME_RE = _re.compile(r"\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?([+\-]\d{2}:\d{2})?")
+_DATETIME_RE = _re.compile(
+    r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?([+\-]\d{2}:\d{2})?")
 
 
 # ---------------------------------------------------------------------------
@@ -382,9 +399,14 @@ def matches_kind(value: Any, name: str) -> bool:
     return False
 
 
+_SHAPE_RE = {_dt.date: _DATE_RE, _dt.time: _TIME_RE, _dt.datetime: _DATETIME_RE}
+
+
 def _is_iso(value: Any, cls) -> bool:
     if not isinstance(value, str):
         return False
+    if not _SHAPE_RE[cls].fullmatch(value):
+        return False          # narrower than fromisoformat -- see _DATE_RE etc. above
     try:
         cls.fromisoformat(value)
         return True

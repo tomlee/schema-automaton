@@ -25,6 +25,7 @@ from typing import Any, List, Optional, Tuple
 
 from .document import _MAX_INT_DIGITS
 from .errors import ParseError
+from .schema import _DATE_RE, _DATETIME_RE, _TIME_RE
 
 _MAX_DEPTH = 200          # matches Document's own nesting bound (document.py)
 
@@ -61,10 +62,10 @@ _RESERVED = {"null", "true", "false"}
 _RESERVED_NUMBER = {"nan", "inf", "-inf"}
 
 _IDENT_RE = _re.compile(r"[A-Za-z_][A-Za-z0-9_\-]*")
-_DATETIME_RE = _re.compile(
-    r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?([+\-]\d{2}:\d{2})?")
-_DATE_RE = _re.compile(r"\d{4}-\d{2}-\d{2}")
-_TIME_RE = _re.compile(r"\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?([+\-]\d{2}:\d{2})?")
+# _DATE_RE / _TIME_RE / _DATETIME_RE: the one shared definition of the
+# documented temporal spellings now lives in schema.py (imported above) --
+# see its comment there for why (validate()/materialize() need to agree with
+# this tokenizer's own notion of "looks like a date/time/datetime").
 _NUMDEC_RE = _re.compile(r"-?\d+\.\d+([eE][+\-]?\d+)?")
 _NUMEXP_RE = _re.compile(r"-?\d+[eE][+\-]?\d+")
 _INTEGER_RE = _re.compile(r"-?\d+")

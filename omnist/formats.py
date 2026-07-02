@@ -69,7 +69,8 @@ def read_json(text: str, *, schema: Optional["Schema"] = None) -> Any:
 def write_json(node: Any, *, indent: Optional[int] = None, strict: bool = False,
                report: Optional[WriteReport] = None) -> str:
     rep = _scan_json(node)
-    text = _json.dumps(_grouped(node), indent=indent, ensure_ascii=False, default=_iso)
+    prepared = node if strict else _prepare_json(node)
+    text = _json.dumps(_grouped(prepared), indent=indent, ensure_ascii=False, default=_iso)
     return finish_write(text, rep, strict=strict, report=report)
 
 
@@ -85,8 +86,20 @@ def _scan_json(node: Any) -> WriteReport:
             rep.add(path, "temporal.stringified",
                     "temporal value written as an ISO-8601 string", "warning")
         elif isinstance(v, float) and (_math.isnan(v) or _math.isinf(v)):
-            rep.add(path, "float.special", f"{v} is not valid JSON", "error")
+            rep.add(path, "float.special", f"{v} is not valid JSON; wrote null", "error")
     return rep
+
+
+def _prepare_json(node: Any) -> Any:
+    """Lenient-mode substitution: a NaN/Infinity leaf becomes ``null`` so the
+    written text is always valid JSON (mirrors XML's illegal-char -> U+FFFD
+    substitution). ``strict=True`` skips this and refuses via WriteError
+    instead, so it never sees the substituted value."""
+    if isinstance(node, list):
+        return [(label, _prepare_json(child)) for label, child in node]
+    if isinstance(node, float) and (_math.isnan(node) or _math.isinf(node)):
+        return None
+    return node
 
 
 def _iso(o: Any) -> str:
@@ -263,6 +276,15 @@ def _xml_to_node(elem, path: str, depth: int) -> Any:
         raise DocumentError(f"{path}: nesting exceeds the maximum depth ({_MAX_DEPTH})")
     children = list(elem)
     if children:
+        if elem.text and elem.text.strip():
+            raise ParseError(
+                f"{path}: mixed content (text alongside child elements) is "
+                "outside the data-XML profile")
+        for c in children:
+            if c.tail and c.tail.strip():
+                raise ParseError(
+                    f"{path}.{_local(c.tag)}: mixed content (text alongside "
+                    "child elements) is outside the data-XML profile")
         return [(_local(c.tag), _xml_to_node(c, f"{path}.{_local(c.tag)}", depth + 1))
                 for c in children]
     return _coerce(elem.text or "")
