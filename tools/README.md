@@ -1,0 +1,1 @@
+Developer tools, not part of the installable package (see `pyproject.toml`'s `[tool.setuptools] packages`). Run `python3 tools/semantic_oracle.py` for the full brute-force semantic oracle described in `docs/testing.md`; `tests/test_semantic_oracle.py` runs a bounded version of the same checks in CI.
