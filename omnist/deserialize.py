@@ -1,5 +1,5 @@
 """Schema-directed deserialization: make a freshly-read node conform to a
-:class:`~omnist.canonical.schema.Schema`, or raise.
+:class:`~omnist.schema.Schema`, or raise.
 
 Readers (``read_json``, etc.) hand back text-shaped values: JSON/YAML/TOML
 have no ``date``/``time`` type, so a temporal field arrives as an ISO-8601
@@ -33,7 +33,7 @@ from __future__ import annotations
 import datetime as _dt
 from typing import Any
 
-from ..errors import ParseError
+from .errors import ParseError
 from .schema import Record, Scalar, Schema, ValidationResult
 
 _TEMPORAL_CLASS = {"date": _dt.date, "time": _dt.time, "datetime": _dt.datetime}

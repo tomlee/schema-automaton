@@ -12,7 +12,7 @@ import datetime
 import pytest
 
 from omnist import Doc, ParseError, check_oml, doc, parse_schema, read_oml, write_oml
-from omnist.canonical.registry import formats, get_format
+from omnist.registry import formats, get_format
 
 # ---------------------------------------------------------------------------
 # Happy paths: round-tripping every scalar kind

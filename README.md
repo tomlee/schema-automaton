@@ -152,7 +152,7 @@ Full index: **[docs/](docs/README.md)**, also browsable as a site at
 - **[Testing](docs/testing.md)** — the test suite layout, coverage tooling and
   target, the fuzzing approach, and what CI runs.
 - **[Repo layout](docs/layout.md)** — how the repo itself is organized:
-  `omnist/canonical/*.py` module responsibilities, the docs page map, and the
+  `omnist/*.py` module responsibilities, the docs page map, and the
   test file map.
 
 ## Status

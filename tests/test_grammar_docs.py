@@ -11,7 +11,7 @@ import datetime
 import pytest
 
 from omnist import ParseError, SchemaError, parse_schema, read_oml
-from omnist.canonical.oml import _MAX_DEPTH, _MAX_INT_DIGITS
+from omnist.oml import _MAX_DEPTH, _MAX_INT_DIGITS
 
 # ---------------------------------------------------------------------------
 # docs/design/oml-grammar.md -- Worked examples

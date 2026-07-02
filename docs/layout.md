@@ -4,7 +4,7 @@ How the repo is organized: the canonical model's modules, the docs page
 map, and the test file map. For anything deeper than a one-line summary,
 follow the link.
 
-## `omnist/canonical/*.py`
+## `omnist/*.py`
 
 The implementation of the Document/Schema model described in
 `docs/design/model.md`. `import omnist` re-exports its public surface; this
@@ -37,7 +37,7 @@ is where the logic actually lives.
 - **`__init__.py`** -- re-exports the package's public names from the
   modules above.
 
-Outside `canonical/`: `omnist/errors.py` defines the exception hierarchy
+`omnist/errors.py` defines the exception hierarchy
 (`OmnistError`, `DocumentError`, `SchemaError`, `ParseError`, `WriteError`,
 `UnsafeXMLWarning`); `omnist/__init__.py` is the public package surface;
 `omnist/cli.py` is the `omnist` command-line tool (see [cli.md](cli.md)),

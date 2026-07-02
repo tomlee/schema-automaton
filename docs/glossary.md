@@ -60,7 +60,7 @@ valid. Defined formally in
   optionally nullable, used as a field's type (e.g. `Scalar("string")`,
   or the ready-made `STRING`/`t.string`). A `Scalar` is a *type*; it
   constrains which scalar values are valid, it is not itself a value. See
-  [`omnist/canonical/schema.py`](https://github.com/omnist-dev/omnist/blob/master/omnist/canonical/schema.py) and
+  [`omnist/schema.py`](https://github.com/omnist-dev/omnist/blob/master/omnist/schema.py) and
   [the schema doc](schema.md#shape).
 - **kind** / **`value_kind()`** — `kind` is the plain string name
   (`"string"`, `"integer"`, ...) classifying a Python *value* — what
@@ -70,7 +70,7 @@ valid. Defined formally in
   type does this field declare?" `matches_kind(value, name)` is the
   boolean predicate form, with a wider match set (e.g. an `integer` value
   also matches a `"number"` check). See
-  [`omnist/canonical/schema.py`](https://github.com/omnist-dev/omnist/blob/master/omnist/canonical/schema.py) and
+  [`omnist/schema.py`](https://github.com/omnist-dev/omnist/blob/master/omnist/schema.py) and
   [model spec §10](design/model.md#10-scalar-and-python-type).
 - **data type** — not used as a distinct term in this codebase; the
   intentional vocabulary is **kind** (a value's runtime classification),
@@ -84,7 +84,7 @@ valid. Defined formally in
   declares; an **edge** (Document-model term, above) is what a `Doc`
   actually contains. A field's `type` is a `Scalar` or a `Ref`, never both
   or a composition. See
-  [`omnist/canonical/schema.py`](https://github.com/omnist-dev/omnist/blob/master/omnist/canonical/schema.py) and
+  [`omnist/schema.py`](https://github.com/omnist-dev/omnist/blob/master/omnist/schema.py) and
   [the schema doc](schema.md#shape).
 - **`Field`** — the Python class implementing a field (capitalized,
   contrast with lowercase **field**, the general concept, and with the
@@ -96,7 +96,7 @@ valid. Defined formally in
   by the lowercase `record(*fields)` builder function. Lowercase `record`
   is the keyword/concept; `Record` is the class — distinguished by case
   and code-formatting throughout the docs. See
-  [`omnist/canonical/schema.py`](https://github.com/omnist-dev/omnist/blob/master/omnist/canonical/schema.py).
+  [`omnist/schema.py`](https://github.com/omnist-dev/omnist/blob/master/omnist/schema.py).
 - **`Ref`** — a pointer into the schema's named environment (`env`),
   resolving to a `Record`. Used for reuse and recursion; a field's type is
   a `Scalar` or a `Ref`, never an inline/anonymous record. See
@@ -108,7 +108,7 @@ valid. Defined formally in
   [the schema doc](schema.md#shape).
 - **`Schema`** — the root object: a `root` `Ref` plus an `env` dict mapping
   names to `Record` definitions. See
-  [`omnist/canonical/schema.py`](https://github.com/omnist-dev/omnist/blob/master/omnist/canonical/schema.py) and
+  [`omnist/schema.py`](https://github.com/omnist-dev/omnist/blob/master/omnist/schema.py) and
   [the API reference](api.md#schemas).
 - **schema** (lowercase, general use) — the constraint as a concept, or an
   instance of `Schema`; also used loosely for "the OSD text describing one."

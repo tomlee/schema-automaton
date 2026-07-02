@@ -7,9 +7,9 @@ element on write.
 
 Writing is **lenient by default**: when a value can't be held losslessly (TOML
 has no ``null``; JSON/XML have no date type), the writer adjusts it and records
-the change in a :class:`~omnist.canonical.report.WriteReport`.  Pass
+the change in a :class:`~omnist.report.WriteReport`.  Pass
 ``report=`` to inspect, or ``strict=True`` to raise on any adjustment.  See
-:mod:`~omnist.canonical.report`.
+:mod:`~omnist.report`.
 """
 
 from __future__ import annotations
@@ -21,8 +21,8 @@ import re as _re
 import warnings
 from typing import TYPE_CHECKING, Any, Optional
 
-from ..errors import ParseError, UnsafeXMLWarning, WriteError
 from .document import _grouped, build_node
+from .errors import ParseError, UnsafeXMLWarning, WriteError
 from .report import WriteReport, finish_write
 
 if TYPE_CHECKING:

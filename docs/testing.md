@@ -54,30 +54,29 @@ coverage run -m pytest -q && coverage report -m
 under `omnist/`). At the time of writing this measured as:
 
 ```
-Name                                 Stmts   Miss  Cover
---------------------------------------------------------
-omnist/__init__.py                      12      0   100%
-omnist/canonical/__init__.py            12      0   100%
-omnist/canonical/deserialize.py         91      0   100%
-omnist/canonical/document.py           202      0   100%
-omnist/canonical/formats.py            255      0   100%
-omnist/canonical/infer.py               77      0   100%
-omnist/canonical/oml.py                437      0   100%
-omnist/canonical/ops/__init__.py         5      0   100%
-omnist/canonical/ops/extract.py         43      0   100%
-omnist/canonical/ops/isomorphic.py      27      0   100%
-omnist/canonical/ops/minimize.py        55      0   100%
-omnist/canonical/ops/prune.py           65      0   100%
-omnist/canonical/ops/signature.py       10      0   100%
-omnist/canonical/ops/subschema.py       56      0   100%
-omnist/canonical/osd.py                149      0   100%
-omnist/canonical/registry.py            32      0   100%
-omnist/canonical/report.py              35      0   100%
-omnist/canonical/schema.py             250      0   100%
-omnist/cli.py                          216      0   100%
-omnist/errors.py                        10      0   100%
---------------------------------------------------------
-TOTAL                                 2039      0   100%
+Name                       Stmts   Miss  Cover
+----------------------------------------------
+omnist/__init__.py            14      0   100%
+omnist/cli.py                216      0   100%
+omnist/deserialize.py         91      0   100%
+omnist/document.py           202      0   100%
+omnist/errors.py              10      0   100%
+omnist/formats.py            255      0   100%
+omnist/infer.py               77      0   100%
+omnist/oml.py                437      0   100%
+omnist/ops/__init__.py         5      0   100%
+omnist/ops/extract.py         43      0   100%
+omnist/ops/isomorphic.py      27      0   100%
+omnist/ops/minimize.py        55      0   100%
+omnist/ops/prune.py           65      0   100%
+omnist/ops/signature.py       10      0   100%
+omnist/ops/subschema.py       56      0   100%
+omnist/osd.py                149      0   100%
+omnist/registry.py            32      0   100%
+omnist/report.py              35      0   100%
+omnist/schema.py             250      0   100%
+----------------------------------------------
+TOTAL                       2029      0   100%
 ```
 
 The few `# pragma: no cover` exclusions in the package are limited to
@@ -193,7 +192,7 @@ directions. That's the cheap, single algorithm the public API commits to.
 But the paper also proves a separate result, Theorem 4: two schemas are
 equivalent *iff* their minimized forms (`normalize()`, Algorithm 2) are
 isomorphic (Algorithm 3's isomorphism-testing step). Isomorphism testing —
-implemented privately as `omnist.canonical.ops.isomorphic._isomorphic`, not
+implemented privately as `omnist.ops.isomorphic._isomorphic`, not
 part of the public API — is a structurally unrelated computation: it walks
 both schemas' already-minimized environments in parallel, building a name
 bijection and comparing `local_signature` at each matched record pair,

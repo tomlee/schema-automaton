@@ -24,8 +24,8 @@ Algorithm:
    actionable.
 5. Otherwise, invalidated records (and fields typed to them, along with any
    fields already dropped in step 1) are gone; the result is run through
-   :func:`~omnist.canonical.ops.prune.prune` and
-   :func:`~omnist.canonical.ops.minimize.normalize` (Algorithm 5's own
+   :func:`~omnist.ops.prune.prune` and
+   :func:`~omnist.ops.minimize.normalize` (Algorithm 5's own
    final MakeUseful + Minimize step) to land in the same canonical minimal
    form ``normalize()`` produces elsewhere.
 
@@ -46,7 +46,7 @@ from __future__ import annotations
 
 from typing import Dict, Iterable, Set
 
-from ...errors import SchemaError
+from ..errors import SchemaError
 from ..schema import Record, Ref, Schema
 from .minimize import normalize
 from .prune import prune

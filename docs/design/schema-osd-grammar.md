@@ -9,7 +9,7 @@ read that first for context and examples, and the
 cardinality, Scalar, Ref).
 
 Every production below has been exercised against the real implementation
-in [`omnist/canonical/osd.py`](https://github.com/omnist-dev/omnist/blob/master/omnist/canonical/osd.py) (the
+in [`omnist/osd.py`](https://github.com/omnist-dev/omnist/blob/master/omnist/osd.py) (the
 tokenizer regex and `_Parser` class); see [Worked
 examples](#5-worked-examples) and the conformance tests in
 [`tests/test_grammar_docs.py`](https://github.com/omnist-dev/omnist/blob/master/tests/test_grammar_docs.py).
@@ -17,7 +17,7 @@ examples](#5-worked-examples) and the conformance tests in
 ## 1. Lexical grammar (tokens)
 
 The tokenizer is a single regex alternation
-([`_TOKEN`](https://github.com/omnist-dev/omnist/blob/master/omnist/canonical/osd.py)) tried left to right at each
+([`_TOKEN`](https://github.com/omnist-dev/omnist/blob/master/omnist/osd.py)) tried left to right at each
 position; the first alternative that matches wins (Python `re` tries
 alternatives in order and takes the first match, not the longest — but
 because each alternative here is anchored to a disjoint leading character
@@ -113,7 +113,7 @@ scalar-type = scalar-name ["?"]
 scalar-name = %s"string" / %s"integer" / %s"number" / %s"boolean"
             / %s"date" / %s"time" / %s"datetime"
               ; the seven fixed scalar kinds -- SCALAR_NAMES in
-              ; omnist/canonical/schema.py. "?" makes the scalar nullable;
+              ; omnist/schema.py. "?" makes the scalar nullable;
               ; omitting it means non-nullable.
 
 ref-type    = name

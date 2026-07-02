@@ -7,7 +7,7 @@ for the current canonical edge-list Document model):
 
 1. **Round-trip fuzzing** -- randomized canonical Document nodes (the
    ``[(label, child), ...]`` edge-list / scalar-leaf shape from
-   :mod:`omnist.canonical.document`) round-tripped through every codec:
+   :mod:`omnist.document`) round-tripped through every codec:
 
    * ``write_oml``/``read_oml`` must be *exactly* lossless for every shape
      (``docs/formats/oml.md``).
@@ -64,7 +64,7 @@ from omnist import (
     write_xml,
     write_yaml,
 )
-from omnist.canonical.document import _grouped, build_node
+from omnist.document import _grouped, build_node
 
 _SUPPRESS = settings(
     deadline=None,  # CI runners are slower/noisier than a dev machine
@@ -511,8 +511,8 @@ def test_extract_result_is_compatible_with_original(s, keep):
 # one implementation against an independently-derived second one.
 # ---------------------------------------------------------------------------
 
-from omnist.canonical.ops.isomorphic import _isomorphic  # noqa: E402
-from omnist.canonical.ops.signature import local_signature  # noqa: E402
+from omnist.ops.isomorphic import _isomorphic  # noqa: E402
+from omnist.ops.signature import local_signature  # noqa: E402
 
 
 @_SUPPRESS

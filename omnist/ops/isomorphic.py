@@ -8,7 +8,7 @@ be cross-checked against each other in tests (see ``docs/testing.md``,
 "the dual-algorithm oracle").
 
 ``_isomorphic`` is intentionally private and not re-exported from
-``omnist``/``omnist.canonical``: the public API commits to ``equivalent``
+``omnist``: the public API commits to ``equivalent``
 (the cheaper, single algorithm) staying the definition of schema equality.
 This module exists purely as an independent oracle for property tests.
 

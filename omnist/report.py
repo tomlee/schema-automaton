@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from typing import List, NamedTuple, Optional
 
-from ..errors import WriteError
+from .errors import WriteError
 
 
 class Adjustment(NamedTuple):
