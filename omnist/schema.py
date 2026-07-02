@@ -24,7 +24,7 @@ from __future__ import annotations
 import datetime as _dt
 from typing import Any, Dict, List, NamedTuple, Optional, Union
 
-from ..errors import SchemaError
+from .errors import SchemaError
 
 SCALAR_NAMES = {"string", "integer", "number", "boolean", "date", "time", "datetime"}
 

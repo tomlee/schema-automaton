@@ -13,7 +13,7 @@ from __future__ import annotations
 import threading
 from typing import Any, Callable, Dict, List, NamedTuple, Optional
 
-from ..errors import OmnistError
+from .errors import OmnistError
 
 
 class Format(NamedTuple):

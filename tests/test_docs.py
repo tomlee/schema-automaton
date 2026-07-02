@@ -32,7 +32,7 @@ def test_readme_at_a_glance():
                      'record Team { "name": string, "members" [1,]: Member }\nroot Team')
     assert s.validate(doc({"name": "X",
                            "members": [{"name": "Ann", "role": "dev"}]})).ok
-    assert ds.__version__ == "0.2.19"
+    assert ds.__version__ == "0.2.20"
 
 
 def test_quickstart():
@@ -484,12 +484,12 @@ def test_api_docs_format_registry():
 
 
 def test_api_docs_version():
-    assert ds.__version__ == "0.2.19"
+    assert ds.__version__ == "0.2.20"
 
 
 def test_api_docs_schema_raises():
     from omnist import SchemaError
-    from omnist.canonical.schema import Ref, Scalar, Schema
+    from omnist.schema import Ref, Scalar, Schema
 
     # root isn't a Ref
     try:

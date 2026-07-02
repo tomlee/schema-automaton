@@ -19,7 +19,7 @@ Start here, in roughly this order:
 | **[OSD grammar](design/schema-osd-grammar.md)** | The formal ABNF grammar for OSD, verified against the parser: keywords, field syntax, cardinality, and the seven scalars. |
 | **[Glossary](glossary.md)** | One definition per term used across the docs and code, grouped by concept area. |
 | **[Testing](testing.md)** | The test suite: layout, coverage tooling and target, the fuzzing approach, and what CI runs. |
-| **[Repo layout](layout.md)** | How the repo itself is organized: `omnist/canonical/*.py` module responsibilities, the docs page map, and the test file map. |
+| **[Repo layout](layout.md)** | How the repo itself is organized: `omnist/*.py` module responsibilities, the docs page map, and the test file map. |
 
 ## The model in one minute
 

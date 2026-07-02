@@ -8,7 +8,7 @@ import datetime
 
 import pytest
 
-from omnist.canonical import (
+from omnist import (
     Doc,
     Field,
     Format,
@@ -22,18 +22,13 @@ from omnist.canonical import (
     check_toml,
     check_xml,
     check_yaml,
-    compatible_with,
     doc,
-    equivalent,
     field,
     formats,
     get_format,
     infer,
-    is_empty,
     materialize,
-    normalize,
     parse_schema,
-    prune,
     read_json,
     read_toml,
     read_xml,
@@ -49,9 +44,10 @@ from omnist.canonical import (
     write_xml,
     write_yaml,
 )
-from omnist.canonical.oml import check_oml
-from omnist.canonical.schema import matches_kind, value_kind
 from omnist.errors import DocumentError, ParseError, SchemaError, WriteError
+from omnist.oml import check_oml
+from omnist.ops import compatible_with, equivalent, is_empty, normalize, prune
+from omnist.schema import matches_kind, value_kind
 
 yaml = pytest.importorskip("yaml")
 
@@ -65,7 +61,7 @@ class TestPublicApi:
         import omnist as ds
 
         s = ds.parse_schema('record R { "n": integer, "s": string? }\nroot R')
-        assert ds.__version__ == "0.2.19"
+        assert ds.__version__ == "0.2.20"
         # operations are Schema methods
         assert s.validate(ds.doc({"n": 1, "s": None})).ok
         assert s.equivalent(ds.parse_schema(ds.to_osd(s)))
@@ -139,37 +135,37 @@ class TestDocument:
 
 class TestInfer:
     def test_flat(self):
-        from omnist.canonical import infer
+        from omnist import infer
         s = infer([doc({"name": "Ann", "age": 30}), doc({"name": "Bob"})])
         assert s.validate(doc({"name": "Cy"})).ok           # age optional
         assert not s.validate(doc({"age": 1})).ok           # name required
 
     def test_array_and_nested(self):
-        from omnist.canonical import infer
+        from omnist import infer
         s = infer([doc({"id": 1, "tags": ["a", "b"], "addr": {"city": "X"}})])
         assert s.validate(doc({"id": 9, "tags": ["c"], "addr": {"city": "Y"}})).ok
         assert not s.validate(doc({"id": 9, "tags": [1], "addr": {"city": "Y"}})).ok
 
     def test_accepts_its_own_samples(self):
-        from omnist.canonical import infer
+        from omnist import infer
         samples = [doc({"v": 1}), doc({"v": 2.5})]          # int + float -> number
         s = infer(samples)
         for sm in samples:
             assert s.validate(sm).ok
 
     def test_conflicting_scalars_raise(self):
-        from omnist.canonical import infer
+        from omnist import infer
         with pytest.raises(SchemaError):
             infer([doc({"v": 1}), doc({"v": "x"})])
 
     def test_null_only_field_infers_nullable_string(self):
-        from omnist.canonical import infer
+        from omnist import infer
         s = infer([doc({"v": None}), doc({"v": None})])
         assert s.validate(doc({"v": None})).ok
         assert s.validate(doc({"v": "anything"})).ok
 
     def test_null_alongside_a_kind_is_orthogonal(self):
-        from omnist.canonical import infer
+        from omnist import infer
         s = infer([doc({"v": 1}), doc({"v": None})])
         assert s.validate(doc({"v": 7})).ok
         assert s.validate(doc({"v": None})).ok
@@ -179,7 +175,7 @@ class TestInfer:
         # a field absent from an early sample but present in a later one
         # must still infer as optional, regardless of which sample order
         # it's passed in
-        from omnist.canonical import infer
+        from omnist import infer
         absent_first = infer([doc({"host": "a"}), doc({"host": "b", "port": 80})])
         absent_last = infer([doc({"host": "b", "port": 80}), doc({"host": "a"})])
         assert absent_first.equivalent(absent_last)
@@ -416,7 +412,7 @@ class TestOperations:
         assert not compatible_with(b, a)
 
     def test_temporal_date_not_compatible_with_string(self):
-        from omnist.canonical import DATE, STRING
+        from omnist import DATE, STRING
         a = schema(ref("R"), R=record(field("d", DATE)))
         b = schema(ref("R"), R=record(field("d", STRING)))
         assert not compatible_with(a, b)
@@ -471,7 +467,7 @@ class TestExtract:
         assert len(s.extract("a", "b", "x").env) == len(s.normalize().env)
 
     def test_extract_free_function_matches_method(self):
-        from omnist.canonical.ops import extract
+        from omnist.ops import extract
         s = parse_schema('record R { "a": integer, "b" [0,1]: string }\nroot R')
         assert extract(s, ["a"]).equivalent(s.extract("a"))
 
@@ -791,8 +787,8 @@ class TestCodecs:
         # standard library parser, with a warning about the XXE risk.
         import builtins
 
-        from omnist.canonical.formats import _xml_parser
         from omnist.errors import UnsafeXMLWarning
+        from omnist.formats import _xml_parser
 
         real_import = builtins.__import__
 
@@ -908,7 +904,7 @@ class TestDeserialize:
             materialize([("dt", "2024-01-01")], s)
 
     def test_schema_directed_via_doc_from_json(self):
-        from omnist.canonical import Doc
+        from omnist import Doc
         s = parse_schema('record R { "d": date }\nroot R')
         d = Doc.from_json('{"d": "2024-01-01"}', schema=s)
         assert d.get_one("d").value == datetime.date(2024, 1, 1)

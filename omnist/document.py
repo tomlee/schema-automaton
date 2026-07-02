@@ -25,7 +25,7 @@ from __future__ import annotations
 import datetime as _dt
 from typing import TYPE_CHECKING, Any, Iterator, List, Optional, Tuple
 
-from ..errors import DocumentError
+from .errors import DocumentError
 
 if TYPE_CHECKING:
     from .report import WriteReport
@@ -279,7 +279,7 @@ class Doc:
     def check_format(self, name: str) -> "WriteReport":
         """Simulate writing to format ``name`` and return the adjustment
         report, without producing output. Requires the registered
-        :class:`~omnist.canonical.registry.Format` to provide a ``check``
+        :class:`~omnist.registry.Format` to provide a ``check``
         callable (the four built-ins do; a custom plugin may not)."""
         from .registry import get_format
         fmt = get_format(name)

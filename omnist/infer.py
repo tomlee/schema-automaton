@@ -6,7 +6,7 @@ them:
 * a label present in every sample with count 1 becomes a required field
   (``[1,1]``); absent in some samples -> ``[0,1]``; seen more than once ->
   an array (``[min,]``);
-* scalar children become one :class:`~omnist.canonical.schema.Scalar`
+* scalar children become one :class:`~omnist.schema.Scalar`
   (nullable if any sample was null). Samples disagreeing on scalar shape
   raise, except ``integer``/``number`` mixing, which collapses to
   ``number`` (the one subset relation between scalars) -- see
@@ -27,8 +27,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from ..errors import SchemaError
 from .document import Doc, build_node
+from .errors import SchemaError
 from .schema import Field, Record, Ref, Scalar, Schema, value_kind
 
 

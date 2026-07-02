@@ -18,13 +18,22 @@ value-domain (no enums, no literal-valued fields). Read a format into a
     ''')
     s.validate(doc({"name": "X", "members": [{"name": "Ann", "role": "dev"}]})).ok
 
-The model is defined formally in ``docs/design/model.md``.  The implementation
-lives in :mod:`omnist.canonical`; this module is its public surface.
+The model is defined formally in ``docs/design/model.md``; this package is
+its implementation, and this module is its public surface.
 """
 
-from .canonical.deserialize import materialize
-from .canonical.document import Doc, doc
-from .canonical.formats import (
+from .deserialize import materialize
+from .document import Doc, doc
+from .errors import (
+    DetachedNode,
+    DocumentError,
+    OmnistError,
+    ParseError,
+    SchemaError,
+    UnsafeXMLWarning,
+    WriteError,
+)
+from .formats import (
     check_json,
     check_toml,
     check_xml,
@@ -38,12 +47,15 @@ from .canonical.formats import (
     write_xml,
     write_yaml,
 )
-from .canonical.infer import infer
-from .canonical.oml import check_oml, read_oml, write_oml
-from .canonical.osd import parse_schema, to_osd
-from .canonical.registry import Format, formats, get_format, register_format
-from .canonical.report import Adjustment, WriteReport, finish_write
-from .canonical.schema import (
+from .infer import infer
+from .oml import check_oml, read_oml, write_oml
+from .osd import parse_schema, to_osd
+from .registry import Format, formats, get_format, register_format
+
+# register the four built-in formats
+from .registry import _register_builtins as _rb  # noqa: E402
+from .report import Adjustment, WriteReport, finish_write
+from .schema import (
     BOOLEAN,
     DATE,
     DATETIME,
@@ -65,17 +77,10 @@ from .canonical.schema import (
     schema,
     t,
 )
-from .errors import (
-    DetachedNode,
-    DocumentError,
-    OmnistError,
-    ParseError,
-    SchemaError,
-    UnsafeXMLWarning,
-    WriteError,
-)
 
-__version__ = "0.2.19"
+_rb()
+
+__version__ = "0.2.20"
 
 __all__ = [
     # errors

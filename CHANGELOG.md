@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.2.20] — Flatten `omnist/canonical` into `omnist`
+
+Refactor (issue [#144](https://github.com/omnist-dev/omnist/issues/144)):
+
+- **Changed:** `omnist/canonical/` was a historical artifact — its docstring
+  still framed it as a "design proposal implementation," but it was, and
+  remains, the only implementation. Moved every module up a level
+  (`omnist/canonical/document.py` -> `omnist/document.py`, etc.) and
+  `omnist/canonical/ops/` -> `omnist/ops/`; deleted the now-empty
+  `canonical` package. Internal-layout change only — the public surface
+  (`import omnist`) is byte-for-byte unchanged (`dir(omnist)`/`__all__`
+  identical before and after).
+
 ## [v0.2.19] — CLI prune/is-empty, infer/normalize doc note
 
 Follow-ups from the user's review of the schema-operations initiative

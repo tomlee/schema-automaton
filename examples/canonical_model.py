@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""The redesigned (canonical) model end to end: edge-list Document,
+"""The canonical model end to end: edge-list Document,
 record/Ref schema with exactly seven scalars, field cardinality, validation,
 operations, and codecs.
 
-This exercises ``omnist.canonical`` — the implementation of the design in
-``docs/design/model.md``.  It lives alongside the current v0.1 package.
+This exercises ``omnist`` — the implementation of the design in
+``docs/design/model.md``.
 
 Run: python3 examples/canonical_model.py
 """

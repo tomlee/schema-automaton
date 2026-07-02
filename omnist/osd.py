@@ -25,7 +25,7 @@ from __future__ import annotations
 import re
 from typing import List, Optional, Tuple
 
-from ..errors import SchemaError
+from .errors import SchemaError
 from .schema import SCALAR_NAMES, Field, Record, Ref, Scalar, Schema
 
 _TOKEN = re.compile(r"""
@@ -188,7 +188,7 @@ class _Parser:
 
 
 def parse_schema(text: str) -> Schema:
-    """Parse OSD text into a :class:`~omnist.canonical.schema.Schema`."""
+    """Parse OSD text into a :class:`~omnist.schema.Schema`."""
     return _Parser(_tokenize(text)).parse()
 
 
