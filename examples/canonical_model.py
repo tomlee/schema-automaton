@@ -72,7 +72,7 @@ def main():
     print("v1.compatible_with(v2):", v1.compatible_with(v2))
     print("v2.compatible_with(v1):", v2.compatible_with(v1))
 
-    print("\n== normalize merges structurally identical named records ==")
+    print("\n== normalize computes the canonical minimal schema via partition refinement ==")
     dup = parse_schema('record A { "x": integer }\nrecord B { "x": integer }\n'
                        'record R { "a": A, "b": B }\nroot R')
     n = dup.normalize()

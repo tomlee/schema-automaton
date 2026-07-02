@@ -131,7 +131,9 @@ Both forms round-trip through `parse_schema` to an equivalent `Schema`.
 ## Validation
 
 `schema.validate(doc)` returns a `ValidationResult` with `.ok` and `.errors`
-(each an `Error(path, message)`, at the exact failing path); validation
+(each an `Error(path, message, code)`, at the exact failing path, with a
+stable machine-readable code — see [the API reference](api.md#class-error)
+for the code table); validation
 **ignores edge order** — see [OML's note on order vs.
 validation](formats/oml.md#shape) for why that's true even though OML
 preserves order as data:

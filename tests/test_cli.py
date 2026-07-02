@@ -287,6 +287,17 @@ class TestCheck:
         assert "null" in out
         assert err == ""
 
+
+    def test_report_result_format_oml(self, tmp_path, capsys):
+        # covers the oml branch of the adjustments encoder (cli.py _encode_adjustments)
+        p = tmp_path / "in.json"
+        p.write_text('{"a": null}')
+        code, out, err = run(
+            ["check", str(p), "--from", "json", "--to", "toml",
+             "--result-format", "oml"], capsys=capsys, monkeypatch=None)
+        assert code == 0
+        assert "adjustments" in out and "null" in out
+
     def test_no_adjustments_prints_no_adjustments(self, tmp_path, capsys):
         p = tmp_path / "in.json"
         p.write_text('{"a": 1}')

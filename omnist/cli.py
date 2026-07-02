@@ -103,7 +103,8 @@ def _encode_validation_result(result: ValidationResult, fmt: str) -> str:
         return _json.dumps(payload)
     if fmt == "oml":
         return doc(payload).to_oml()
-    raise ValueError(f"unknown result format {fmt!r}")  # unreachable: argparse restricts choices
+    # unreachable: argparse restricts --result-format choices
+    raise ValueError(f"unknown result format {fmt!r}")  # pragma: no cover
 
 
 def _cmd_format(args: argparse.Namespace) -> int:
@@ -125,7 +126,8 @@ def _encode_write_report(rep: WriteReport, fmt: str) -> str:
         return _json.dumps(payload)
     if fmt == "oml":
         return doc({"adjustments": payload}).to_oml()
-    raise ValueError(f"unknown result format {fmt!r}")  # unreachable: argparse restricts choices
+    # unreachable: argparse restricts --result-format choices
+    raise ValueError(f"unknown result format {fmt!r}")  # pragma: no cover
 
 
 def _write_to_format(
@@ -224,7 +226,8 @@ def _encode_bool_result(key: str, value: bool, fmt: str) -> str:
         return _json.dumps({key: value})
     if fmt == "oml":
         return doc({key: value}).to_oml()
-    raise ValueError(f"unknown result format {fmt!r}")  # unreachable: argparse restricts choices
+    # unreachable: argparse restricts --result-format choices
+    raise ValueError(f"unknown result format {fmt!r}")  # pragma: no cover
 
 
 def _cmd_schema_compatible_with(args: argparse.Namespace) -> int:
@@ -327,7 +330,9 @@ def _build_parser() -> argparse.ArgumentParser:
     schema_format_p.set_defaults(func=_cmd_schema_format)
 
     schema_normalize_p = schema_sub.add_parser(
-        "normalize", help="simplify an OSD schema (may merge structurally-identical records)")
+        "normalize",
+        help="compute the canonical minimal equivalent schema "
+             "(fewest records via partition refinement)")
     schema_normalize_p.add_argument("schema_file", help="OSD file, or - for stdin")
     schema_normalize_p.add_argument(
         "--compact", action="store_true",
@@ -377,5 +382,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 2
 
 
-if __name__ == "__main__":
+# module entry point, exercised only by direct execution
+if __name__ == "__main__":  # pragma: no cover
     sys.exit(main())

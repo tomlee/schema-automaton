@@ -65,7 +65,7 @@ class TestPublicApi:
         import omnist as ds
 
         s = ds.parse_schema('record R { "n": integer, "s": string? }\nroot R')
-        assert ds.__version__ == "0.2.17"
+        assert ds.__version__ == "0.2.18"
         # operations are Schema methods
         assert s.validate(ds.doc({"n": 1, "s": None})).ok
         assert s.equivalent(ds.parse_schema(ds.to_osd(s)))
@@ -213,7 +213,7 @@ class TestValidation:
         s = 'record R { "a": integer }\nroot R'
         r = valid(s, {"a": 1, "b": 2})
         assert not r.ok
-        assert any("unexpected field" in m for _, m in r.errors)
+        assert any("unexpected field" in m for _, m, _ in r.errors)
 
     def test_array_cardinality(self):
         s = 'record R { "xs" [0,]: integer }\nroot R'
@@ -931,6 +931,50 @@ class TestDeserialize:
         assert dict(dict(node)["t"])["d"] == datetime.date(2024, 1, 1)
 
 
+    def test_materialize_null_scalar_paths(self):
+        # non-nullable scalar receiving null -> null-not-allowed (deserialize.py)
+        s = parse_schema('record R { "x": string }\nroot R')
+        with pytest.raises(ParseError, match="null not allowed"):
+            read_json('{"x": null}', schema=s)
+        # nullable scalar receiving null -> passes through untouched
+        s2 = parse_schema('record R { "x": string? }\nroot R')
+        node = read_json('{"x": null}', schema=s2)
+        assert node == [("x", None)]
+
+    def test_validation_error_codes_all_reachable(self):
+        # Verify all five error codes are reachable via validation
+
+        # unexpected-field: extra field not in schema
+        s1 = parse_schema('record R { "a": integer }\nroot R')
+        result = s1.validate(doc({"a": 1, "b": 2}))
+        assert not result.ok
+        assert any(e.code == "unexpected-field" for e in result.errors)
+
+        # cardinality: field count out of range
+        s2 = parse_schema('record R { "a" [1,1]: integer }\nroot R')
+        result = s2.validate(doc({"a": [1, 2]}))
+        assert not result.ok
+        assert any(e.code == "cardinality" for e in result.errors)
+
+        # type-mismatch: value doesn't match scalar type
+        s3 = parse_schema('record R { "a": integer }\nroot R')
+        result = s3.validate(doc({"a": "not an int"}))
+        assert not result.ok
+        assert any(e.code == "type-mismatch" for e in result.errors)
+
+        # null-not-allowed: null for non-nullable scalar
+        s4 = parse_schema('record R { "a": integer }\nroot R')
+        result = s4.validate(doc({"a": None}))
+        assert not result.ok
+        assert any(e.code == "null-not-allowed" for e in result.errors)
+
+        # shape-mismatch: expected object got scalar or vice versa
+        s5 = parse_schema('record R { "a": R2 }\nrecord R2 { "x": integer }\nroot R')
+        result = s5.validate(doc({"a": 1}))
+        assert not result.ok
+        assert any(e.code == "shape-mismatch" for e in result.errors)
+
+
 # ----------------------------------------------------------- adjustment reports
 class TestReports:
     def test_toml_drops_null_with_a_warning(self):
@@ -1258,7 +1302,7 @@ class TestSchemaModelDunders:
         assert repr(ok) == "ValidationResult(ok=True, errors=0)"
 
         bad = ValidationResult()
-        bad.add("$.a", "boom")
+        bad.add("$.a", "boom", "type-mismatch")
         assert bool(bad) is False
         assert str(bad) == "invalid:\n  at $.a: boom"
         assert repr(bad) == "ValidationResult(ok=False, errors=1)"

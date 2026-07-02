@@ -4,6 +4,27 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.2.18] — Consistency audit, validation error codes, 100% coverage restored
+
+Closes out the schema-operations initiative with a sweep pass
+(issue [#143](https://github.com/omnist-dev/omnist/issues/143)):
+
+- **Added:** every validation `Error` now carries a stable machine-readable
+  `code` (`unexpected-field`, `cardinality`, `type-mismatch`,
+  `null-not-allowed`, `shape-mismatch`) alongside `path` and `message` —
+  match on `.code`, not message text, when reacting programmatically.
+  `str(ValidationResult)` output is unchanged.
+- **Changed:** docs/docstrings audited for wording that predated the
+  initiative — `normalize` is consistently described as the canonical
+  minimal form (partition refinement), not "merge structurally-identical
+  records"; `docs/design/model.md` gains a paper-correspondence table
+  mapping every operation to its algorithm in Lee & Cheung (CIKM 2010).
+- **Fixed:** the 100% coverage target is true again — `deserialize.py` and
+  `cli.py` had silently drifted to 97%; real tests now cover the drifted
+  lines, with `# pragma: no cover` used only for annotated, genuinely
+  unreachable defensive guards. The coverage snapshot in `docs/testing.md`
+  is regenerated from an actual run (previously had invented/stale counts).
+
 ## [v0.2.17] — Subschema extraction (#142)
 
 **Added:** `Schema.extract(*labels)` / `omnist.canonical.ops.extract.extract(schema, keep)`,

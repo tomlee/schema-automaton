@@ -178,6 +178,9 @@ class Record:
 class Error(NamedTuple):
     path: str
     message: str
+    # stable machine-readable code: unexpected-field, cardinality,
+    # type-mismatch, null-not-allowed, shape-mismatch
+    code: str
 
 
 class ValidationResult:
@@ -188,8 +191,8 @@ class ValidationResult:
     def ok(self) -> bool:
         return not self.errors
 
-    def add(self, path: str, message: str) -> None:
-        self.errors.append(Error(path, message))
+    def add(self, path: str, message: str, code: str) -> None:
+        self.errors.append(Error(path, message, code))
 
     def __bool__(self) -> bool:
         return self.ok
@@ -265,33 +268,34 @@ class Schema:
 
     def _conform_scalar(self, doc, s: Scalar, res: ValidationResult) -> None:
         if not doc.is_leaf:
-            res.add(doc.path, f"expected a {s.name} value, got an object")
+            res.add(doc.path, f"expected a {s.name} value, got an object", "shape-mismatch")
             return
         v = doc.value
         if v is None:
             if not s.nullable:
-                res.add(doc.path, "null not allowed here")
+                res.add(doc.path, "null not allowed here", "null-not-allowed")
             return
         if not matches_kind(v, s.name):
-            res.add(doc.path, f"expected {s.name}, got {_typename(v)} ({v!r})")
+            res.add(doc.path, f"expected {s.name}, got {_typename(v)} ({v!r})", "type-mismatch")
 
     def _conform_record(self, doc, rec: Record, res: ValidationResult) -> None:
         if doc.is_leaf:
-            res.add(doc.path, "expected an object, got a value")
+            res.add(doc.path, "expected an object, got a value", "shape-mismatch")
             return
         counts: Dict[str, int] = {}
         for label, child in doc.edges():
             counts[label] = counts.get(label, 0) + 1
             f = rec.field(label)
             if f is None:
-                res.add(child.path, "unexpected field")
+                res.add(child.path, "unexpected field", "unexpected-field")
             else:
                 self._conform(child, f.type, res)
         for f in rec.fields:
             c = counts.get(f.label, 0)
             if c < f.min or (f.max is not None and c > f.max):
                 res.add(doc.path,
-                        f"field {f.label!r} occurs {c} time(s), expected {f.cardinality_str()}")
+                        f"field {f.label!r} occurs {c} time(s), expected {f.cardinality_str()}",
+                        "cardinality")
 
     # -- comparison (delegate to operations) ----------------------------
     def compatible_with(self, other: "Schema") -> bool:
@@ -306,8 +310,8 @@ class Schema:
         return equivalent(self, other)
 
     def normalize(self) -> "Schema":
-        """An equivalent schema with structurally-identical named records
-        merged."""
+        """The canonical minimal schema equivalent to this one: fewest env
+        records, unique up to naming (via partition refinement)."""
         from .ops import normalize
         return normalize(self)
 

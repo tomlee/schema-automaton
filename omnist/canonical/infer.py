@@ -14,8 +14,9 @@ them:
 * object children become a nested, named ``record`` (recursively).
 
 Since the model has no inline records, nested records are given generated
-names derived from their label.  ``normalize`` afterwards merges any that turn
-out structurally identical.
+names derived from their label. (See ``Schema.normalize()`` for the canonical
+form computation via partition refinement; the question of whether ``infer``
+should call it automatically is deferred.)
 """
 
 from __future__ import annotations

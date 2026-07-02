@@ -411,6 +411,26 @@ worked example and [the glossary](../glossary.md) for *normalize* /
 
 ---
 
+## 14. Paper correspondence
+
+Omnist's design is directly inspired by Lee & Cheung, *"XML Schema Computations: Schema Compatibility Testing and Subschema Extraction"* (CIKM 2010). The table below maps omnist concepts to their paper equivalents. See [`docs/paper/`](../../docs/paper) for the PDF.
+
+| Omnist concept | Paper concept | Notes |
+|---|---|---|
+| `Document` | Data Tree | An ordered list of labeled edges, faithful to every format (including XML interleaving) |
+| `Record` / environment `env` | SA state | A record defines constraints on a node's child labels |
+| Cardinality `[min,max]` intervals | HLang (counting language) | Omnist's deterministic, finite-cardinality restriction of the paper's infinite HLang |
+| `Scalar` | VDom (value domain) | One of seven fixed kinds (string, integer, number, boolean, date, time, datetime), optionally nullable |
+| `prune()` | MakeUsefulSA (Algorithm 1) | Remove unsatisfiable (useless) records and unreachable definitions |
+| `normalize()` | MinimizeSA (Algorithm 2) | Canonical minimal form via partition refinement (DFA minimization-style) |
+| `equivalent()` | EquivalentSA (Algorithm 3) | Bidirectional subschema inclusion — two schemas accept identical documents |
+| `compatible_with()` | SubschemaSA (Algorithm 4) | One-way subschema check — one schema's documents are a subset of the other's (backward-compatibility) |
+| `extract()` | ExtractSubschema (Algorithm 5) | Extract minimal subschema for a given label set |
+
+An alternative test oracle for equivalence is available in `ops/isomorphic.py`, which implements the Alg.-3-style minimize-and-isomorphism check (used only for test validation, not in production).
+
+---
+
 ## Appendix: worked example
 
 Schema:

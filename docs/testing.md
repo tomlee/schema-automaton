@@ -54,28 +54,37 @@ coverage run -m pytest -q && coverage report -m
 under `omnist/`). At the time of writing this measured as:
 
 ```
-Name                              Stmts   Miss  Cover
----------------------------------------------------------------
-omnist/__init__.py                   12      0   100%
-omnist/canonical/__init__.py         12      0   100%
-omnist/canonical/deserialize.py      75      0   100%
-omnist/canonical/document.py        202      0   100%
-omnist/canonical/ops/__init__.py      4      0   100%
-omnist/canonical/ops/isomorphic.py   27      0   100%
-omnist/canonical/ops/minimize.py     55      0   100%
-omnist/canonical/ops/signature.py    10      0   100%
-omnist/canonical/ops/subschema.py    56      0   100%
-omnist/canonical/osd.py             149      0   100%
-omnist/canonical/formats.py         217      0   100%
-omnist/canonical/infer.py            77      0   100%
-omnist/canonical/oml.py             437      0   100%
-omnist/canonical/registry.py         32      0   100%
-omnist/canonical/report.py           35      0   100%
-omnist/canonical/schema.py          247      0   100%
-omnist/errors.py                     10      0   100%
----------------------------------------------------------------
-(rows above: 1591 stmts, 0 missed, 100%)
+Name                                 Stmts   Miss  Cover
+--------------------------------------------------------
+omnist/__init__.py                      12      0   100%
+omnist/canonical/__init__.py            12      0   100%
+omnist/canonical/deserialize.py         91      0   100%
+omnist/canonical/document.py           202      0   100%
+omnist/canonical/formats.py            255      0   100%
+omnist/canonical/infer.py               77      0   100%
+omnist/canonical/oml.py                437      0   100%
+omnist/canonical/ops/__init__.py         5      0   100%
+omnist/canonical/ops/extract.py         43      0   100%
+omnist/canonical/ops/isomorphic.py      27      0   100%
+omnist/canonical/ops/minimize.py        55      0   100%
+omnist/canonical/ops/prune.py           65      0   100%
+omnist/canonical/ops/signature.py       10      0   100%
+omnist/canonical/ops/subschema.py       56      0   100%
+omnist/canonical/osd.py                149      0   100%
+omnist/canonical/registry.py            32      0   100%
+omnist/canonical/report.py              35      0   100%
+omnist/canonical/schema.py             250      0   100%
+omnist/cli.py                          198      0   100%
+omnist/errors.py                        10      0   100%
+--------------------------------------------------------
+TOTAL                                 2021      0   100%
 ```
+
+The few `# pragma: no cover` exclusions in the package are limited to
+genuinely unreachable defensive code, each annotated with its reason
+in-line: three `raise ValueError` guards behind argparse `choices=`
+restrictions, and the `if __name__ == "__main__"` entry point in
+`cli.py`.
 
 (`tests/test_fuzz.py` and `tests/test_docs.py` themselves show a handful of
 missed lines in any single run — defensive `except Exception` branches

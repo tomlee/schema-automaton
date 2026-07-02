@@ -181,14 +181,27 @@ Returned by `Schema.validate`.
 | `str(result)` | a readable multi-line summary |
 
 ### `class Error`
-A named tuple `Error(path, message)` — unpacks as `(path, message)` and exposes
-`.path` (e.g. `"$.order.items"`) and `.message`.
+A named tuple `Error(path, message, code)` — unpacks as `(path, message,
+code)` and exposes `.path` (e.g. `"$.order.items"`), `.message`, and a
+stable machine-readable `.code`:
+
+| code | meaning |
+|---|---|
+| `unexpected-field` | a label the (closed) record doesn't declare |
+| `cardinality` | a label occurs outside its `[min,max]` range |
+| `type-mismatch` | a value doesn't match the field's scalar type |
+| `null-not-allowed` | `null` for a non-nullable (`?`-less) scalar |
+| `shape-mismatch` | an object where a value was expected, or vice versa |
+
+The codes are part of the API contract — match on `.code`, not on message
+text, when reacting to failures programmatically. `str(result)` output is
+unchanged (codes don't appear in the human-readable summary).
 
 ```python
 r = s.validate(doc({"id": "x"}))
 if not r.ok:
     for e in r.errors:
-        print(e.path, e.message)
+        print(e.path, e.code, e.message)
 ```
 
 ---
