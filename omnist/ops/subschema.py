@@ -35,7 +35,7 @@ def equivalent(a: Schema, b: Schema) -> bool:
     return compatible_with(a, b) and compatible_with(b, a)
 
 
-def _sub(sa: Schema, ta, sb: Schema, tb, sat_a: Set[str],
+def _sub(sa: Schema, ta: Ref | Scalar, sb: Schema, tb: Ref | Scalar, sat_a: Set[str],
          memo: Dict[Tuple[int, int], bool]) -> bool:
     if isinstance(ta, Ref) and ta.name not in sat_a:
         return True                       # vacuous: an unsatisfiable A-side record
