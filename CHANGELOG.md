@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format is loosely
 based on [Keep a Changelog](https://keepachangelog.com/); this project is
 **alpha** and the public API may still change between releases.
 
+## [v0.2.25] — Type annotation hygiene + CI typecheck gate
+
+Mechanical type-annotation work (issue [#159](https://github.com/omnist-dev/omnist/issues/159),
+PR-5 of the codebase review in [#154](https://github.com/omnist-dev/omnist/issues/154)).
+All `mypy --strict` errors fixed; passes CI typecheck gate added to the workflow.
+
+### Changed
+
+- **Internal:** All `mypy --strict` errors resolved across `omnist/` (75 errors in 14 files);
+  missing type annotations and generic type arguments now complete. Two invariant
+  restructures made locally provable via assertions (`first_offender` in `extract.py`,
+  `report` in `cli.py`).
+- **CI:** Added `typecheck` job to workflow (`.github/workflows/test.yml`) running
+  `mypy --strict omnist` to catch type regressions.
+- `docs/testing.md` updated with typecheck gate documentation in CI section.
+
 ## [v0.2.24] — Brute-force semantic oracle for the schema algebra
 
 Review follow-up (issue [#158](https://github.com/omnist-dev/omnist/issues/158),
